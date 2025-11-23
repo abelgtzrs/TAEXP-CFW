@@ -11,6 +11,7 @@ import {
   updateVolume,
   deleteVolume as removeVolume,
 } from "./volumeFunctionality/volumeApi";
+import { searchVolumes } from "../utils/volumeSearch";
 
 // This is the starting state for a new, blank form.
 const INITIAL_FORM_STATE = {
@@ -64,6 +65,7 @@ const VolumesPage = () => {
   const [editingId, setEditingId] = useState(null);
   const [sortKey, setSortKey] = useState("volume"); // volume | blessings | lines
   const [sortDir, setSortDir] = useState("desc"); // asc | desc
+  const [searchQuery, setSearchQuery] = useState(""); // NEW: Search query state
   const [resultNotice, setResultNotice] = useState("");
 
   // --- DATA FETCHING ---
@@ -90,7 +92,21 @@ const VolumesPage = () => {
   }, [resultNotice]);
 
   const sortedVolumes = useMemo(() => {
-    const arr = [...volumes];
+    // 1. Filter by search query if present
+    let arr = [...volumes];
+    if (searchQuery.trim()) {
+      const searchResults = searchVolumes(arr, searchQuery);
+      // searchVolumes returns { volume, matches } objects. We just want the volume objects for the list.
+      // Note: searchVolumes already sorts by relevance.
+      // If we want to respect the user's sort choice *within* search results, we might need to re-sort.
+      // For now, let's trust the search relevance or just map back to volumes and let the sort below handle it?
+      // Actually, usually search results should be sorted by relevance.
+      // But if the user explicitly asks to sort by Volume #, we should probably honor that.
+      // Let's map back to the volume objects first.
+      arr = searchResults.map((r) => r.volume);
+    }
+
+    // 2. Sort
     const key = sortKey;
     const dir = sortDir;
     arr.sort((a, b) => {
@@ -113,7 +129,7 @@ const VolumesPage = () => {
       return dir === "asc" ? av - bv : bv - av;
     });
     return arr;
-  }, [volumes, sortKey, sortDir]);
+  }, [volumes, sortKey, sortDir, searchQuery]);
 
   // Asc list by volume number for prev/next navigation
   const volumesByNumberAsc = useMemo(() => {
@@ -347,26 +363,38 @@ const VolumesPage = () => {
                   </div>
                 </div>
                 {!isCondensed && (
-                  <div className="mt-2 flex items-center gap-2 text-[11px]">
-                    <label className="opacity-80">Sort by</label>
-                    <select
-                      value={sortKey}
-                      onChange={(e) => setSortKey(e.target.value)}
-                      className="rounded border px-2 py-1 bg-transparent"
+                  <div className="mt-2 space-y-2">
+                    {/* Search Input */}
+                    <input
+                      type="text"
+                      placeholder="Search volumes..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full px-2 py-1 rounded border bg-transparent text-xs text-main placeholder-white/30 focus:outline-none focus:border-primary"
                       style={{ borderColor: "var(--color-primary)" }}
-                    >
-                      <option value="volume">Volume #</option>
-                      <option value="blessings">Blessings</option>
-                      <option value="lines">Lines</option>
-                    </select>
-                    <button
-                      className="ml-auto px-2 py-1 rounded border"
-                      style={{ borderColor: "var(--color-primary)" }}
-                      onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-                      title="Toggle ascending/descending"
-                    >
-                      {sortDir === "asc" ? "Asc" : "Desc"}
-                    </button>
+                    />
+                    {/* Sort Controls */}
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <label className="opacity-80">Sort by</label>
+                      <select
+                        value={sortKey}
+                        onChange={(e) => setSortKey(e.target.value)}
+                        className="rounded border px-2 py-1 bg-transparent"
+                        style={{ borderColor: "var(--color-primary)" }}
+                      >
+                        <option value="volume">Volume #</option>
+                        <option value="blessings">Blessings</option>
+                        <option value="lines">Lines</option>
+                      </select>
+                      <button
+                        className="ml-auto px-2 py-1 rounded border"
+                        style={{ borderColor: "var(--color-primary)" }}
+                        onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                        title="Toggle ascending/descending"
+                      >
+                        {sortDir === "asc" ? "Asc" : "Desc"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

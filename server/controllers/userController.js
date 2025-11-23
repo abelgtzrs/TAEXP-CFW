@@ -638,7 +638,21 @@ const getAllUsersAdmin = async (req, res) => {
 const updateUserAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    const allowed = ["username", "role", "level", "experience", "temuTokens", "gatillaGold", "wendyHearts", "profilePicture", "bio", "location", "website", "motto", "bannerImage"]; // safe updatable fields
+    const allowed = [
+      "username",
+      "role",
+      "level",
+      "experience",
+      "temuTokens",
+      "gatillaGold",
+      "wendyHearts",
+      "profilePicture",
+      "bio",
+      "location",
+      "website",
+      "motto",
+      "bannerImage",
+    ]; // safe updatable fields
     const updates = {};
 
     for (const k of allowed) {

@@ -8,6 +8,7 @@ const BlessingDefinitionSchema = new mongoose.Schema(
     defaultDescription: { type: String, trim: true, default: "" }, // optional default per-blessing description
     tags: [{ type: String, trim: true }],
     active: { type: Boolean, default: true },
+    index: { type: Number, default: 0 }, // for custom ordering
   },
   { timestamps: true }
 );

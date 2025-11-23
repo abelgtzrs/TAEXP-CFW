@@ -6,7 +6,7 @@ import {
   deleteBlessingDef,
 } from "../services/blessingsService";
 
-const emptyForm = { key: "", name: "", context: "", defaultDescription: "", tags: "", active: true };
+const emptyForm = { key: "", name: "", context: "", defaultDescription: "", tags: "", active: true, index: 0 };
 
 export default function BlessingsAdminPage() {
   const [items, setItems] = useState([]);
@@ -62,6 +62,7 @@ export default function BlessingsAdminPage() {
           .map((t) => t.trim())
           .filter(Boolean),
         active: !!form.active,
+        index: Number(form.index) || 0,
       };
       if (editingId) {
         await updateBlessingDef(editingId, payload);
@@ -86,6 +87,7 @@ export default function BlessingsAdminPage() {
       defaultDescription: item.defaultDescription || "",
       tags: (item.tags || []).join(", "),
       active: !!item.active,
+      index: item.index || 0,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -126,6 +128,20 @@ export default function BlessingsAdminPage() {
               onChange={(e) => setForm({ ...form, key: e.target.value })}
               required={!editingId}
               disabled={!!editingId}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-text-secondary mb-1">Index (Order)</label>
+            <input
+              type="number"
+              className="w-full p-2 rounded border"
+              style={{
+                background: "var(--color-background)",
+                borderColor: "var(--color-primary)",
+                color: "var(--color-text-main)",
+              }}
+              value={form.index}
+              onChange={(e) => setForm({ ...form, index: e.target.value })}
             />
           </div>
           <div>
@@ -235,6 +251,7 @@ export default function BlessingsAdminPage() {
         <table className="min-w-full text-left text-xs" style={{ color: "var(--color-text-secondary)" }}>
           <thead style={{ background: "var(--color-surface)" }}>
             <tr>
+              <th className="p-2 text-text-secondary">Index</th>
               <th className="p-2 text-text-secondary">Key</th>
               <th className="p-2 text-text-secondary">Name</th>
               <th className="p-2 text-text-secondary">Tags</th>
@@ -245,6 +262,7 @@ export default function BlessingsAdminPage() {
           <tbody style={{ background: "var(--color-background)" }}>
             {filtered.map((it) => (
               <tr key={it._id} className="border-t" style={{ borderColor: "var(--color-primary)" }}>
+                <td className="p-2 text-text-secondary">{it.index || 0}</td>
                 <td className="p-2 font-mono text-[11px] text-text-main">{it.key}</td>
                 <td className="p-2 text-text-main">{it.name}</td>
                 <td className="p-2 text-text-secondary">{(it.tags || []).join(", ")}</td>

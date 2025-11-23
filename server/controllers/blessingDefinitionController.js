@@ -2,7 +2,7 @@ const BlessingDefinition = require("../models/BlessingDefinition");
 
 exports.listBlessings = async (req, res) => {
   try {
-    const items = await BlessingDefinition.find({}).sort({ name: 1 }).lean();
+    const items = await BlessingDefinition.find({}).sort({ index: 1, name: 1 }).lean();
     res.json({ success: true, items });
   } catch (e) {
     res.status(500).json({ success: false, message: "Failed to list blessings." });
