@@ -244,7 +244,7 @@ const Header = ({ forcedHeight }) => {
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2">
                       <button
-                        className="px-2 py-1 rounded border text-xs hover:bg-white/10"
+                        className="px-3 py-1.5 rounded border text-sm text-white hover:bg-white/10"
                         style={{ borderColor: "var(--color-primary)" }}
                         onClick={() => setDailyDateStr((s) => offsetDateStr(s, -1))}
                         title="Previous day"
@@ -252,16 +252,16 @@ const Header = ({ forcedHeight }) => {
                         ◀
                       </button>
                       <div className="flex items-center gap-2">
-                        <label className="text-xs text-text-secondary">Date</label>
+                        <label className="text-sm text-gray-300">Date</label>
                         <input
                           type="date"
-                          className="rounded border px-2 py-1 text-xs bg-[var(--color-background)]"
+                          className="rounded border px-2 py-1 text-sm bg-[var(--color-background)] text-text-main"
                           style={{ borderColor: "var(--color-primary)" }}
                           value={dailyDateStr}
                           onChange={(e) => setDailyDateStr(e.target.value)}
                         />
                         <button
-                          className="px-2 py-1 rounded border text-xs hover:bg-white/10"
+                          className="px-3 py-1.5 rounded border text-sm text-white hover:bg-white/10"
                           style={{ borderColor: "var(--color-primary)" }}
                           onClick={() => {
                             const d = new Date();
@@ -276,7 +276,7 @@ const Header = ({ forcedHeight }) => {
                         </button>
                       </div>
                       <button
-                        className="px-2 py-1 rounded border text-xs hover:bg-white/10"
+                        className="px-3 py-1.5 rounded border text-sm text-white hover:bg-white/10"
                         style={{ borderColor: "var(--color-primary)" }}
                         onClick={() => setDailyDateStr((s) => offsetDateStr(s, 1))}
                         title="Next day"
@@ -285,7 +285,7 @@ const Header = ({ forcedHeight }) => {
                       </button>
                     </div>
                     <button
-                      className="px-2 py-1 rounded border text-xs hover:bg-white/10"
+                      className="px-3 py-1.5 rounded border text-sm text-white hover:bg-white/10"
                       style={{ borderColor: "var(--color-primary)" }}
                       onClick={() => setDailyOpen(false)}
                       title="Close"
@@ -297,12 +297,12 @@ const Header = ({ forcedHeight }) => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Editor */}
                     <div className="md:col-span-2">
-                      <div className="text-[11px] text-text-tertiary mb-2">Write today's draft and save versions.</div>
+                      <div className="text-sm text-gray-300 mb-2">Write today's draft and save versions.</div>
                       <textarea
                         value={dailyContent}
                         onChange={(e) => setDailyContent(e.target.value)}
                         rows={12}
-                        className="w-full rounded border p-2 text-sm bg-[var(--color-background)] focus:outline-none"
+                        className="w-full rounded border p-3 text-base bg-[var(--color-background)] text-text-main focus:outline-none"
                         style={{ borderColor: "var(--color-primary)" }}
                         placeholder="Draft today's events here..."
                       />
@@ -313,7 +313,7 @@ const Header = ({ forcedHeight }) => {
                             saveDraft(dailyDateStr, dailyContent || "");
                             refreshDaily();
                           }}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded border text-xs bg-primary/20 hover:bg-primary/30"
+                          className="inline-flex items-center gap-1 px-4 py-2 rounded border text-sm bg-primary/20 hover:bg-primary/30 text-white"
                           style={{ borderColor: "var(--color-primary)" }}
                         >
                           <Save className="w-4 h-4" /> Save New Version
@@ -322,31 +322,31 @@ const Header = ({ forcedHeight }) => {
                     </div>
                     {/* History / Other dates */}
                     <div>
-                      <div className="text-[11px] text-text-secondary mb-2 flex items-center gap-2">
+                      <div className="text-sm text-gray-300 mb-2 flex items-center gap-2">
                         <History className="w-4 h-4 text-primary" /> {dailyHistory.length} version(s)
                       </div>
                       {dailyHistory.length === 0 ? (
-                        <div className="text-[12px] text-text-tertiary mb-2">No history for this date.</div>
+                        <div className="text-sm text-gray-400 mb-2">No history for this date.</div>
                       ) : (
                         <ul className="space-y-2 max-h-[280px] overflow-auto pr-1">
                           {dailyHistory.map((v) => (
                             <li
                               key={v.ts}
-                              className="rounded border p-2 text-xs"
+                              className="rounded border p-2 text-sm"
                               style={{ borderColor: "var(--color-primary)" }}
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <div className="text-text-secondary">{new Date(v.ts).toLocaleString()}</div>
+                                <div className="text-gray-300">{new Date(v.ts).toLocaleString()}</div>
                                 <div className="flex items-center gap-2">
                                   <button
-                                    className="px-2 py-0.5 rounded border text-[11px] hover:bg-primary/20"
+                                    className="px-2 py-0.5 rounded border text-xs hover:bg-primary/20 text-white"
                                     style={{ borderColor: "var(--color-primary)" }}
                                     onClick={() => setDailyContent(v.content || "")}
                                   >
                                     Load
                                   </button>
                                   <button
-                                    className="px-2 py-0.5 rounded border text-[11px] hover:bg-red-900/40 text-red-300"
+                                    className="px-2 py-0.5 rounded border text-xs hover:bg-red-900/40 text-red-300"
                                     style={{ borderColor: "var(--color-primary)" }}
                                     onClick={() => {
                                       if (!confirm("Delete this version?")) return;
@@ -358,7 +358,7 @@ const Header = ({ forcedHeight }) => {
                                   </button>
                                 </div>
                               </div>
-                              <pre className="mt-1 text-[11px] whitespace-pre-wrap break-words text-text-main max-h-20 overflow-auto">
+                              <pre className="mt-1 text-xs whitespace-pre-wrap break-words text-white max-h-20 overflow-auto">
                                 {v.content}
                               </pre>
                             </li>
@@ -366,15 +366,15 @@ const Header = ({ forcedHeight }) => {
                         </ul>
                       )}
                       <div className="mt-3">
-                        <div className="text-[11px] text-text-secondary mb-1">Other dates</div>
+                        <div className="text-sm text-gray-300 mb-1">Other dates</div>
                         {dailyAllDates.length === 0 ? (
-                          <div className="text-[12px] text-text-tertiary">No saved drafts yet.</div>
+                          <div className="text-sm text-gray-400">No saved drafts yet.</div>
                         ) : (
                           <div className="flex flex-wrap gap-1 max-h-[120px] overflow-auto pr-1">
                             {dailyAllDates.map((d) => (
                               <button
                                 key={d}
-                                className={`px-2 py-0.5 rounded border text-[11px] hover:bg-primary/20 ${
+                                className={`px-2 py-0.5 rounded border text-xs hover:bg-primary/20 text-white ${
                                   d === dailyDateStr ? "bg-primary/10" : ""
                                 }`}
                                 style={{ borderColor: "var(--color-primary)" }}

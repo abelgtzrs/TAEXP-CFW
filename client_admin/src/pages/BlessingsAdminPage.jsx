@@ -5,6 +5,7 @@ import {
   updateBlessingDef,
   deleteBlessingDef,
 } from "../services/blessingsService";
+import { fetchVolumes } from "./volumeFunctionality/volumeApi";
 
 const emptyForm = { key: "", name: "", context: "", defaultDescription: "", tags: "", active: true, index: 0 };
 
@@ -15,12 +16,17 @@ export default function BlessingsAdminPage() {
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
+  const [updatingIds, setUpdatingIds] = useState(new Set());
+  const [volumes, setVolumes] = useState([]);
+  const [viewVolume, setViewVolume] = useState(null);
 
   const fetchAll = async () => {
     try {
       setLoading(true);
       const data = await listBlessingDefs();
       setItems(Array.isArray(data) ? data : []);
+      const vols = await fetchVolumes();
+      setVolumes(vols || []);
     } catch (e) {
       setError(e?.message || "Failed to load blessings");
     } finally {
@@ -99,6 +105,26 @@ export default function BlessingsAdminPage() {
       await fetchAll();
     } catch (e) {
       setError(e?.message || "Failed to delete");
+    }
+  };
+
+  const handleIndexChange = (id, val) => {
+    setItems((prev) => prev.map((item) => (item._id === id ? { ...item, index: val } : item)));
+  };
+
+  const saveIndex = async (item) => {
+    try {
+      setUpdatingIds((prev) => new Set(prev).add(item._id));
+      await updateBlessingDef(item._id, { index: Number(item.index) });
+    } catch (e) {
+      console.error(e);
+      setError("Failed to update index");
+    } finally {
+      setUpdatingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item._id);
+        return next;
+      });
     }
   };
 
@@ -252,6 +278,7 @@ export default function BlessingsAdminPage() {
           <thead style={{ background: "var(--color-surface)" }}>
             <tr>
               <th className="p-2 text-text-secondary">Index</th>
+              <th className="p-2 text-text-secondary">Volume</th>
               <th className="p-2 text-text-secondary">Key</th>
               <th className="p-2 text-text-secondary">Name</th>
               <th className="p-2 text-text-secondary">Tags</th>
@@ -262,7 +289,40 @@ export default function BlessingsAdminPage() {
           <tbody style={{ background: "var(--color-background)" }}>
             {filtered.map((it) => (
               <tr key={it._id} className="border-t" style={{ borderColor: "var(--color-primary)" }}>
-                <td className="p-2 text-text-secondary">{it.index || 0}</td>
+                <td className="p-2 text-text-secondary">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      className="w-16 p-1 rounded border text-xs"
+                      style={{
+                        background: "var(--color-background)",
+                        borderColor: "var(--color-primary)",
+                        color: "var(--color-text-main)",
+                      }}
+                      value={it.index}
+                      onChange={(e) => handleIndexChange(it._id, e.target.value)}
+                      onBlur={() => saveIndex(it)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.target.blur();
+                      }}
+                    />
+                    {updatingIds.has(it._id) && <span className="text-[10px] text-primary animate-pulse">...</span>}
+                  </div>
+                </td>
+                <td className="p-2 text-text-secondary">
+                  {(() => {
+                    const vol = volumes.find((v) => v.blessings?.some((b) => b.item === it.key));
+                    if (!vol) return <span className="opacity-50">-</span>;
+                    return (
+                      <button
+                        onClick={() => setViewVolume(vol)}
+                        className="text-primary hover:underline text-left"
+                      >
+                        V{vol.volumeNumber}: {vol.title}
+                      </button>
+                    );
+                  })()}
+                </td>
                 <td className="p-2 font-mono text-[11px] text-text-main">{it.key}</td>
                 <td className="p-2 text-text-main">{it.name}</td>
                 <td className="p-2 text-text-secondary">{(it.tags || []).join(", ")}</td>
@@ -279,7 +339,7 @@ export default function BlessingsAdminPage() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td className="p-3 text-center text-text-secondary" colSpan={5}>
+                <td className="p-3 text-center text-text-secondary" colSpan={7}>
                   No results
                 </td>
               </tr>
@@ -287,6 +347,52 @@ export default function BlessingsAdminPage() {
           </tbody>
         </table>
       </div>
+
+      {viewVolume && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setViewVolume(null)}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[80vh] overflow-auto rounded border shadow-xl p-6"
+            style={{ background: "var(--color-surface)", borderColor: "var(--color-primary)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-bold text-primary">
+                Volume {viewVolume.volumeNumber}: {viewVolume.title}
+              </h2>
+              <button onClick={() => setViewVolume(null)} className="text-text-secondary hover:text-white">
+                ✕
+              </button>
+            </div>
+            <div className="space-y-4 text-text-main">
+              <div>
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1">Blessings</h3>
+                <div className="space-y-2">
+                  {viewVolume.blessings?.map((b, i) => (
+                    <div key={i} className="p-2 rounded border border-white/10 bg-black/20">
+                      <div className="font-mono text-xs text-primary">{b.item}</div>
+                      <div className="text-sm">{b.description}</div>
+                    </div>
+                  ))}
+                  {(!viewVolume.blessings || viewVolume.blessings.length === 0) && (
+                    <div className="text-sm opacity-50">No blessings in this volume.</div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1">Body Lines</h3>
+                <div className="text-sm space-y-1 opacity-80">
+                  {viewVolume.bodyLines?.map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

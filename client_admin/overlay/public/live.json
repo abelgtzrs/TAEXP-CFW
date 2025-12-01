@@ -1,0 +1,49 @@
+{
+  "team": [
+    {
+      "species": "Charizard",
+      "nickname": "Ignis",
+      "level": 36,
+      "gender": "Male",
+      "nature": "Adamant",
+      "shiny": false,
+      "hp": { "current": 105, "max": 105 },
+      "stats": { "atk": 84, "def": 78, "spa": 109, "spd": 85, "spe": 100, "total": 534 },
+      "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png"
+    },
+    {
+      "species": "Pikachu",
+      "nickname": "Sparky",
+      "level": 25,
+      "gender": "Male",
+      "nature": "Hasty",
+      "shiny": true,
+      "hp": { "current": 45, "max": 55 },
+      "stats": { "atk": 55, "def": 40, "spa": 50, "spd": 50, "spe": 90, "total": 320 },
+      "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/25.png"
+    },
+    {
+      "species": "Gyarados",
+      "nickname": null,
+      "level": 30,
+      "gender": "Female",
+      "nature": "Jolly",
+      "shiny": false,
+      "hp": { "current": 20, "max": 95 },
+      "stats": { "atk": 125, "def": 79, "spa": 60, "spd": 100, "spe": 81, "total": 540 },
+      "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/130.png"
+    },
+    null,
+    null,
+    null
+  ],
+  "badges": [true, true, false, false, false, false, false, false],
+  "location": "Route 4",
+  "events": [
+    "Caught Pidgey (Lvl 3)",
+    "Defeated Brock",
+    "Evolved Charmander -> Charmeleon",
+    "Found Moon Stone",
+    "Arrived at Mt. Moon"
+  ]
+}
