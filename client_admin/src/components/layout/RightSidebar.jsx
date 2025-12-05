@@ -155,35 +155,7 @@ export default function RightSidebar({ condensed = false }) {
       localStorage.setItem("tae.rightSidebar.paddingPx", String(paddingPx));
     } catch {}
   }, [paddingPx]);
-  // Per-widget heights (px) with simple persistence
-  const [clockH, setClockH] = useState(() => {
-    try {
-      return Number(localStorage.getItem("tae.rightSidebar.h.clock") || 140);
-    } catch {
-      return 140;
-    }
-  });
-  const [weatherH, setWeatherH] = useState(() => {
-    try {
-      return Number(localStorage.getItem("tae.rightSidebar.h.weather") || 180);
-    } catch {
-      return 180;
-    }
-  });
-  const [spotifyH, setSpotifyH] = useState(() => {
-    try {
-      return Number(localStorage.getItem("tae.rightSidebar.h.spotify") || 320);
-    } catch {
-      return 320;
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem("tae.rightSidebar.h.clock", String(clockH));
-      localStorage.setItem("tae.rightSidebar.h.weather", String(weatherH));
-      localStorage.setItem("tae.rightSidebar.h.spotify", String(spotifyH));
-    } catch {}
-  }, [clockH, weatherH, spotifyH]);
+  // Per-widget heights removed for flex layout
 
   useEffect(() => {
     const onMouseMove = (e) => {
@@ -497,158 +469,42 @@ export default function RightSidebar({ condensed = false }) {
         />
       )}
       <div
-        className="h-full bg-black/25 backdrop-blur-xl border border-white/10 flex flex-col overflow-auto"
+        className="h-full bg-black/25 backdrop-blur-xl border border-white/10 flex flex-col overflow-y-auto scrollbar-hide"
         style={{ gap: `${gapPx}px`, padding: `${paddingPx}px` }}
       >
-        {false && null}
         {/* Clock */}
-        <div className="relative w-full">
-          {editMode && (
-            <div className="absolute top-1 right-1 z-10 flex gap-1">
-              <button
-                className="px-2 py-0.5 text-[10px] rounded border bg-slate-800/80 border-slate-600 hover:bg-slate-700"
-                title="Decrease height (-5px)"
-                onClick={() => setClockH((h) => Math.max(80, h - 5))}
-              >
-                -5px
-              </button>
-              <button
-                className="px-2 py-0.5 text-[10px] rounded border bg-slate-800/80 border-slate-600 hover:bg-slate-700"
-                title="Increase height (+5px)"
-                onClick={() => setClockH((h) => Math.min(600, h + 5))}
-              >
-                +5px
-              </button>
-            </div>
-          )}
-          <div className="w-full overflow-hidden" style={{ height: `${clockH}px` }}>
+        <div className="relative w-full flex-shrink-0 min-h-[400px]">
+          <div className="w-full h-full overflow-hidden">
             <div
-              className="origin-top-left"
+              className="origin-top-left h-full"
               style={{ transform: "scale(0.85)", transformOrigin: "top left", width: "calc(100% / 0.85)" }}
             >
               <ClockWidget />
             </div>
-            {editMode && (
-              <div
-                title="Drag to resize height"
-                onMouseDown={(e) => {
-                  const startY = e.clientY;
-                  const startH = clockH;
-                  const onMove = (ev) => {
-                    const dy = ev.clientY - startY;
-                    const nh = Math.max(80, Math.min(600, startH + dy));
-                    setClockH(nh);
-                  };
-                  const onUp = () => {
-                    window.removeEventListener("mousemove", onMove);
-                    window.removeEventListener("mouseup", onUp);
-                  };
-                  window.addEventListener("mousemove", onMove);
-                  window.addEventListener("mouseup", onUp);
-                }}
-                className="absolute left-0 right-0 bottom-0 h-1 cursor-ns-resize bg-white/10"
-              />
-            )}
           </div>
         </div>
+
         {/* Weather */}
-        <div className="relative w-full">
-          {editMode && (
-            <div className="absolute top-1 right-1 z-10 flex gap-1">
-              <button
-                className="px-2 py-0.5 text-[10px] rounded border bg-slate-800/80 border-slate-600 hover:bg-slate-700"
-                title="Decrease height (-5px)"
-                onClick={() => setWeatherH((h) => Math.max(100, h - 5))}
-              >
-                -5px
-              </button>
-              <button
-                className="px-2 py-0.5 text-[10px] rounded border bg-slate-800/80 border-slate-600 hover:bg-slate-700"
-                title="Increase height (+5px)"
-                onClick={() => setWeatherH((h) => Math.min(700, h + 5))}
-              >
-                +5px
-              </button>
-            </div>
-          )}
-          <div className="w-full overflow-hidden" style={{ height: `${weatherH}px` }}>
+        <div className="relative w-full flex-shrink-0 min-h-[350px]">
+          <div className="w-full h-full overflow-hidden">
             <div
-              className="origin-top-left"
+              className="origin-top-left h-full"
               style={{ transform: "scale(0.85)", transformOrigin: "top left", width: "calc(100% / 0.85)" }}
             >
               <WeatherWidget />
             </div>
-            {editMode && (
-              <div
-                title="Drag to resize height"
-                onMouseDown={(e) => {
-                  const startY = e.clientY;
-                  const startH = weatherH;
-                  const onMove = (ev) => {
-                    const dy = ev.clientY - startY;
-                    const nh = Math.max(100, Math.min(700, startH + dy));
-                    setWeatherH(nh);
-                  };
-                  const onUp = () => {
-                    window.removeEventListener("mousemove", onMove);
-                    window.removeEventListener("mouseup", onUp);
-                  };
-                  window.addEventListener("mousemove", onMove);
-                  window.addEventListener("mouseup", onUp);
-                }}
-                className="absolute left-0 right-0 bottom-0 h-1 cursor-ns-resize bg-white/10"
-              />
-            )}
           </div>
         </div>
+
         {/* Spotify */}
-        <div className="relative w-full">
-          {editMode && (
-            <div className="absolute top-1 right-1 z-10 flex gap-1">
-              <button
-                className="px-2 py-0.5 text-[10px] rounded border bg-slate-800/80 border-slate-600 hover:bg-slate-700"
-                title="Decrease height (-5px)"
-                onClick={() => setSpotifyH((h) => Math.max(160, h - 5))}
-              >
-                -5px
-              </button>
-              <button
-                className="px-2 py-0.5 text-[10px] rounded border bg-slate-800/80 border-slate-600 hover:bg-slate-700"
-                title="Increase height (+5px)"
-                onClick={() => setSpotifyH((h) => Math.min(1000, h + 5))}
-              >
-                +5px
-              </button>
-            </div>
-          )}
-          <div className="w-full overflow-hidden" style={{ height: `${spotifyH}px` }}>
+        <div className="relative w-full flex-shrink-0 min-h-[250px]">
+          <div className="w-full h-full overflow-hidden">
             <div
-              className="origin-top-left"
+              className="origin-top-left h-full"
               style={{ transform: "scale(0.85)", transformOrigin: "top left", width: "calc(100% / 0.85)" }}
             >
               <SpotifyWidget />
             </div>
-            {editMode && (
-              <div
-                title="Drag to resize height"
-                onMouseDown={(e) => {
-                  const startY = e.clientY;
-                  const startH = spotifyH;
-                  const onMove = (ev) => {
-                    const dy = ev.clientY - startY;
-                    const nh = Math.max(160, Math.min(1000, startH + dy));
-                    setSpotifyH(nh);
-                  };
-                  const onUp = () => {
-                    window.removeEventListener("mousemove", onMove);
-                    window.removeEventListener("mouseup", onUp);
-                  };
-                  window.addEventListener("mousemove", onMove);
-                  window.addEventListener("mouseup", onUp);
-                }}
-                className="absolute left-0 right-0 bottom-0 h-1 cursor-ns-resize bg-white/10"
-              />
-            )}
           </div>
         </div>
       </div>

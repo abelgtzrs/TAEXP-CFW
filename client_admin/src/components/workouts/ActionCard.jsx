@@ -20,7 +20,7 @@ const ActionCard = ({ to, icon, title, description, delay = 0 }) => {
     >
       <Link
         to={to}
-        className="block p-8 rounded-lg border-2 transition-all duration-300 h-full text-left"
+        className="block p-4 md:p-8 rounded-lg border-2 transition-all duration-300 h-full text-left"
         style={{ background: "var(--color-surface)", borderColor: "transparent" }}
         onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--color-primary)")}
         onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}

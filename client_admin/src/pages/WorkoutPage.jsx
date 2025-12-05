@@ -34,12 +34,12 @@ const WorkoutPage = () => {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.1 }}
-        className="text-3xl font-bold text-primary mb-8"
+        className="text-2xl md:text-3xl font-bold text-primary mb-6 md:mb-8"
       >
         Workout Tracker
       </motion.h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
         <ActionCard
           to="/workouts/log"
           icon={<Dumbbell size={40} strokeWidth={1.4} />}
@@ -56,12 +56,12 @@ const WorkoutPage = () => {
         />
       </div>
 
-      <div className="mt-12">
+      <div className="mt-8 md:mt-12">
         <motion.h2
           initial={{ opacity: 0, x: -14 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, delay: 0.4 }}
-          className="text-2xl font-semibold text-primary mb-4"
+          className="text-xl md:text-2xl font-semibold text-primary mb-4"
         >
           Recent Workouts
         </motion.h2>

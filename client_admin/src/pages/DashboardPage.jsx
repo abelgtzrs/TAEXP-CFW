@@ -143,7 +143,7 @@ const DashboardPage = () => {
   }, []);
 
   return (
-    <div className="max-w-[1800px] mx-auto px-2 md:px-4 h-full min-h-0 overflow-hidden">
+    <div className="max-w-[1800px] mx-auto px-2 md:px-4 h-full min-h-0 overflow-y-auto md:overflow-hidden">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -172,14 +172,14 @@ const DashboardPage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="grid grid-cols-8 gap-3 -mt-1 grid-flow-row-dense flex-1 min-h-0 overflow-hidden"
+          className="grid grid-cols-1 md:grid-cols-8 gap-3 -mt-1 grid-flow-row-dense flex-1 min-h-0 overflow-y-auto md:overflow-hidden"
         >
           {/* Row 1: Full-width Stat Box */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.6 }}
-            className="col-span-8 order-1 md:order-1"
+            className="col-span-1 md:col-span-8 order-1 md:order-1"
           >
             <div className="grid grid-cols-2 gap-1 w-full md:grid-cols-8 md:gap-3 auto-rows-fr">
               {Array.isArray(stats.statBoxes) ? (
@@ -202,7 +202,7 @@ const DashboardPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.9 }}
-            className="col-span-8 md:col-span-8 md:col-start-1 order-3 md:order-3 h-full min-h-0 overflow-y-auto scrollbar-hide pr-1"
+            className="col-span-1 md:col-span-8 md:col-start-1 order-3 md:order-3 h-full min-h-0 md:overflow-y-auto scrollbar-hide pr-1"
           >
             <LeftColumns
               extraProps={{

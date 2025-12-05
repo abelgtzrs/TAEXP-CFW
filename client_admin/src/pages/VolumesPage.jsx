@@ -264,7 +264,7 @@ const VolumesPage = () => {
         {/* Layout: main manager (left), fixed navigation (right) */}
         <div className="grid grid-cols-12 gap-3 relative">
           {/* Left: Form editor (reserve space equal to dynamic volumes nav width) */}
-          <div className="col-span-12 lg:col-span-12" style={{ paddingRight: volumesSidebarWidth }}>
+          <div className="col-span-12 lg:col-span-12" style={{ paddingRight: typeof window !== "undefined" && window.innerWidth >= 1024 ? volumesSidebarWidth : 0 }}>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

@@ -273,7 +273,7 @@ export default function BlessingsAdminPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      <div className="overflow-auto rounded border" style={{ borderColor: "var(--color-primary)" }}>
+      <div className="overflow-x-auto rounded border" style={{ borderColor: "var(--color-primary)" }}>
         <table className="min-w-full text-left text-xs" style={{ color: "var(--color-text-secondary)" }}>
           <thead style={{ background: "var(--color-surface)" }}>
             <tr>

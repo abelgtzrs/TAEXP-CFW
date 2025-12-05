@@ -3,6 +3,7 @@ import { Outlet, Link, NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import Header from "./Header";
 import RightSidebar from "./RightSidebar";
+import BottomNav from "./BottomNav";
 import UiCustomizerModal from "../settings/UiCustomizerModal";
 import GlobalToastHost from "../ui/GlobalToastHost";
 import { LayoutProvider, useLayout } from "../../context/LayoutContext";
@@ -31,6 +32,7 @@ import {
   Trophy,
   CalendarDays,
   FileText,
+  Smartphone,
 } from "lucide-react";
 
 const NavItem = ({ to, icon: Icon, children, isCollapsed }) => {
@@ -87,12 +89,17 @@ const LayoutToggleButton = ({ isSidebarCollapsed }) => {
 const AdminLayout = () => {
   const { user, logout } = useAuth();
   // Default: expanded on desktop (lg: >=1024px), collapsed on smaller screens
+  // On mobile (<1024px), we treat "collapsed" as hidden/drawer closed, and !collapsed as drawer open
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
-      return window.innerWidth < 1024; // collapse on tablets/phones, expand on desktop by default
+      return window.innerWidth < 1024; // collapse (hide) on tablets/phones, expand on desktop by default
     }
     return false;
   });
+  
+  // Mobile drawer state - separate from desktop collapse state if needed, but reusing isSidebarCollapsed for simplicity
+  // On mobile: isSidebarCollapsed = true (hidden), false = open (drawer)
+  
   const toggleSidebar = () => setIsSidebarCollapsed((p) => !p);
 
   // ~20% size increase and align numeric width with Tailwind classes below
@@ -130,6 +137,11 @@ const AdminLayout = () => {
     });
   };
   const sidebarWidth = isSidebarCollapsed ? sidebarCollapsedWidth : sidebarExpandedWidth;
+  
+  // Mobile specific: Sidebar is hidden (width 0) when collapsed, full width (or drawer width) when open
+  // We'll handle this via CSS classes, but for JS calculations:
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
+  const effectiveSidebarWidth = isMobile ? 0 : sidebarWidth;
 
   const logoImg = import.meta.env.VITE_TAE_LOGO;
 
@@ -383,15 +395,18 @@ const AdminLayout = () => {
           style={{ background: uiSettings.pageBgTint }}
         />
         {/* Sidebar full height */}
+        {/* Sidebar full height */}
         <aside
-          className={`fixed top-0 left-0 bottom-0 z-50 flex flex-col bg-surface/40 backdrop-blur-md border-r border-gray-700/80 shadow-2xl transition-all duration-500 ease-in-out ${
-            isSidebarCollapsed ? "w-12" : "w-52"
-          }`}
+          className={`fixed top-0 left-0 z-50 flex flex-col bg-surface/95 backdrop-blur-md border-r border-gray-700/80 shadow-2xl transition-all duration-500 ease-in-out 
+            ${isSidebarCollapsed ? "w-12 -translate-x-full lg:translate-x-0" : "w-64 lg:w-52 translate-x-0"}
+            lg:block
+          `}
+          style={{ bottom: isMobile ? "64px" : "0" }}
         >
-          {/* Toggle (15px from bottom) */}
+          {/* Toggle (15px from bottom) - Desktop only */}
           <button
             onClick={toggleSidebar}
-            className="absolute right-0 translate-x-full bg-surface/80 backdrop-blur-md border border-gray-700/40 rounded-r-md p-1 hover:bg-gray-700/60 transition-all duration-300 shadow-md"
+            className="hidden lg:block absolute right-0 translate-x-full bg-surface/80 backdrop-blur-md border border-gray-700/40 rounded-r-md p-1 hover:bg-gray-700/60 transition-all duration-300 shadow-md"
             style={{ bottom: 15 }}
           >
             {isSidebarCollapsed ? (
@@ -399,6 +414,14 @@ const AdminLayout = () => {
             ) : (
               <ChevronLeft size={18} className="text-white" />
             )}
+          </button>
+          
+          {/* Mobile Close Button */}
+          <button
+            onClick={() => setIsSidebarCollapsed(true)}
+            className="lg:hidden absolute top-4 right-4 text-white/70 hover:text-white"
+          >
+            <ChevronLeft size={24} />
           </button>
 
           {/* Brand */}
@@ -565,8 +588,11 @@ const AdminLayout = () => {
                     Volume Administration
                   </p>
                   <ul className="space-y-1">
-                    <NavItem to="/admin/volumes" icon={Library} isCollapsed={isSidebarCollapsed}>
+                    <NavItem to={isMobile ? "/admin/volumes-mobile" : "/admin/volumes"} icon={Library} isCollapsed={isSidebarCollapsed}>
                       JSON Parser
+                    </NavItem>
+                    <NavItem to="/admin/volumes-mobile" icon={Smartphone} isCollapsed={isSidebarCollapsed}>
+                      JSON Parser (Mobile)
                     </NavItem>
                     <NavItem to="/admin/volume-workbench" icon={FileSignature} isCollapsed={isSidebarCollapsed}>
                       Workbench
@@ -677,14 +703,14 @@ const AdminLayout = () => {
           presets={presets}
           onSavePreset={handleSavePreset}
           onDeletePreset={handleDeletePreset}
-          anchorLeft={sidebarWidth}
+          anchorLeft={effectiveSidebarWidth}
           anchorBottom={8}
         />
 
         {/* Header offset by left sidebar and ending before right sidebar */}
         <div
           className="fixed top-0 right-0 z-40 transition-[left,width] duration-500"
-          style={{ left: sidebarWidth, right: rightSidebarWidth, height: headerHeight }}
+          style={{ left: effectiveSidebarWidth, right: isMobile ? 0 : rightSidebarWidth, height: headerHeight }}
         >
           <Header />
         </div>
@@ -692,22 +718,27 @@ const AdminLayout = () => {
         {/* Main content */}
         <main
           className="absolute overflow-hidden flex flex-col z-10"
-          style={{ left: sidebarWidth, top: headerHeight, right: rightSidebarWidth, bottom: 0 }}
+          style={{ 
+            left: effectiveSidebarWidth, 
+            top: headerHeight, 
+            right: isMobile ? 0 : rightSidebarWidth, 
+            bottom: isMobile ? 64 : 0 // Add padding for bottom nav on mobile
+          }}
         >
-          <div className="flex-1 overflow-y-auto scrollbar-hide p-2 lg:p-3 min-h-0">
+          <div className="flex-1 overflow-y-auto scrollbar-hide p-2 lg:p-3 min-h-0 pb-20 lg:pb-3">
             <Outlet />
           </div>
         </main>
 
-        {/* Persistent Right Sidebar (full height) */}
-        <aside className="fixed z-30" style={{ top: 0, right: 0, bottom: 0, width: rightSidebarWidth }}>
+        {/* Persistent Right Sidebar (full height) - Hidden on mobile by default for now */}
+        <aside className="fixed z-30 hidden lg:block" style={{ top: 0, right: 0, bottom: 0, width: rightSidebarWidth }}>
           <RightSidebar condensed={rightSidebarMode === "condensed"} />
         </aside>
 
-        {/* Right Sidebar Toggle Tab (15px from bottom) */}
+        {/* Right Sidebar Toggle Tab (15px from bottom) - Desktop only */}
         <button
           onClick={toggleRightSidebar}
-          className="fixed z-40 bg-surface/80 backdrop-blur-md border border-gray-700/40 rounded-l-md px-2 py-1 text-white hover:bg-gray-700/60 transition-all duration-300"
+          className="fixed z-40 bg-surface/80 backdrop-blur-md border border-gray-700/40 rounded-l-md px-2 py-1 text-white hover:bg-gray-700/60 transition-all duration-300 hidden lg:block"
           style={{
             bottom: 15,
             right: rightSidebarWidth,
@@ -716,6 +747,18 @@ const AdminLayout = () => {
         >
           {rightSidebarMode === "condensed" ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </button>
+
+        {/* Mobile Bottom Navigation */}
+        <BottomNav onMenuClick={toggleSidebar} />
+
+        {/* Mobile Sidebar Overlay - Close when clicking outside */}
+        {!isSidebarCollapsed && isMobile && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            style={{ bottom: "64px" }} 
+            onClick={() => setIsSidebarCollapsed(true)}
+          />
+        )}
       </div>
     </LayoutProvider>
   );

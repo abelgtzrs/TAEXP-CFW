@@ -6,6 +6,9 @@ const Habit = require("../models/userSpecific/Habit");
 const Book = require("../models/userSpecific/Book");
 const WorkoutLog = require("../models/userSpecific/WorkoutLog");
 const Volume = require("../models/Volume");
+const Task = require("../models/userSpecific/Task");
+const Budget = require("../models/Budget");
+const mongoose = require("mongoose");
 
 // --- Daily Login Streak Utilities ---
 const isSameDay = (a, b) => a && b && new Date(a).toDateString() === new Date(b).toDateString();
@@ -490,11 +493,29 @@ const getDashboardStats = async (req, res) => {
     // --- Basic Stats ---
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    const [habitsCompletedToday, booksFinished, totalWorkouts, user] = await Promise.all([
+    const [
+      habitsCompletedToday,
+      booksFinished,
+      totalWorkouts,
+      tasksCompletedToday,
+      tasksPending,
+      workoutsThisWeek,
+      budgetAgg,
+      user,
+    ] = await Promise.all([
       Habit.countDocuments({ user: userId, lastCompletedDate: { $gte: startOfToday } }),
       Book.countDocuments({ user: userId, isFinished: true }),
       WorkoutLog.countDocuments({ user: userId }),
+      Task.countDocuments({ user: userId, status: "completed", completedDate: { $gte: startOfToday } }),
+      Task.countDocuments({ user: userId, status: { $in: ["todo", "in-progress"] } }),
+      WorkoutLog.countDocuments({ user: userId, date: { $gte: oneWeekAgo } }),
+      Budget.aggregate([
+        { $match: { user: new mongoose.Types.ObjectId(userId) } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
       User.findById(userId)
         .select("currentLoginStreak longestLoginStreak pokemonCollection snoopyArtCollection habboRares yugiohCards")
         .populate({
@@ -561,6 +582,10 @@ const getDashboardStats = async (req, res) => {
       longestLoginStreak: user.longestLoginStreak || 0,
       totalWorkouts: totalWorkouts,
       volumesPublished: volumesPublished,
+      tasksCompletedToday: tasksCompletedToday,
+      tasksPending: tasksPending,
+      workoutsThisWeek: workoutsThisWeek,
+      totalBudget: budgetAgg.length > 0 ? budgetAgg[0].total : 0,
 
       // For Widgets
       recentAcquisitions: recentAcquisitions,

@@ -111,7 +111,7 @@ const DailyDraftsPage = () => {
   const calCells = useMemo(buildCalendar, [calYear, calMonth]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-white flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-primary" /> Daily Drafts

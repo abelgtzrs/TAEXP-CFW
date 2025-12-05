@@ -15,6 +15,7 @@ import AdminLayout from "./components/layout/AdminLayout";
 import ProtectedRoute from "./components/routing/ProtectedRoute";
 import AdminRoute from "./components/routing/AdminRoute";
 import VolumesPage from "./pages/VolumesPage";
+import VolumesMobilePage from "./pages/VolumesMobilePage";
 import EditVolumePage from "./pages/EditVolumePage";
 import AdminExercisesPage from "./pages/AdminExercisesPage";
 import AdminTemplatesPage from "./pages/AdminTemplatesPage";
@@ -75,6 +76,7 @@ function App() {
         <Route element={<AdminLayout />}>
           <Route path="/admin/volume-workbench" element={<VolumeWorkbenchPage />} />
           <Route path="/admin/volumes" element={<VolumesPage />} />
+          <Route path="/admin/volumes-mobile" element={<VolumesMobilePage />} />
           <Route path="/admin/volumes/edit/:volumeId" element={<EditVolumePage />} />
           <Route path="/admin/exercises" element={<AdminExercisesPage />} />
           <Route path="/admin/templates" element={<AdminTemplatesPage />} />

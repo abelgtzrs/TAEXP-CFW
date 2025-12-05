@@ -753,7 +753,7 @@ const Terminal = () => {
   const currentTheme = THEMES[theme] || THEMES.default;
   return (
     // Full screen terminal with click-to-focus behavior
-    <div className={`w-full h-[95vh] p-2 text-xs`} onClick={() => inputRef.current?.focus()}>
+    <div className={`w-full h-[95dvh] p-2 text-sm md:text-xs`} onClick={() => inputRef.current?.focus()}>
       <div className="overflow-y-auto h-full">
         {/* Render all terminal lines */}
         {lines.map((line, index) => {
@@ -806,7 +806,7 @@ const Terminal = () => {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={isProcessing} // Disable during command execution
-          className={`flex-grow bg-transparent border-none focus:ring-0 focus:outline-none ml-2 ${currentTheme.user}`}
+          className={`flex-grow bg-transparent border-none focus:ring-0 focus:outline-none ml-2 text-base md:text-xs ${currentTheme.user}`}
           autoComplete="off" // Prevent browser autocomplete
         />
       </div>

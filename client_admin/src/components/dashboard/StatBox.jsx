@@ -37,35 +37,51 @@ const StatBox = ({
   const changeColor = isIncrease ? "text-green-400" : "text-red-400";
   const Icon = isIncrease ? ArrowUpRight : ArrowDownRight;
 
-  return (
-    // Each stat box is a flex container, growing to fill space.
-    <div
-      className={`flex-1 ${compact ? "py-2 px-3" : "p-4"} ${showDivider ? "border-r last:border-r-0" : ""}`}
-      style={{ background: "var(--color-surface)", borderColor: "var(--color-primary)" }}
-    >
-      <h4
-        className={`font-bold uppercase text-text-secondary tracking-wider ${
-          compact ? "text-[10px] mb-1" : "text-xs mb-2"
+  if (compact) {
+    return (
+      <div
+        className={`flex-1 py-4 px-4 flex flex-col justify-center ${
+          showDivider ? "border-r border-gray-700/50 last:border-r-0" : ""
         }`}
       >
-        {title}
-      </h4>
-      <p className={`${compact ? "text-2xl leading-tight mb-0" : "text-3xl mb-1"} font-semibold text-text-main`}>
-        {value}
-      </p>
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="font-bold uppercase text-text-secondary tracking-wider text-[10px] truncate pr-2">{title}</h4>
+          <span className={`flex items-center text-[10px] font-medium ${changeColor}`}>
+            <Icon size={12} className="mr-0.5" />
+            {change}
+          </span>
+        </div>
+
+        <div className="flex justify-between items-end">
+          <p className="text-xl font-semibold text-text-main leading-none">{value}</p>
+          {Array.isArray(trend) && trend.length > 1 && (
+            <div className="w-16 h-5 opacity-80">
+              <Sparkline data={trend} height={20} />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    // Each stat box is a flex container, growing to fill space.
+    <div className={`flex-1 p-4 ${showDivider ? "border-r border-gray-700/50 last:border-r-0" : ""}`}>
+      <h4 className="font-bold uppercase text-text-secondary tracking-wider text-xs mb-2">{title}</h4>
+      <p className="text-3xl mb-1 font-semibold text-text-main">{value}</p>
       {Array.isArray(trend) && trend.length > 1 && (
-        <div className={`${compact ? "mt-0.5 mb-0.5" : "mt-1 mb-1"} -mx-1`}>
-          <Sparkline data={trend} height={compact ? 22 : 28} />
+        <div className="mt-1 mb-1 -mx-1">
+          <Sparkline data={trend} height={28} />
         </div>
       )}
-      <div className={`flex items-center text-text-secondary ${compact ? "text-[11px]" : "text-xs"}`}>
+      <div className="flex items-center text-text-secondary text-xs">
         <span className={`flex items-center mr-2 ${changeColor}`}>
-          <Icon size={compact ? 14 : 16} className="mr-0.5" />
+          <Icon size={16} className="mr-0.5" />
           {change}
         </span>
         <span>vs {period}</span>
       </div>
-      <p className={`text-[10px] text-text-tertiary ${compact ? "mt-1" : "mt-2"}`}>updated {lastUpdate}</p>
+      <p className="text-[10px] text-text-tertiary mt-2">updated {lastUpdate}</p>
     </div>
   );
 };
