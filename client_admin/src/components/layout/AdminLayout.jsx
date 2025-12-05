@@ -354,6 +354,14 @@ const AdminLayout = () => {
     if (root) root.style.setProperty("--right-sidebar-width", rightSidebarWidth);
   }, [rightSidebarWidth]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    if (root) {
+      root.style.setProperty("--left-sidebar-width", `${effectiveSidebarWidth}px`);
+      root.style.setProperty("--bottom-nav-height", isMobile ? "64px" : "0px");
+    }
+  }, [effectiveSidebarWidth, isMobile]);
+
   return (
     <LayoutProvider>
       <div className="relative h-screen w-screen overflow-hidden bg-background text-text-main text-xs">

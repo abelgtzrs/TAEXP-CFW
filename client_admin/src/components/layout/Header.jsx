@@ -451,8 +451,8 @@ const Header = ({ forcedHeight }) => {
               }}
             >
               <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-2">
-                {/* 400x300 moving field */}
-                <div className="relative w-[400px] h-[300px] overflow-hidden" ref={containerRef}>
+                {/* Responsive moving field */}
+                <div className="relative w-[85vw] sm:w-[400px] h-[300px] overflow-hidden" ref={containerRef}>
                   {(user?.displayedPokemon || []).slice(0, 6).map((p, idx) => {
                     const base = p?.basePokemon;
                     const sprite = getPokemonSprite(base);
@@ -519,7 +519,7 @@ const Header = ({ forcedHeight }) => {
             <div
               role="dialog"
               aria-label="Calendar"
-              className="absolute right-0 mt-2 z-50 w-[400px]"
+              className="absolute right-0 mt-2 z-50 w-[85vw] sm:w-[400px]"
               onMouseEnter={() => {
                 if (calendarHoverTimer.current) {
                   clearTimeout(calendarHoverTimer.current);

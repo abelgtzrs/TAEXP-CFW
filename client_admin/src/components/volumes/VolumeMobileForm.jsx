@@ -5,7 +5,19 @@ import { listBlessingDefs } from "../../services/blessingsService";
 
 const VolumeMobileForm = ({ formData, onFormChange, onSubmit, loading, submitButtonText = "Submit" }) => {
   const [parsedPreview, setParsedPreview] = useState({});
-  const [activeTab, setActiveTab] = useState("raw"); // 'raw', 'preview', 'fields', 'blessings'
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      return localStorage.getItem("tae.volumes.mobile.activeTab") || "raw";
+    } catch {
+      return "raw";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("tae.volumes.mobile.activeTab", activeTab);
+    } catch {}
+  }, [activeTab]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -150,13 +162,14 @@ const VolumeMobileForm = ({ formData, onFormChange, onSubmit, loading, submitBut
   return (
     <form onSubmit={onSubmit} className="pb-4" style={{ color: "var(--color-text-main)" }}>
       {/* Tabs */}
-      <div className="flex overflow-x-auto gap-2 mb-4 pb-2 border-b border-white/10 scrollbar-hide">
+      {/* Sticky Tabs */}
+      <div className="sticky top-0 z-10 bg-background pt-2 pb-2 mb-4 border-b border-white/10 overflow-x-auto flex gap-2 scrollbar-hide">
         {["raw", "preview", "fields", "blessings"].map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
               activeTab === tab
                 ? "bg-primary text-white"
                 : "bg-surface border border-white/10 text-text-secondary hover:text-white"
@@ -374,7 +387,14 @@ const VolumeMobileForm = ({ formData, onFormChange, onSubmit, loading, submitBut
       </div>
 
       {/* Sticky Footer Action */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-surface border-t border-white/10 flex items-center gap-3 z-20">
+      <div
+        className="fixed p-4 bg-surface border-t border-white/10 flex items-center gap-3 z-20 transition-[left,right,bottom] duration-300"
+        style={{
+          left: "var(--left-sidebar-width, 0px)",
+          right: "var(--right-sidebar-width, 0px)",
+          bottom: "var(--bottom-nav-height, 0px)",
+        }}
+      >
         <select
           name="status"
           value={formData.status || "draft"}

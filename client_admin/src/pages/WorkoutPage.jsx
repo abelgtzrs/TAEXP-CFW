@@ -29,80 +29,89 @@ const WorkoutPage = () => {
   }, []);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-      <motion.h1
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, delay: 0.1 }}
-        className="text-2xl md:text-3xl font-bold text-primary mb-6 md:mb-8"
-      >
-        Workout Tracker
-      </motion.h1>
+    <motion.div 
+      initial={{ opacity: 0, y: 16 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ duration: 0.5 }}
+      className="pb-20 md:pb-0" // Add padding bottom for mobile nav
+    >
+      <div className="flex items-center justify-between mb-6">
+        <motion.h1
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.45, delay: 0.1 }}
+          className="text-2xl font-bold text-white"
+        >
+          Workouts
+        </motion.h1>
+        {/* Could add a 'History' or 'Stats' button here later */}
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
         <ActionCard
           to="/workouts/log"
-          icon={<Dumbbell size={40} strokeWidth={1.4} />}
-          title="Start a Clean Workout"
-          description="Build your session from scratch."
+          icon={<Dumbbell size={24} />}
+          title="Quick Start"
+          description="Start a new empty session"
           delay={0.2}
         />
         <ActionCard
           to="/workouts/new/template"
-          icon={<ListChecks size={40} strokeWidth={1.4} />}
-          title="Use a Prebuilt Workout"
-          description="Select from your list of templates."
+          icon={<ListChecks size={24} />}
+          title="From Template"
+          description="Use a saved routine"
           delay={0.3}
         />
       </div>
 
-      <div className="mt-8 md:mt-12">
-        <motion.h2
-          initial={{ opacity: 0, x: -14 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.45, delay: 0.4 }}
-          className="text-xl md:text-2xl font-semibold text-primary mb-4"
-        >
-          Recent Workouts
-        </motion.h2>
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <motion.h2
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.45, delay: 0.4 }}
+            className="text-sm font-semibold text-text-secondary uppercase tracking-wider"
+          >
+            Recent Activity
+          </motion.h2>
+        </div>
+        
         {loading && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-text-secondary text-sm">
-            Loading history...
-          </motion.p>
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          </div>
         )}
+        
         {error && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-500 text-sm">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
             {error}
-          </motion.p>
+          </motion.div>
         )}
+        
         {!loading && !error && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.45, delay: 0.55 }}
-            className="space-y-4"
+            className="space-y-3"
           >
             {logs.length > 0 ? (
               logs.map((log, i) => (
                 <motion.div
                   key={log._id}
-                  initial={{ opacity: 0, y: 14 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: 0.6 + i * 0.06 }}
-                  whileHover={{ scale: 1.01, transition: { duration: 0.18 } }}
+                  transition={{ duration: 0.3, delay: 0.1 + i * 0.05 }}
                 >
                   <WorkoutLogItem log={log} />
                 </motion.div>
               ))
             ) : (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.6 }}
-                className="text-text-secondary text-sm"
-              >
-                Your past workout logs will appear here.
-              </motion.p>
+              <div className="text-center py-12 bg-white/5 rounded-xl border border-white/5">
+                <Dumbbell className="w-12 h-12 text-white/20 mx-auto mb-3" />
+                <p className="text-text-secondary text-sm">No workouts logged yet.</p>
+                <p className="text-text-tertiary text-xs mt-1">Start your first session above!</p>
+              </div>
             )}
           </motion.div>
         )}
