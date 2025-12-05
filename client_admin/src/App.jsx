@@ -40,6 +40,7 @@ import FootballTrackerPage from "./pages/FootballTrackerPage";
 import CalendarAdminPage from "./pages/CalendarAdminPage";
 import BulkWorkoutImportPage from "./pages/BulkWorkoutImportPage";
 import DailyDraftsPage from "./pages/DailyDraftsPage";
+import TerminalPage from "./pages/TerminalPage";
 
 function App() {
   useTheme();
@@ -68,6 +69,7 @@ function App() {
           <Route path="/spotify-stats" element={<SpotifyStatsPage />} />
           <Route path="/football-tracker" element={<FootballTrackerPage />} />
           <Route path="/daily-drafts" element={<DailyDraftsPage />} />
+          <Route path="/terminal" element={<TerminalPage />} />
         </Route>
       </Route>
 

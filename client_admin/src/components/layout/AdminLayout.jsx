@@ -33,6 +33,7 @@ import {
   CalendarDays,
   FileText,
   Smartphone,
+  Terminal as TerminalIcon,
 } from "lucide-react";
 
 const NavItem = ({ to, icon: Icon, children, isCollapsed }) => {
@@ -657,6 +658,9 @@ const AdminLayout = () => {
                   <ul className="space-y-1">
                     <NavItem to="/settings" icon={Settings2} isCollapsed={isSidebarCollapsed}>
                       System Settings
+                    </NavItem>
+                    <NavItem to="/terminal" icon={TerminalIcon} isCollapsed={isSidebarCollapsed}>
+                      Public Terminal
                     </NavItem>
                   </ul>
                 </div>
