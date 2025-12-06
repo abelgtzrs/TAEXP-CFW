@@ -61,6 +61,10 @@ const HELP_TEXT = [
     text: "> cat                     - Displays a cat.",
     type: "info",
   },
+  {
+    text: "> fullscreen              - Toggle fullscreen mode.",
+    type: "info",
+  },
 ];
 
 export default HELP_TEXT;

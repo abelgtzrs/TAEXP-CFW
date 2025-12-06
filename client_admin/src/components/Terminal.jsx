@@ -89,7 +89,7 @@ const ScrambleOutput = ({ phrases, onComplete }) => {
   return <div ref={elRef} className="text-rose-400 font-mono" />;
 };
 
-const Terminal = () => {
+const Terminal = ({ toggleFullScreen }) => {
   // --- STATE MANAGEMENT ---
   const [startTime] = useState(Date.now()); // Track session start for potential uptime display
   const [theme, setTheme] = useState("default"); // Current terminal theme - users can switch with 'theme' command
@@ -717,6 +717,20 @@ const Terminal = () => {
           await typeLines([
             {
               text: error.response?.data?.message || "Error during export.",
+              type: "error",
+            },
+          ]);
+        }
+        break;
+
+      // Toggle fullscreen mode
+      case "fullscreen":
+        if (toggleFullScreen) {
+          toggleFullScreen();
+        } else {
+          await typeLines([
+            {
+              text: "Fullscreen mode not available.",
               type: "error",
             },
           ]);
