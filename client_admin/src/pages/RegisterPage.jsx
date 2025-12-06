@@ -1,11 +1,14 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { FiMail, FiLock, FiUser, FiEye, FiEyeOff } from "react-icons/fi";
-import { Link } from "react-router-dom";
+// Register page for The Abel Experience dashboard
+// Matches the LoginPage technical aesthetic
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiEye, FiEyeOff, FiCpu } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const RegisterPage = () => {
   const { register } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -15,13 +18,19 @@ const RegisterPage = () => {
   const [role, setRole] = useState("user");
   const isDev = import.meta?.env?.MODE === "development";
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     if (!email || !password || !confirmPassword || !username) {
-      setError("Please fill required fields (username now required)");
+      setError("All fields are required");
       return;
     }
     if (password.length < 6) {
@@ -43,167 +52,222 @@ const RegisterPage = () => {
     }
   };
 
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
   return (
-    <main
-      className="relative flex items-center justify-center min-h-screen overflow-hidden bg-background text-text-main"
-      aria-labelledby="register-title"
-    >
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          background:
-            "radial-gradient(circle at 30% 70%, var(--color-secondary) 0%, transparent 55%), radial-gradient(circle at 70% 30%, var(--color-primary) 0%, transparent 55%), linear-gradient(135deg, var(--color-surface) 0%, var(--color-background) 80%)",
-        }}
-      />
-      <div className="absolute inset-0 z-10 backdrop-blur-[3px] bg-background/60" />
-      <motion.div
-        initial={{ y: 80, opacity: 0, scale: 0.9 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        transition={{ duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="relative z-20 w-full max-w-md p-8 bg-surface/10 backdrop-blur-s rounded-2xl shadow-2xl border border-primary/20"
+    <main className="relative flex flex-col min-h-screen w-full overflow-hidden bg-[#0c0c0c] text-zinc-300 font-mono text-xs">
+      
+      {/* Top Bar */}
+      <motion.header 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="flex items-center justify-between px-5 py-3 border-b border-zinc-800/60"
       >
-        <motion.h1
-          id="register-title"
-          initial={{ opacity: 0, scale: 0.5, y: -40 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6, type: "spring", stiffness: 180 }}
-          className="text-3xl font-extrabold text-center text-tertiary tracking-tight mb-6"
-        >
-          Create Account
-        </motion.h1>
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4"
-          noValidate
-          aria-describedby={error ? "register-error" : undefined}
-        >
-          {/* Email */}
-          <label htmlFor="reg-email" className="block mb-1 text-sm font-semibold uppercase tracking-wide text-tertiary">
-            Email
-          </label>
-          <div className="relative mb-2">
-            <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" />
-            <input
-              id="reg-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white/5 backdrop-blur-md text-text-main rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
-              required
-              autoComplete="email"
-            />
-          </div>
-          {/* Username */}
-          <label
-            htmlFor="reg-username"
-            className="block mb-1 text-sm font-semibold uppercase tracking-wide text-tertiary"
+        <div className="flex items-center gap-4">
+          <span className="text-zinc-400 tracking-wide">Admin</span>
+          <span className="text-zinc-600">•</span>
+          <span className="flex items-center gap-1.5 text-zinc-500">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            Connected
+          </span>
+        </div>
+        <span className="text-zinc-500 tabular-nums">{formatTime(currentTime)}</span>
+      </motion.header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center px-5 py-8">
+        <div className="w-full max-w-sm">
+          
+          {/* Register Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="border border-zinc-800 bg-zinc-900/40"
           >
-            Username
-          </label>
-          <div className="relative mb-2">
-            <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" />
-            <input
-              id="reg-username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white/5 backdrop-blur-md text-text-main rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
-              autoComplete="username"
-              required
-            />
-          </div>
-          {isDev && (
-            <div className="mb-2">
-              <label
-                htmlFor="reg-role"
-                className="block mb-1 text-sm font-semibold uppercase tracking-wide text-tertiary"
-              >
-                Role (dev only)
-              </label>
-              <select
-                id="reg-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 backdrop-blur-md text-text-main rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
-              >
-                <option value="user">user</option>
-                <option value="admin">admin</option>
-              </select>
-              <p className="text-[10px] mt-1 text-text-secondary">Admin accepted only if no admin exists yet.</p>
+            {/* Card Header */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800/60 bg-zinc-900/60">
+              <span className="text-zinc-400">Create account</span>
+              <div className="flex gap-1">
+                <div className="w-2 h-2 rounded-full bg-zinc-700" />
+                <div className="w-2 h-2 rounded-full bg-zinc-700" />
+                <div className="w-2 h-2 rounded-full bg-zinc-700" />
+              </div>
             </div>
-          )}
-          {/* Password */}
-          <label
-            htmlFor="reg-password"
-            className="block mb-1 text-sm font-semibold uppercase tracking-wide text-tertiary"
-          >
-            Password (min 6 chars)
-          </label>
-          <div className="relative mb-2">
-            <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" />
-            <input
-              id="reg-password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-10 pr-12 py-3 bg-white/5 backdrop-blur-md text-text-main rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
-              required
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-primary/80 hover:text-primary"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
-            </button>
-          </div>
-          {/* Confirm Password */}
-          <label
-            htmlFor="reg-confirm"
-            className="block mb-1 text-sm font-semibold uppercase tracking-wide text-tertiary"
-          >
-            Confirm Password
-          </label>
-          <div className="relative mb-2">
-            <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" />
-            <input
-              id="reg-confirm"
-              type={showPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full pl-10 pr-12 py-3 bg-white/5 backdrop-blur-md text-text-main rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
-              required
-              autoComplete="new-password"
-            />
-          </div>
 
-          {error && (
-            <p
-              id="register-error"
-              role="alert"
-              className="text-center text-status-danger font-medium bg-status-danger/10 p-3 rounded-lg border border-status-danger/30"
-            >
-              {error}
-            </p>
-          )}
+            {/* Form Content */}
+            <div className="p-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                
+                {/* Email Field */}
+                <div className="space-y-1.5">
+                  <label className="text-zinc-500 text-[10px] uppercase tracking-wider">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 text-sm px-3 py-2.5 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                    placeholder="you@example.com"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-3 rounded-lg font-bold bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary transition disabled:opacity-60"
+                {/* Username Field */}
+                <div className="space-y-1.5">
+                  <label className="text-zinc-500 text-[10px] uppercase tracking-wider">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 text-sm px-3 py-2.5 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                    placeholder="johndoe"
+                    required
+                    autoComplete="username"
+                  />
+                </div>
+
+                {/* Role (Dev only) */}
+                {isDev && (
+                  <div className="space-y-1.5">
+                    <label className="text-zinc-500 text-[10px] uppercase tracking-wider">
+                      Role <span className="text-zinc-600">(dev only)</span>
+                    </label>
+                    <select
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 text-sm px-3 py-2.5 focus:outline-none focus:border-zinc-600 transition-colors"
+                    >
+                      <option value="user">user</option>
+                      <option value="admin">admin</option>
+                    </select>
+                    <p className="text-[10px] text-zinc-600">Admin accepted only if no admin exists yet.</p>
+                  </div>
+                )}
+
+                {/* Password Field */}
+                <div className="space-y-1.5">
+                  <label className="text-zinc-500 text-[10px] uppercase tracking-wider">
+                    Password <span className="text-zinc-600">(min 6 chars)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 text-sm px-3 py-2.5 pr-10 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                      placeholder="••••••••"
+                      required
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                      {showPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password Field */}
+                <div className="space-y-1.5">
+                  <label className="text-zinc-500 text-[10px] uppercase tracking-wider">
+                    Confirm Password
+                  </label>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 text-sm px-3 py-2.5 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+                    placeholder="••••••••"
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                {/* Error Message */}
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-3 py-2 bg-red-950/30 border border-red-900/40 text-red-400 text-xs">
+                        {error}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Submit Button */}
+                <motion.button
+                  whileHover={{ backgroundColor: "rgba(63, 63, 70, 0.6)" }}
+                  whileTap={{ scale: 0.99 }}
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-2.5 bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm tracking-wide hover:border-zinc-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <FiCpu className="animate-spin" size={14} />
+                      Creating account...
+                    </span>
+                  ) : (
+                    "Create account"
+                  )}
+                </motion.button>
+              </form>
+
+              {/* Login Link */}
+              <div className="mt-4 pt-4 border-t border-zinc-800/60 text-center">
+                <button
+                  onClick={() => navigate("/login")}
+                  className="text-zinc-500 hover:text-zinc-300 transition-colors text-xs"
+                >
+                  Already have an account? <span className="text-zinc-400">Sign in</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Footer Info */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="mt-4 flex items-center justify-between text-[10px] text-zinc-600"
           >
-            {isSubmitting ? "Creating Account..." : "Register"}
-          </button>
+            <span>Encrypted connection</span>
+            <span>v2.4</span>
+          </motion.div>
+        </div>
+      </div>
 
-          <div className="text-center text-xs text-text-secondary pt-2">
-            <Link to="/login" className="text-primary hover:underline">
-              Already have an account? Log In
-            </Link>
-          </div>
-        </form>
-      </motion.div>
+      {/* Bottom Bar */}
+      <motion.footer 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="flex items-center justify-between px-5 py-3 border-t border-zinc-800/60 text-zinc-600"
+      >
+        <span>&copy; {new Date().getFullYear()} The Abel Experience</span>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500/70" />
+            Online
+          </span>
+        </div>
+      </motion.footer>
     </main>
   );
 };
