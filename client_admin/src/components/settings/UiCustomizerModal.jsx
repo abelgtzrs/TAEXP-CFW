@@ -73,6 +73,25 @@ const UiCustomizerModal = ({ open, onClose, settings, onChange, anchorLeft = 0, 
       setEditing(JSON.parse(JSON.stringify(DEFAULT_THEME)));
       return;
     }
+    if (selectedId === "__genesis__") {
+      const GENESIS_THEME = {
+        _id: "__genesis__",
+        colors: {
+          bg: "#0c0c0c",
+          surface: "#18181b",
+          primary: "#22c55e",
+          secondary: "#3f3f46",
+          tertiary: "#27272a",
+        },
+        text: { 
+          main: "#d4d4d8", 
+          secondary: "#a1a1aa", 
+          tertiary: "#52525b" 
+        },
+      };
+      setEditing(JSON.parse(JSON.stringify(GENESIS_THEME)));
+      return;
+    }
     const p = personas.find((x) => x._id === selectedId) || null;
     setEditing(p ? JSON.parse(JSON.stringify(p)) : null);
   }, [selectedId, personas]);
@@ -85,7 +104,7 @@ const UiCustomizerModal = ({ open, onClose, settings, onChange, anchorLeft = 0, 
 
   useEffect(() => {
     if (!editing) return;
-    const isActive = editing._id === (user?.activeAbelPersona?._id || null) || editing._id === "__standard__";
+    const isActive = editing._id === (user?.activeAbelPersona?._id || null) || editing._id === "__standard__" || editing._id === "__genesis__";
     if (!isActive) return;
     const root = document.documentElement;
     const { colors, text } = editing;
@@ -108,6 +127,12 @@ const UiCustomizerModal = ({ open, onClose, settings, onChange, anchorLeft = 0, 
   const handleSelectPersona = async (id) => {
     setSelectedId(id);
     try {
+      if (id === "__genesis__") {
+        // Client-side only preset, do not persist to backend as active persona
+        // But we might want to clear the active persona so it doesn't conflict?
+        // For now, let's just let the local state override.
+        return; 
+      }
       const personaId = id === "__standard__" ? null : id;
       const response = await api.put("/users/me/profile/active-persona", { personaId });
       setUser(response.data.data);
@@ -240,6 +265,7 @@ const UiCustomizerModal = ({ open, onClose, settings, onChange, anchorLeft = 0, 
                   onChange={(e) => handleSelectPersona(e.target.value)}
                 >
                   <option value="__standard__">Standard Issue (default)</option>
+                  <option value="__genesis__">Genesis (Login Aesthetic)</option>
                   {personas.map((p) => (
                     <option key={p._id} value={p._id}>
                       {p.name}
@@ -306,15 +332,15 @@ const UiCustomizerModal = ({ open, onClose, settings, onChange, anchorLeft = 0, 
                   <div className="flex justify-end pt-1">
                     <button
                       onClick={handleSave}
-                      disabled={!editing._id || editing._id === "__standard__"}
+                      disabled={!editing._id || editing._id === "__standard__" || editing._id === "__genesis__"}
                       className={`px-3 py-1.5 rounded border text-sm ${
-                        !editing._id || editing._id === "__standard__"
+                        !editing._id || editing._id === "__standard__" || editing._id === "__genesis__"
                           ? "bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed"
                           : "bg-primary/20 hover:bg-primary/30 border-primary/40 text-primary"
                       }`}
                       title={
-                        editing?._id === "__standard__"
-                          ? "Standard Issue applies live; no save needed"
+                        editing?._id === "__standard__" || editing?._id === "__genesis__"
+                          ? "System presets apply live; no save needed"
                           : "Save to database"
                       }
                     >

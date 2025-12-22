@@ -177,31 +177,6 @@ export default function BlessingsUsagePage() {
 
   return (
     <div className="space-y-3 blessings-usage-page" style={{ height: "calc(100vh - 64px)", overflow: "hidden" }}>
-      <style>
-        {`
-        /* Scoped scrollbar styling for BlessingsUsagePage */
-        .blessings-usage-page * {
-          scrollbar-width: thin;
-          scrollbar-color: var(--color-primary) var(--color-background);
-        }
-        .blessings-usage-page *::-webkit-scrollbar {
-          width: 10px;
-          height: 10px;
-        }
-        .blessings-usage-page *::-webkit-scrollbar-track {
-          background: var(--color-background);
-          border-radius: 8px;
-        }
-        .blessings-usage-page *::-webkit-scrollbar-thumb {
-          background: var(--color-primary);
-          border: 2px solid var(--color-surface);
-          border-radius: 8px;
-        }
-        .blessings-usage-page *::-webkit-scrollbar-thumb:hover {
-          filter: brightness(1.1);
-        }
-        `}
-      </style>
       <h1 className="text-2xl font-bold text-primary">Blessings Usage</h1>
       <div className="grid grid-cols-12 gap-3 h-full overflow-hidden min-h-0">
         {/* Left: Blessings selector (aligned with right; no vertical offset) */}
