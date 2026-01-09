@@ -41,6 +41,7 @@ import CalendarAdminPage from "./pages/CalendarAdminPage";
 import BulkWorkoutImportPage from "./pages/BulkWorkoutImportPage";
 import DailyDraftsPage from "./pages/DailyDraftsPage";
 import TerminalPage from "./pages/TerminalPage";
+import YearlyGoalsPage from "./pages/YearlyGoalsPage"; // Import goal page
 
 function App() {
   useTheme();
@@ -54,6 +55,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/goals" element={<YearlyGoalsPage />} /> {/* New Route */}
           <Route path="/habits" element={<HabitsPage />} />
           <Route path="/books" element={<BooksPage />} />
           <Route path="/books/:bookId/notes" element={<BookNotesPage />} />

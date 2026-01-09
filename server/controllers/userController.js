@@ -351,6 +351,47 @@ const setDashboardLayout = async (req, res) => {
   }
 };
 
+// --- Yearly Goals Management ---
+const getYearlyGoals = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("yearlyGoals");
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    return res.status(200).json({ success: true, data: user.yearlyGoals || [] });
+  } catch (error) {
+    console.error("Get Yearly Goals Error:", error);
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+const updateYearlyGoals = async (req, res) => {
+  try {
+    const { goals } = req.body;
+    if (!Array.isArray(goals)) return res.status(400).json({ success: false, message: "Goals must be an array" });
+
+    // Basic validation
+    const validGoals = goals.map((g) => ({
+      name: g.name || "New Goal",
+      metric: g.metric || "count",
+      target: Number(g.target) || 100,
+      current: Number(g.current) || 0,
+      icon: g.icon || "target",
+      color: g.color || "#10b981",
+    }));
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { yearlyGoals: validGoals },
+      { new: true, runValidators: true }
+    ).select("yearlyGoals");
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    return res.status(200).json({ success: true, data: user.yearlyGoals });
+  } catch (error) {
+    console.error("Update Yearly Goals Error:", error);
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
 const setActivePersona = async (req, res) => {
   try {
     const { personaId } = req.body;
@@ -517,7 +558,7 @@ const getDashboardStats = async (req, res) => {
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
       User.findById(userId)
-        .select("currentLoginStreak longestLoginStreak pokemonCollection snoopyArtCollection habboRares yugiohCards")
+        .select("currentLoginStreak longestLoginStreak pokemonCollection snoopyArtCollection habboRares yugiohCards yearlyGoals")
         .populate({
           path: "pokemonCollection",
           options: { sort: { createdAt: -1 }, limit: 5 },
@@ -597,10 +638,19 @@ const getDashboardStats = async (req, res) => {
         { name: "Pokémon: Eevee", units: 188 },
         { name: "Habbo Rare: Throne", units: 130 },
       ],
-      goals: {
-        reading: 65,
-        workouts: 80,
-      },
+      goals: user.yearlyGoals?.reduce((acc, g) => {
+        // Calculate percentage for recognized keys or pass raw data if needed
+        // For backward compatibility with GoalsWidget, we map to simple percentages if names match,
+        // or we can send the whole array if the frontend is updated to handle it.
+        // For now, let's map 'Reading' and 'Workouts' if they exist, else send them all in a new property.
+        // But dashboard expects { reading: %, workouts: % }
+        const key = g.name.toLowerCase();
+        const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+        if (key.includes("reading") || key.includes("book")) acc.reading = pct;
+        if (key.includes("workout") || key.includes("exercise")) acc.workouts = pct;
+        return acc;
+      }, { reading: 0, workouts: 0 }),
+      allGoals: user.yearlyGoals || [],
     };
 
     res.status(200).json({ success: true, data: stats });
@@ -750,4 +800,6 @@ module.exports = {
   // Dashboard layout persistence
   getDashboardLayout,
   setDashboardLayout,
+  getYearlyGoals,
+  updateYearlyGoals,
 };

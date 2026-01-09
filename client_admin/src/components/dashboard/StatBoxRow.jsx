@@ -27,7 +27,7 @@ const StatBoxRow = ({ stats, loading }) => {
   return (
     <Widget padding="p-0" className="overflow-hidden relative group">
       {/* Desktop Infinite Scroll */}
-      <div className="hidden md:flex relative h-[96px] overflow-hidden">
+      <div className="hidden md:flex relative min-h-[96px] overflow-hidden">
         <motion.div
           className="flex flex-row"
           animate={{

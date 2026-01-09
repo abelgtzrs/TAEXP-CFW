@@ -250,6 +250,16 @@ const UserSchema = new mongoose.Schema({
       ref: "FinancialGoal",
     },
   ],
+  yearlyGoals: [
+    {
+      name: { type: String, required: true },
+      metric: { type: String, default: "count" }, // custom unit label
+      target: { type: Number, required: true },
+      current: { type: Number, default: 0 },
+      icon: { type: String, default: "target" }, // optional icon name
+      color: { type: String, default: "#10b981" }, // hex color
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date.now,

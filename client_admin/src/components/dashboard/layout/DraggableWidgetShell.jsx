@@ -25,10 +25,10 @@ export default function DraggableWidgetShell({ item, columnId, index, children }
 
   return (
     <div
-      className="relative w-full"
+      className="relative w-full grid"
       data-item-id={item.id}
       style={{
-        height: `${height}px`,
+        minHeight: `${height}px`,
         maxWidth: maxW ? `${maxW}px` : undefined,
         marginLeft: maxW ? "auto" : undefined,
         marginRight: maxW ? "auto" : undefined,

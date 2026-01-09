@@ -92,6 +92,8 @@ const {
   getDashboardLayout,
   setDashboardLayout,
   setActiveBadgeCollection,
+  getYearlyGoals,
+  updateYearlyGoals,
 } = require("../controllers/userController");
 const { getMe } = require("../controllers/authController");
 
@@ -140,6 +142,10 @@ router.get("/me/dashboard-stats", getDashboardStats);
 // Dashboard layout persistence
 router.get("/me/dashboard-layout", getDashboardLayout);
 router.put("/me/dashboard-layout", setDashboardLayout);
+
+// Yearly Goals
+router.get("/me/goals", getYearlyGoals);
+router.put("/me/goals", updateYearlyGoals);
 
 // Daily login streak helpers
 router.get("/me/streak/status", getStreakStatus);

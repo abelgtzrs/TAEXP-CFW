@@ -1,4 +1,4 @@
-import { Search, Bell, Mail, User, LogOut, CalendarDays, FileText, Save, History, Trash2 } from "lucide-react";
+import { Search, Bell, Mail, User, LogOut, CalendarDays, FileText, Save, History, Trash2, Target, Plus, Hash, Check, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -37,9 +37,32 @@ const Header = ({ forcedHeight }) => {
   const unlockedPersonas = user?.unlockedAbelPersonas || [];
   const activePersona = user?.activeAbelPersona || null;
   const activePersonaId = activePersona?._id || null;
+  const [goalProgress, setGoalProgress] = useState(0);
+  const [goals, setGoals] = useState([]);
+  const [goalsOpen, setGoalsOpen] = useState(false);
+  const goalsHoverTimer = useRef(null);
+  const [customIncrement, setCustomIncrement] = useState({ index: null, val: "" });
 
   // Construct the base URL for the server to correctly resolve image paths
   const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
+
+  useEffect(() => {
+    // Basic goal fetch for header summary
+    const fetchGoalProgress = async () => {
+      try {
+        const res = await api.get("/users/me/goals");
+        const userGoals = res.data.data || [];
+        setGoals(userGoals);
+        if (userGoals.length > 0) {
+          const totalPct = userGoals.reduce((acc, g) => acc + Math.min(g.current / g.target, 1), 0);
+          setGoalProgress(Math.round((totalPct / userGoals.length) * 100));
+        } else {
+            setGoalProgress(0);
+        }
+      } catch {}
+    };
+    fetchGoalProgress();
+  }, [goalsOpen]); // Re-fetch when opened to ensure fresh data
 
   const getPokemonSprite = (basePokemon) => {
     if (!basePokemon) return null;
@@ -47,6 +70,29 @@ const Header = ({ forcedHeight }) => {
     // Use Gen5 animated sprite specifically for header display
     const sprite = firstForm?.spriteGen5Animated || null;
     return sprite ? `${serverBaseUrl}${sprite}` : null;
+  };
+
+  const handleUpdateGoal = async (index, amountToAdd) => {
+    const add = Number(amountToAdd);
+    if (isNaN(add) || add <= 0) return;
+
+    const updatedGoals = [...goals];
+    const goal = updatedGoals[index];
+
+    if (goal.current < goal.target) {
+        goal.current = Math.min(Number(goal.current) + add, Number(goal.target));
+        setGoals(updatedGoals); // Optimistic key update
+
+        // Recalculate global header progress
+        const totalPct = updatedGoals.reduce((acc, g) => acc + Math.min(g.current / g.target, 1), 0);
+        setGoalProgress(Math.round((totalPct / updatedGoals.length) * 100));
+
+        try {
+            await api.put("/users/me/goals", { goals: updatedGoals });
+        } catch (err) {
+            console.error("Failed to update goal increment", err);
+        }
+    }
   };
 
   // --- Daily Drafts helpers ---
@@ -488,6 +534,150 @@ const Header = ({ forcedHeight }) => {
             </div>
           )}
         </div>
+
+        {/* Yearly Goals Tracker */}
+        <div
+          className="relative"
+          onMouseEnter={() => {
+            if (goalsHoverTimer.current) {
+              clearTimeout(goalsHoverTimer.current);
+              goalsHoverTimer.current = null;
+            }
+            setGoalsOpen(true);
+          }}
+          onMouseLeave={() => {
+            goalsHoverTimer.current = setTimeout(() => setGoalsOpen(false), 200);
+          }}
+        >
+          <Link
+            to="/goals"
+            className="relative p-2 block rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95 group"
+            title="Yearly Goals Tracker"
+            onClick={() => setGoalsOpen(false)} // Close popover if navigating directly
+          >
+            <Target size={18} />
+            {goalProgress > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-bold text-black border border-black shadow-sm group-hover:bg-emerald-400">
+                {goalProgress < 100 ? goalProgress : "!"}
+              </span>
+            )}
+          </Link>
+          {goalsOpen && (
+            <div
+              role="dialog"
+              aria-label="Yearly Goals"
+              className="absolute right-0 mt-2 z-50 w-[300px]"
+              onMouseEnter={() => {
+                if (goalsHoverTimer.current) {
+                  clearTimeout(goalsHoverTimer.current);
+                  goalsHoverTimer.current = null;
+                }
+                setGoalsOpen(true);
+              }}
+              onMouseLeave={() => {
+                goalsHoverTimer.current = setTimeout(() => setGoalsOpen(false), 200);
+              }}
+            >
+              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <h3 className="font-bold text-white text-sm">Yearly Targets</h3>
+                  <span className="text-xs text-emerald-400 font-medium">{goalProgress}% Overall</span>
+                </div>
+                {goals.length === 0 ? (
+                  <div className="text-xs text-slate-400 py-2">No goals set yet.</div>
+                ) : (
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
+                        {goals.map((g, i) => {
+                            const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+                            const isCompleted = g.current >= g.target;
+                            const isEditing = customIncrement.index === i;
+
+                            return (
+                                <div key={i} className="space-y-1 group/item">
+                                    <div className="flex justify-between text-xs items-center h-8">
+                                        <span className="text-white/90 truncate pr-2 flex-1 font-medium">{g.name}</span>
+                                        {isEditing ? (
+                                            <div className="flex items-center gap-1 bg-black/60 rounded px-1.5 py-0.5 border border-white/20 animate-in fade-in zoom-in duration-200" onClick={(e) => e.preventDefault()}>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-12 bg-transparent text-white text-right focus:outline-none text-sm appearance-none font-bold placeholder-white/20"
+                                                    value={customIncrement.val}
+                                                    onChange={(e) => setCustomIncrement(prev => ({...prev, val: e.target.value}))}
+                                                    placeholder="#"
+                                                    autoFocus
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onKeyDown={(e) => {
+                                                        if(e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            handleUpdateGoal(i, customIncrement.val);
+                                                            setCustomIncrement({index: null, val: ""});
+                                                        }
+                                                    }}
+                                                />
+                                                <button onClick={(e) => {
+                                                     e.preventDefault();
+                                                     handleUpdateGoal(i, customIncrement.val);
+                                                     setCustomIncrement({index: null, val: ""});
+                                                }} className="w-6 h-6 flex items-center justify-center text-emerald-400 hover:text-emerald-300 hover:bg-white/10 rounded"><Check size={16} /></button>
+                                                <button onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setCustomIncrement({index: null, val: ""});
+                                                }} className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-white/10 rounded"><X size={16} /></button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-slate-400 text-[10px] font-mono tracking-tighter">{g.current}/{g.target}</span>
+                                                {!isCompleted && (
+                                                    <div className="flex gap-1.5 opacity-0 group-hover/item:opacity-100 transition-all duration-200">
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handleUpdateGoal(i, 1);
+                                                            }}
+                                                            className="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black hover:border-emerald-400 transition-all text-emerald-400 shadow-sm"
+                                                            title="Quick Add +1"
+                                                        >
+                                                            <Plus size={16} strokeWidth={2.5} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setCustomIncrement({ index: i, val: "" });
+                                                            }}
+                                                            className="w-7 h-7 flex items-center justify-center rounded-md bg-white/5 border border-white/10 hover:bg-blue-500 hover:text-white hover:border-blue-400 transition-all text-slate-400 shadow-sm"
+                                                            title="Add Custom Amount"
+                                                        >
+                                                            <Hash size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                                            style={{ width: `${pct}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+                <div className="pt-2 border-t border-white/10">
+                  <Link
+                    to="/goals"
+                    className="block w-full text-center py-1.5 text-xs font-medium bg-white/5 hover:bg-white/10 text-white rounded transition-colors"
+                  >
+                    View All Goals
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Calendar icon and popover - placed to the right of the Pokémon icon */}
         <div
           className="relative"
