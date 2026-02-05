@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { calendarService } from "../services/calendarService";
 import MonthlyCalendar from "../components/calendar/MonthlyCalendar";
-import { Edit2, Trash2, Check, X, Plus, DollarSign, Calendar as CalendarIcon, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Edit2,
+  Trash2,
+  Check,
+  X,
+  Plus,
+  DollarSign,
+  Calendar as CalendarIcon,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 export default function CalendarAdminPage() {
   const now = new Date();
@@ -12,7 +23,7 @@ export default function CalendarAdminPage() {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   // View toggle
   const [showBillList, setShowBillList] = useState(true);
 
@@ -263,159 +274,180 @@ export default function CalendarAdminPage() {
           </form>
 
           {/* Bill Management Section */}
-          <div className="rounded-lg border shadow-sm" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-primary)" }}>
-             <div className="p-4 border-b" style={{ borderColor: 'var(--color-primary)' }}>
-                <div className="flex items-center justify-between cursor-pointer" onClick={() => setShowBillList(!showBillList)}>
-                   <h2 className="text-xl font-semibold text-main flex items-center gap-2">
-                      <DollarSign className="text-emerald-400" size={20} /> 
-                      Monthly Bills
-                   </h2>
-                   {showBillList ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          <div
+            className="rounded-lg border shadow-sm"
+            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-primary)" }}
+          >
+            <div className="p-4 border-b" style={{ borderColor: "var(--color-primary)" }}>
+              <div
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => setShowBillList(!showBillList)}
+              >
+                <h2 className="text-xl font-semibold text-main flex items-center gap-2">
+                  <DollarSign className="text-emerald-400" size={20} />
+                  Monthly Bills
+                </h2>
+                {showBillList ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </div>
+            </div>
+
+            {showBillList && (
+              <div className="p-4 space-y-4">
+                {/* List of Bills */}
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
+                  {bills.length === 0 ? (
+                    <p className="text-text-secondary text-sm italic">No active bills configured.</p>
+                  ) : (
+                    bills.map((bill) => (
+                      <div
+                        key={bill._id}
+                        className="flex justify-between items-center p-3 rounded bg-black/20 border border-white/5 hover:border-white/20 transition-colors group"
+                      >
+                        <div>
+                          <div className="font-medium text-white">{bill.name}</div>
+                          <div className="text-xs text-text-secondary flex gap-2">
+                            <span className="text-emerald-400">${bill.amount}</span>
+                            <span>•</span>
+                            <span>Due Day: {bill.dueDay}</span>
+                            {bill.autoPay && <span className="text-blue-400">• AutoPay</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditBill(bill)}
+                            className="p-1.5 rounded hover:bg-blue-500/20 text-blue-400 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBill(bill._id)}
+                            className="p-1.5 rounded hover:bg-red-500/20 text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-             </div>
-             
-             {showBillList && (
-                <div className="p-4 space-y-4">
-                    {/* List of Bills */}
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
-                        {bills.length === 0 ? (
-                            <p className="text-text-secondary text-sm italic">No active bills configured.</p>
-                        ) : (
-                            bills.map(bill => (
-                                <div key={bill._id} className="flex justify-between items-center p-3 rounded bg-black/20 border border-white/5 hover:border-white/20 transition-colors group">
-                                    <div>
-                                        <div className="font-medium text-white">{bill.name}</div>
-                                        <div className="text-xs text-text-secondary flex gap-2">
-                                            <span className="text-emerald-400">${bill.amount}</span>
-                                            <span>•</span>
-                                            <span>Due Day: {bill.dueDay}</span>
-                                            {bill.autoPay && <span className="text-blue-400">• AutoPay</span>}
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => handleEditBill(bill)} className="p-1.5 rounded hover:bg-blue-500/20 text-blue-400 transition-colors" title="Edit">
-                                            <Edit2 size={14} />
-                                        </button>
-                                        <button onClick={() => handleDeleteBill(bill._id)} className="p-1.5 rounded hover:bg-red-500/20 text-red-400 transition-colors" title="Delete">
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
+
+                <div className="w-full h-px bg-white/10 my-4" />
+
+                {/* Edit/Create Form */}
+                <form onSubmit={handleCreateOrUpdateBill} className="space-y-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                      {editingBillId ? "Edit Bill" : "Add New Bill"}
+                    </h3>
+                    {editingBillId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEditBill}
+                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                      >
+                        <X size={12} /> Cancel Edit
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      placeholder="Name (e.g. Rent)"
+                      value={billForm.name}
+                      onChange={(e) => setBillForm({ ...billForm, name: e.target.value })}
+                      className="w-full p-2 rounded border text-sm"
+                      style={{
+                        backgroundColor: "var(--color-bg)",
+                        borderColor: "var(--color-primary)",
+                        color: "var(--color-text-main)",
+                      }}
+                      required
+                    />
+                    <div className="relative">
+                      <span className="absolute left-2 top-2 text-text-secondary">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Amount"
+                        value={billForm.amount}
+                        onChange={(e) => setBillForm({ ...billForm, amount: parseFloat(e.target.value || 0) })}
+                        className="w-full p-2 pl-6 rounded border text-sm"
+                        style={{
+                          backgroundColor: "var(--color-bg)",
+                          borderColor: "var(--color-primary)",
+                          color: "var(--color-text-main)",
+                        }}
+                        required
+                      />
                     </div>
+                  </div>
 
-                    <div className="w-full h-px bg-white/10 my-4" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      placeholder="Due Day (1-31)"
+                      value={billForm.dueDay}
+                      onChange={(e) => setBillForm({ ...billForm, dueDay: parseInt(e.target.value || 1) })}
+                      className="w-full p-2 rounded border text-sm"
+                      style={{
+                        backgroundColor: "var(--color-bg)",
+                        borderColor: "var(--color-primary)",
+                        color: "var(--color-text-main)",
+                      }}
+                      required
+                    />
+                    <input
+                      placeholder="Category"
+                      value={billForm.category}
+                      onChange={(e) => setBillForm({ ...billForm, category: e.target.value })}
+                      className="w-full p-2 rounded border text-sm"
+                      style={{
+                        backgroundColor: "var(--color-bg)",
+                        borderColor: "var(--color-primary)",
+                        color: "var(--color-text-main)",
+                      }}
+                    />
+                  </div>
 
-                    {/* Edit/Create Form */}
-                    <form onSubmit={handleCreateOrUpdateBill} className="space-y-3">
-                        <div className="flex justify-between items-center mb-2">
-                             <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-                                {editingBillId ? "Edit Bill" : "Add New Bill"}
-                             </h3>
-                             {editingBillId && (
-                                 <button type="button" onClick={handleCancelEditBill} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
-                                    <X size={12} /> Cancel Edit
-                                 </button>
-                             )}
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                            <input
-                                placeholder="Name (e.g. Rent)"
-                                value={billForm.name}
-                                onChange={(e) => setBillForm({ ...billForm, name: e.target.value })}
-                                className="w-full p-2 rounded border text-sm"
-                                style={{
-                                    backgroundColor: "var(--color-bg)",
-                                    borderColor: "var(--color-primary)",
-                                    color: "var(--color-text-main)",
-                                }}
-                                required
-                            />
-                            <div className="relative">
-                                <span className="absolute left-2 top-2 text-text-secondary">$</span>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="Amount"
-                                    value={billForm.amount}
-                                    onChange={(e) => setBillForm({ ...billForm, amount: parseFloat(e.target.value || 0) })}
-                                    className="w-full p-2 pl-6 rounded border text-sm"
-                                    style={{
-                                        backgroundColor: "var(--color-bg)",
-                                        borderColor: "var(--color-primary)",
-                                        color: "var(--color-text-main)",
-                                    }}
-                                    required
-                                />
-                            </div>
-                        </div>
+                  <div className="flex items-center gap-4 py-1">
+                    <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={billForm.autoPay}
+                        onChange={(e) => setBillForm({ ...billForm, autoPay: e.target.checked })}
+                        className="rounded border-gray-600 bg-black/40 text-emerald-500 focus:ring-offset-0 focus:ring-emerald-500"
+                      />
+                      Auto-Pay
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={billForm.isActive}
+                        onChange={(e) => setBillForm({ ...billForm, isActive: e.target.checked })}
+                        className="rounded border-gray-600 bg-black/40 text-emerald-500 focus:ring-offset-0 focus:ring-emerald-500"
+                      />
+                      Active
+                    </label>
+                  </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                            <input
-                                type="number"
-                                min="1"
-                                max="31"
-                                placeholder="Due Day (1-31)"
-                                value={billForm.dueDay}
-                                onChange={(e) => setBillForm({ ...billForm, dueDay: parseInt(e.target.value || 1) })}
-                                className="w-full p-2 rounded border text-sm"
-                                style={{
-                                    backgroundColor: "var(--color-bg)",
-                                    borderColor: "var(--color-primary)",
-                                    color: "var(--color-text-main)",
-                                }}
-                                required
-                            />
-                            <input
-                                placeholder="Category"
-                                value={billForm.category}
-                                onChange={(e) => setBillForm({ ...billForm, category: e.target.value })}
-                                className="w-full p-2 rounded border text-sm"
-                                style={{
-                                    backgroundColor: "var(--color-bg)",
-                                    borderColor: "var(--color-primary)",
-                                    color: "var(--color-text-main)",
-                                }}
-                            />
-                        </div>
-
-                         <div className="flex items-center gap-4 py-1">
-                             <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={billForm.autoPay}
-                                    onChange={(e) => setBillForm({ ...billForm, autoPay: e.target.checked })}
-                                    className="rounded border-gray-600 bg-black/40 text-emerald-500 focus:ring-offset-0 focus:ring-emerald-500"
-                                />
-                                Auto-Pay
-                             </label>
-                             <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={billForm.isActive}
-                                    onChange={(e) => setBillForm({ ...billForm, isActive: e.target.checked })}
-                                    className="rounded border-gray-600 bg-black/40 text-emerald-500 focus:ring-offset-0 focus:ring-emerald-500"
-                                />
-                                Active
-                             </label>
-                        </div>
-                        
-                        <button
-                            type="submit"
-                            className={`w-full py-2 rounded text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                                editingBillId 
-                                ? "bg-blue-600/20 text-blue-400 border border-blue-500/50 hover:bg-blue-600/30" 
-                                : "bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-600/30"
-                            }`}
-                        >
-                            {editingBillId ? <RefreshCw size={16} /> : <Plus size={16} />}
-                            {editingBillId ? "Update Bill" : "Create Bill"}
-                        </button>
-                    </form>
-                </div>
-             )}
+                  <button
+                    type="submit"
+                    className={`w-full py-2 rounded text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                      editingBillId
+                        ? "bg-blue-600/20 text-blue-400 border border-blue-500/50 hover:bg-blue-600/30"
+                        : "bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-600/30"
+                    }`}
+                  >
+                    {editingBillId ? <RefreshCw size={16} /> : <Plus size={16} />}
+                    {editingBillId ? "Update Bill" : "Create Bill"}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
 
           <form
