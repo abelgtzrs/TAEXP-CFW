@@ -41,6 +41,7 @@ import CalendarAdminPage from "./pages/CalendarAdminPage";
 import BulkWorkoutImportPage from "./pages/BulkWorkoutImportPage";
 import DailyDraftsPage from "./pages/DailyDraftsPage";
 import TerminalPage from "./pages/TerminalPage";
+import BottomNavOrderPage from "./pages/BottomNavOrderPage";
 import YearlyGoalsPage from "./pages/YearlyGoalsPage"; // Import goal page
 
 function App() {
@@ -72,6 +73,7 @@ function App() {
           <Route path="/football-tracker" element={<FootballTrackerPage />} />
           <Route path="/daily-drafts" element={<DailyDraftsPage />} />
           <Route path="/terminal" element={<TerminalPage />} />
+          <Route path="/settings/bottom-nav-order" element={<BottomNavOrderPage />} />
         </Route>
       </Route>
 
