@@ -99,7 +99,12 @@ const BottomNav = ({ onMenuClick }) => {
         <div className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-hide">
           <div className="h-full flex items-center w-max min-w-full">
             {links.map((item) => (
-              <BottomNavItem key={item.to} to={item.to} icon={iconMap[item.iconKey] || LayoutDashboard} label={item.label} />
+              <BottomNavItem
+                key={item.to}
+                to={item.to}
+                icon={iconMap[item.iconKey] || LayoutDashboard}
+                label={item.label}
+              />
             ))}
             <BottomNavItem to="/settings/bottom-nav-order" icon={SlidersHorizontal} label="Organize" />
           </div>
