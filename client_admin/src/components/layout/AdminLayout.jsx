@@ -97,10 +97,10 @@ const AdminLayout = () => {
     }
     return false;
   });
-  
+
   // Mobile drawer state - separate from desktop collapse state if needed, but reusing isSidebarCollapsed for simplicity
   // On mobile: isSidebarCollapsed = true (hidden), false = open (drawer)
-  
+
   const toggleSidebar = () => setIsSidebarCollapsed((p) => !p);
 
   // ~20% size increase and align numeric width with Tailwind classes below
@@ -138,7 +138,8 @@ const AdminLayout = () => {
     });
   };
   const sidebarWidth = isSidebarCollapsed ? sidebarCollapsedWidth : sidebarExpandedWidth;
-  
+  const mobileBottomNavHeight = 56;
+
   // Mobile specific: Sidebar is hidden (width 0) when collapsed, full width (or drawer width) when open
   // We'll handle this via CSS classes, but for JS calculations:
   const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
@@ -424,7 +425,7 @@ const AdminLayout = () => {
               <ChevronLeft size={18} className="text-white" />
             )}
           </button>
-          
+
           {/* Mobile Close Button */}
           <button
             onClick={() => setIsSidebarCollapsed(true)}
@@ -597,7 +598,11 @@ const AdminLayout = () => {
                     Volume Administration
                   </p>
                   <ul className="space-y-1">
-                    <NavItem to={isMobile ? "/admin/volumes-mobile" : "/admin/volumes"} icon={Library} isCollapsed={isSidebarCollapsed}>
+                    <NavItem
+                      to={isMobile ? "/admin/volumes-mobile" : "/admin/volumes"}
+                      icon={Library}
+                      isCollapsed={isSidebarCollapsed}
+                    >
                       JSON Parser
                     </NavItem>
                     <NavItem to="/admin/volumes-mobile" icon={Smartphone} isCollapsed={isSidebarCollapsed}>
@@ -730,14 +735,14 @@ const AdminLayout = () => {
         {/* Main content */}
         <main
           className="absolute overflow-hidden flex flex-col z-10"
-          style={{ 
-            left: effectiveSidebarWidth, 
-            top: headerHeight, 
-            right: isMobile ? 0 : rightSidebarWidth, 
-            bottom: isMobile ? 64 : 0 // Add padding for bottom nav on mobile
+          style={{
+            left: effectiveSidebarWidth,
+            top: headerHeight,
+            right: isMobile ? 0 : rightSidebarWidth,
+            bottom: isMobile ? mobileBottomNavHeight : 0,
           }}
         >
-          <div className="flex-1 overflow-y-auto scrollbar-hide p-2 lg:p-3 min-h-0 pb-20 lg:pb-3">
+          <div className="flex-1 overflow-y-auto scrollbar-hide p-2 lg:p-3 min-h-0 pb-0 lg:pb-3">
             <Outlet />
           </div>
         </main>
@@ -765,9 +770,9 @@ const AdminLayout = () => {
 
         {/* Mobile Sidebar Overlay - Close when clicking outside */}
         {!isSidebarCollapsed && isMobile && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            style={{ bottom: "64px" }} 
+            style={{ bottom: "64px" }}
             onClick={() => setIsSidebarCollapsed(true)}
           />
         )}

@@ -172,7 +172,7 @@ const DashboardPage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-8 gap-3 -mt-1 grid-flow-row-dense flex-1 min-h-0 overflow-y-auto md:overflow-hidden"
+          className="relative grid grid-cols-1 md:grid-cols-8 gap-3 -mt-1 grid-flow-row-dense flex-1 min-h-0 overflow-y-auto md:overflow-hidden"
         >
           {/* Row 1: Full-width Stat Box */}
           <motion.div
@@ -215,6 +215,10 @@ const DashboardPage = () => {
 
             {/* All additional widgets now participate in the LeftColumns layout via registry */}
           </motion.div>
+
+          {/* Subtle edge fades for the widget viewport */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-background to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-background to-transparent" />
         </motion.div>
 
         {/* Streak Modal (appears at 0:00 America/New_York if not yet counted) */}

@@ -55,7 +55,7 @@ const VolumesPage = () => {
 
   // Export modal state
   const [exportOpen, setExportOpen] = useState(false);
-  const [exportText, setExportText] = useState("");
+  const [exportSelectedIds, setExportSelectedIds] = useState([]);
 
   // NEW: The form's data now lives here in the parent component.
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
@@ -157,11 +157,40 @@ const VolumesPage = () => {
   // --- EXPORT HELPERS ---
   // buildExportText moved to exportHelpers
 
+  const exportableVolumes = useMemo(() => {
+    const arr = [...(volumes || [])];
+    arr.sort((a, b) => (Number(a.volumeNumber) || 0) - (Number(b.volumeNumber) || 0));
+    return arr;
+  }, [volumes]);
+
+  const selectedExportVolumes = useMemo(
+    () => exportableVolumes.filter((v) => exportSelectedIds.includes(v._id)),
+    [exportableVolumes, exportSelectedIds],
+  );
+
+  const exportText = useMemo(() => buildExportText(selectedExportVolumes), [selectedExportVolumes]);
+
   const openExportModal = () => {
-    const published = (volumes || []).filter((v) => v.status === "published");
-    const txt = buildExportText(published);
-    setExportText(txt);
+    const publishedIds = exportableVolumes.filter((v) => v.status === "published").map((v) => v._id);
+    setExportSelectedIds(publishedIds);
     setExportOpen(true);
+  };
+
+  const toggleExportVolume = (id) => {
+    setExportSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const selectPublishedForExport = () => {
+    const publishedIds = exportableVolumes.filter((v) => v.status === "published").map((v) => v._id);
+    setExportSelectedIds(publishedIds);
+  };
+
+  const exportAllVolumes = () => {
+    setExportSelectedIds(exportableVolumes.map((v) => v._id));
+  };
+
+  const clearExportSelection = () => {
+    setExportSelectedIds([]);
   };
 
   const copyExportToClipboard = async () => {
@@ -516,27 +545,35 @@ const VolumesPage = () => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[100] bg-black/70 flex items-end md:items-center justify-center p-0 md:p-4"
           onClick={() => setExportOpen(false)}
         >
           <motion.div
             initial={{ scale: 0.97, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-gray-900 border border-gray-700 rounded-lg max-w-5xl w-full max-h-[80vh] shadow-2xl overflow-hidden"
+            className="bg-gray-900 border border-gray-700 rounded-t-xl md:rounded-lg max-w-6xl w-full h-[100dvh] md:h-auto md:max-h-[90dvh] shadow-2xl overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <h3 className="text-lg font-semibold text-white">Published Volumes — Raw Text Export</h3>
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-700 flex-wrap">
+              <h3 className="text-lg font-semibold text-white">Volumes — Raw Text Export</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={exportAllVolumes}
+                  className="px-3 py-1.5 rounded bg-indigo-900/40 hover:bg-indigo-900/60 border border-indigo-700 text-indigo-200 text-sm"
+                >
+                  Export All Volumes
+                </button>
                 <button
                   onClick={copyExportToClipboard}
+                  disabled={!selectedExportVolumes.length}
                   className="px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 border border-gray-600 text-sm"
                 >
                   Copy
                 </button>
                 <button
                   onClick={downloadExportTxt}
-                  className="px-3 py-1.5 rounded bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary text-sm"
+                  disabled={!selectedExportVolumes.length}
+                  className="px-3 py-1.5 rounded bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Download .txt
                 </button>
@@ -548,13 +585,65 @@ const VolumesPage = () => {
                 </button>
               </div>
             </div>
-            <div className="p-3">
-              <textarea
-                readOnly
-                value={exportText}
-                className="w-full h-[60vh] bg-black/60 text-gray-100 font-mono text-xs p-3 rounded resize-none"
-                spellCheck={false}
-              />
+            <div className="p-3 grid grid-cols-1 lg:grid-cols-2 gap-3 flex-1 min-h-0 overflow-hidden">
+              <div className="border border-gray-700 rounded p-2 bg-black/30 min-h-0 overflow-y-auto">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                  <p className="text-xs text-gray-300">
+                    Select volumes to export ({selectedExportVolumes.length}/{exportableVolumes.length})
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={selectPublishedForExport}
+                      className="text-[11px] px-2 py-1 rounded border border-gray-600 hover:bg-gray-800"
+                    >
+                      Published
+                    </button>
+                    <button
+                      onClick={clearExportSelection}
+                      className="text-[11px] px-2 py-1 rounded border border-gray-600 hover:bg-gray-800"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  {exportableVolumes.map((vol) => {
+                    const checked = exportSelectedIds.includes(vol._id);
+                    return (
+                      <label
+                        key={vol._id}
+                        className="flex items-center justify-between gap-3 px-2 py-1.5 rounded hover:bg-white/5 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input type="checkbox" checked={checked} onChange={() => toggleExportVolume(vol._id)} />
+                          <span className="text-sm text-gray-100 truncate">
+                            Vol {vol.volumeNumber}: {vol.title}
+                          </span>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 text-[10px] rounded-full flex-none ${
+                            vol.status === "published"
+                              ? "bg-green-500/20 text-green-300"
+                              : "bg-yellow-500/20 text-yellow-300"
+                          }`}
+                        >
+                          {vol.status}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="min-h-0">
+                <textarea
+                  readOnly
+                  value={exportText}
+                  className="w-full h-full min-h-[220px] bg-black/60 text-gray-100 font-mono text-xs p-3 rounded resize-none"
+                  spellCheck={false}
+                />
+              </div>
             </div>
           </motion.div>
         </motion.div>

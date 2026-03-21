@@ -37,7 +37,7 @@ const VolumesMobilePage = () => {
 
   // Export modal state
   const [exportOpen, setExportOpen] = useState(false);
-  const [exportText, setExportText] = useState("");
+  const [exportSelectedIds, setExportSelectedIds] = useState([]);
 
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [formLoading, setFormLoading] = useState(false);
@@ -100,6 +100,49 @@ const VolumesMobilePage = () => {
     });
     return arr;
   }, [volumes, sortKey, sortDir, searchQuery]);
+
+  const exportableVolumes = useMemo(() => {
+    const arr = [...(volumes || [])];
+    arr.sort((a, b) => (Number(a.volumeNumber) || 0) - (Number(b.volumeNumber) || 0));
+    return arr;
+  }, [volumes]);
+
+  const selectedExportVolumes = useMemo(
+    () => exportableVolumes.filter((v) => exportSelectedIds.includes(v._id)),
+    [exportableVolumes, exportSelectedIds],
+  );
+
+  const exportText = useMemo(() => buildExportText(selectedExportVolumes), [selectedExportVolumes]);
+
+  const openExportModal = () => {
+    const publishedIds = exportableVolumes.filter((v) => v.status === "published").map((v) => v._id);
+    setExportSelectedIds(publishedIds);
+    setExportOpen(true);
+  };
+
+  const toggleExportVolume = (id) => {
+    setExportSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const exportAllVolumes = () => {
+    setExportSelectedIds(exportableVolumes.map((v) => v._id));
+  };
+
+  const selectPublishedForExport = () => {
+    const publishedIds = exportableVolumes.filter((v) => v.status === "published").map((v) => v._id);
+    setExportSelectedIds(publishedIds);
+  };
+
+  const clearExportSelection = () => {
+    setExportSelectedIds([]);
+  };
+
+  const copyExportToClipboard = async () => {
+    const ok = await copyToClipboard(exportText);
+    alert(ok ? "Export copied to clipboard." : "Failed to copy. Please select and copy manually.");
+  };
+
+  const downloadExportTxt = () => downloadTxt(exportText, "volumes-export-mobile");
 
   // --- ACTIONS ---
 
@@ -186,12 +229,20 @@ const VolumesMobilePage = () => {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-primary">JSON Parser (Mobile)</h1>
         {viewMode === "list" && (
-          <button
-            onClick={handleCreateNew}
-            className="flex items-center gap-1 bg-primary text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md active:scale-95 transition-transform"
-          >
-            <Plus size={16} /> New
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openExportModal}
+              className="flex items-center gap-1 bg-indigo-500/20 border border-indigo-500/40 text-indigo-200 px-3 py-2 rounded-lg text-sm font-medium active:scale-95 transition-transform"
+            >
+              Export
+            </button>
+            <button
+              onClick={handleCreateNew}
+              className="flex items-center gap-1 bg-primary text-white px-3 py-2 rounded-lg text-sm font-medium shadow-md active:scale-95 transition-transform"
+            >
+              <Plus size={16} /> New
+            </button>
+          </div>
         )}
         {viewMode === "editor" && (
           <button
@@ -313,6 +364,116 @@ const VolumesMobilePage = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Export Modal */}
+      <AnimatePresence>
+        {exportOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setExportOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full sm:max-w-4xl bg-gray-900 border-t sm:border border-gray-700 rounded-t-xl sm:rounded-xl h-[100dvh] sm:h-auto sm:max-h-[90dvh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 py-3 border-b border-gray-700">
+                <h3 className="text-base font-semibold text-white">Volumes Export</h3>
+                <p className="text-xs text-gray-300 mt-1">
+                  Selected: {selectedExportVolumes.length}/{exportableVolumes.length}
+                </p>
+              </div>
+
+              <div className="p-3 flex flex-wrap gap-2 border-b border-gray-700 flex-none">
+                <button
+                  onClick={exportAllVolumes}
+                  className="px-3 py-1.5 rounded bg-indigo-900/40 border border-indigo-700 text-indigo-200 text-xs"
+                >
+                  Export All Volumes
+                </button>
+                <button
+                  onClick={selectPublishedForExport}
+                  className="px-3 py-1.5 rounded bg-gray-800 border border-gray-600 text-gray-100 text-xs"
+                >
+                  Published
+                </button>
+                <button
+                  onClick={clearExportSelection}
+                  className="px-3 py-1.5 rounded bg-gray-800 border border-gray-600 text-gray-100 text-xs"
+                >
+                  Clear
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 flex-1 min-h-0 overflow-hidden">
+                <div className="space-y-1 min-h-0 overflow-y-auto">
+                  {exportableVolumes.map((vol) => {
+                    const checked = exportSelectedIds.includes(vol._id);
+                    return (
+                      <label
+                        key={vol._id}
+                        className="flex items-center justify-between gap-2 px-2 py-2 rounded border border-gray-700 bg-black/30"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input type="checkbox" checked={checked} onChange={() => toggleExportVolume(vol._id)} />
+                          <span className="text-xs text-gray-100 truncate">
+                            Vol {vol.volumeNumber}: {vol.title}
+                          </span>
+                        </div>
+                        <span
+                          className={`px-1.5 py-0.5 text-[9px] rounded-full ${
+                            vol.status === "published"
+                              ? "bg-green-500/20 text-green-300"
+                              : "bg-yellow-500/20 text-yellow-300"
+                          }`}
+                        >
+                          {vol.status}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <textarea
+                  readOnly
+                  value={exportText}
+                  className="w-full h-full min-h-[180px] bg-black/60 text-gray-100 font-mono text-[10px] p-2 rounded resize-none"
+                  spellCheck={false}
+                />
+              </div>
+
+              <div className="p-3 border-t border-gray-700 flex items-center gap-2 flex-none">
+                <button
+                  onClick={copyExportToClipboard}
+                  disabled={!selectedExportVolumes.length}
+                  className="flex-1 px-3 py-2 rounded bg-gray-800 border border-gray-600 text-sm disabled:opacity-50"
+                >
+                  Copy
+                </button>
+                <button
+                  onClick={downloadExportTxt}
+                  disabled={!selectedExportVolumes.length}
+                  className="flex-1 px-3 py-2 rounded bg-primary/20 border border-primary/40 text-primary text-sm disabled:opacity-50"
+                >
+                  Download .txt
+                </button>
+                <button
+                  onClick={() => setExportOpen(false)}
+                  className="px-3 py-2 rounded bg-red-900/40 border border-red-800 text-red-200 text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
