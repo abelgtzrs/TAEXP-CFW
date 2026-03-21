@@ -7,6 +7,11 @@ const SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || "http://127.0.0.1:5000/api/spotify/callback";
 
+const hasSpotifyClientCredentials = () => Boolean(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET);
+
+const getSpotifyErrorMessage = (error) =>
+  error.response?.data?.error?.message || error.response?.data?.message || error.message || "Unknown Spotify error";
+
 // Small helper to determine if the current access token is expired or about to expire
 const isAccessTokenExpired = (user) => {
   if (!user?.spotifyTokenExpiresAt) return true;
@@ -18,6 +23,12 @@ const isAccessTokenExpired = (user) => {
 // Helper function to refresh Spotify access token
 const refreshSpotifyToken = async (user) => {
   try {
+    if (!hasSpotifyClientCredentials()) {
+      const err = new Error("Spotify app credentials are missing on the server.");
+      err.code = "SPOTIFY_CONFIG_MISSING";
+      throw err;
+    }
+
     if (!user?.spotifyRefreshToken) {
       const err = new Error("Missing Spotify refresh token. Please reconnect your Spotify account.");
       err.code = "SPOTIFY_NO_REFRESH_TOKEN";
@@ -49,7 +60,7 @@ const refreshSpotifyToken = async (user) => {
         // Some refresh responses include a new refresh token
         ...(refresh_token && { spotifyRefreshToken: refresh_token }),
       },
-      { new: true }
+      { new: true },
     );
 
     return updatedUser;
@@ -57,6 +68,57 @@ const refreshSpotifyToken = async (user) => {
     console.error("Token refresh failed:", error.response?.data || error.message);
     throw error;
   }
+};
+
+const sendSpotifyErrorResponse = (res, error, fallbackMessage) => {
+  const status = error.response?.status;
+  const errMsg = getSpotifyErrorMessage(error);
+
+  if (error.code === "SPOTIFY_NO_REFRESH_TOKEN") {
+    return res
+      .status(400)
+      .json({ success: false, message: "Spotify session expired. Please reconnect your Spotify account." });
+  }
+
+  if (error.code === "SPOTIFY_CONFIG_MISSING") {
+    return res
+      .status(503)
+      .json({ success: false, message: "Spotify is not configured on the server. Please contact support." });
+  }
+
+  if (status === 401) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Spotify authentication failed. Please reconnect your account." });
+  }
+
+  if (status === 429) {
+    return res.status(429).json({ success: false, message: "Spotify API rate limit reached. Please try again later." });
+  }
+
+  if (status === 403) {
+    return res.status(400).json({ success: false, message: "Spotify permission denied. Please re-authorize." });
+  }
+
+  if (status === 400 && /invalid_grant|refresh token/i.test(errMsg)) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Spotify session expired. Please reconnect your Spotify account." });
+  }
+
+  if (status === 400 && /invalid_client|client secret|client id/i.test(errMsg)) {
+    return res
+      .status(503)
+      .json({ success: false, message: "Spotify credentials are invalid on the server. Please contact support." });
+  }
+
+  if (error.code && ["ENOTFOUND", "ECONNRESET", "ETIMEDOUT"].includes(error.code)) {
+    return res
+      .status(502)
+      .json({ success: false, message: "Network error contacting Spotify. Please try again soon." });
+  }
+
+  return res.status(500).json({ success: false, message: fallbackMessage });
 };
 
 // Helper function to make authenticated Spotify API requests with auto-refresh
@@ -177,35 +239,7 @@ exports.getCurrentlyPlaying = async (req, res) => {
     res.json({ success: true, data: response.data });
   } catch (error) {
     console.error("Error fetching currently playing:", error.response?.data || error.message || error);
-
-    const status = error.response?.status;
-    const errMsg = error.response?.data?.error?.message || error.response?.data?.message || error.message;
-
-    if (status === 401) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Spotify authentication failed. Please reconnect your account." });
-    }
-    if (status === 429) {
-      return res
-        .status(429)
-        .json({ success: false, message: "Spotify API rate limit reached. Please try again later." });
-    }
-    if (status === 400 && /invalid_grant|refresh token/i.test(errMsg || "")) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Spotify session expired. Please reconnect your Spotify account." });
-    }
-    if (status === 403) {
-      return res.status(400).json({ success: false, message: "Spotify permission denied. Please re-authorize." });
-    }
-    if (error.code && ["ENOTFOUND", "ECONNRESET", "ETIMEDOUT"].includes(error.code)) {
-      return res
-        .status(502)
-        .json({ success: false, message: "Network error contacting Spotify. Please try again soon." });
-    }
-
-    res.status(500).json({ success: false, message: "Could not fetch from Spotify." });
+    return sendSpotifyErrorResponse(res, error, "Could not fetch from Spotify.");
   }
 };
 
@@ -295,7 +329,7 @@ exports.syncRecentTracks = async (req, res) => {
         // Some driver versions don't expose insertedIds on error reliably; default to 0 and proceed
         insertedCount = 0;
         console.log(
-          `Sync completed with duplicates skipped. Inserted ${insertedCount} new tracks (duplicates ignored).`
+          `Sync completed with duplicates skipped. Inserted ${insertedCount} new tracks (duplicates ignored).`,
         );
       } else {
         console.error("Sync error (non-duplicate):", err);
@@ -311,38 +345,7 @@ exports.syncRecentTracks = async (req, res) => {
     });
   } catch (error) {
     console.error("Sync error:", error.response?.data || error.message || error);
-
-    // Provide more specific error messages
-    const status = error.response?.status;
-    const errMsg = error.response?.data?.error?.message || error.response?.data?.message || error.message;
-
-    if (status === 401) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Spotify authentication failed. Please reconnect your account." });
-    }
-    if (status === 429) {
-      return res
-        .status(429)
-        .json({ success: false, message: "Spotify API rate limit reached. Please try again later." });
-    }
-    if (status === 400 && /invalid_grant|refresh token/i.test(errMsg || "")) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Spotify session expired. Please reconnect your Spotify account." });
-    }
-    if (status === 403) {
-      return res.status(400).json({ success: false, message: "Spotify permission denied. Please re-authorize." });
-    }
-
-    // Network-ish
-    if (error.code && ["ENOTFOUND", "ECONNRESET", "ETIMEDOUT"].includes(error.code)) {
-      return res
-        .status(502)
-        .json({ success: false, message: "Network error contacting Spotify. Please try again soon." });
-    }
-
-    return res.status(500).json({ success: false, message: "Could not sync from Spotify." });
+    return sendSpotifyErrorResponse(res, error, "Could not sync from Spotify.");
   }
 };
 
