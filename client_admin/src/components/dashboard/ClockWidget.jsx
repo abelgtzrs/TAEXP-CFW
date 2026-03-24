@@ -109,7 +109,14 @@ const Sparkline = ({ values = [], color = "#34d399" }) => {
 
   return (
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-8 w-full">
-      <polyline fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={points} />
+      <polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
     </svg>
   );
 };
@@ -358,7 +365,9 @@ const ClockWidget = () => {
           <AnalogClock time={time} />
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.18em] text-white/45">Local Time</div>
-            <div className="font-mono text-2xl sm:text-3xl font-semibold text-white leading-none mt-1">{zoneTime(undefined)}</div>
+            <div className="font-mono text-2xl sm:text-3xl font-semibold text-white leading-none mt-1">
+              {zoneTime(undefined)}
+            </div>
             <div className="mt-1 text-[11px] text-white/70 truncate">
               {time.toLocaleDateString("en-US", {
                 weekday: "short",
@@ -391,7 +400,10 @@ const ClockWidget = () => {
               <span className="text-white/85">{weekProgress}%</span>
             </div>
             <div className="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full rounded-full bg-emerald-400 transition-all duration-700" style={{ width: `${weekProgress}%` }} />
+              <div
+                className="h-full rounded-full bg-emerald-400 transition-all duration-700"
+                style={{ width: `${weekProgress}%` }}
+              />
             </div>
           </div>
           <div className="rounded-xl border border-white/10 bg-black/35 p-2">
@@ -400,7 +412,10 @@ const ClockWidget = () => {
               <span className="text-white/85">{yearProgress}%</span>
             </div>
             <div className="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full rounded-full bg-cyan-400 transition-all duration-700" style={{ width: `${yearProgress}%` }} />
+              <div
+                className="h-full rounded-full bg-cyan-400 transition-all duration-700"
+                style={{ width: `${yearProgress}%` }}
+              />
             </div>
           </div>
         </div>
@@ -408,7 +423,12 @@ const ClockWidget = () => {
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1.5">
             <RingGauge value={dayProgress} color="#34d399" label="Day Cycle" sublabel={`${dayProgress}% elapsed`} />
-            <RingGauge value={monthProgress} color="#38bdf8" label="Month Cycle" sublabel={`${monthProgress}% elapsed`} />
+            <RingGauge
+              value={monthProgress}
+              color="#38bdf8"
+              label="Month Cycle"
+              sublabel={`${monthProgress}% elapsed`}
+            />
             <RingGauge value={yearProgress} color="#a78bfa" label="Year Cycle" sublabel={`${yearProgress}% elapsed`} />
           </div>
           <div className="rounded-xl border border-white/10 bg-black/35 p-2 space-y-1.5">
@@ -456,7 +476,9 @@ const ClockWidget = () => {
           </div>
           <div className="rounded-lg border border-white/10 bg-black/30 p-1.5">
             <div className="text-white/45">Month</div>
-            <div className="mt-0.5 text-white font-semibold">{time.toLocaleDateString("en-US", { month: "short" })}</div>
+            <div className="mt-0.5 text-white font-semibold">
+              {time.toLocaleDateString("en-US", { month: "short" })}
+            </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-black/30 p-1.5">
             <div className="text-white/45">ISO Date</div>
@@ -518,19 +540,27 @@ const ClockWidget = () => {
           <div className="rounded-xl border border-white/10 bg-black/35 p-2 space-y-1">
             <div className="text-[10px] uppercase tracking-wide text-white/50">Astronomy</div>
             <div className="flex items-center justify-between text-white/80">
-              <span className="flex items-center gap-1"><Sunrise size={12} /> Sunrise</span>
+              <span className="flex items-center gap-1">
+                <Sunrise size={12} /> Sunrise
+              </span>
               <span className="font-mono">{sun.sunrise}</span>
             </div>
             <div className="flex items-center justify-between text-white/80">
-              <span className="flex items-center gap-1"><Sunset size={12} /> Sunset</span>
+              <span className="flex items-center gap-1">
+                <Sunset size={12} /> Sunset
+              </span>
               <span className="font-mono">{sun.sunset}</span>
             </div>
             <div className="flex items-center justify-between text-white/80">
-              <span className="flex items-center gap-1"><Moon size={12} /> Moon</span>
+              <span className="flex items-center gap-1">
+                <Moon size={12} /> Moon
+              </span>
               <span>{getMoonPhase(time)}</span>
             </div>
             <div className="flex items-center justify-between text-white/80">
-              <span className="flex items-center gap-1"><SeasonIcon size={12} /> Season</span>
+              <span className="flex items-center gap-1">
+                <SeasonIcon size={12} /> Season
+              </span>
               <span>{season.name}</span>
             </div>
           </div>
@@ -538,19 +568,27 @@ const ClockWidget = () => {
           <div className="rounded-xl border border-white/10 bg-black/35 p-2 space-y-1">
             <div className="text-[10px] uppercase tracking-wide text-white/50">System Signals</div>
             <div className="flex items-center justify-between text-white/80">
-              <span className="flex items-center gap-1"><DeviceIcon size={12} /> Device</span>
+              <span className="flex items-center gap-1">
+                <DeviceIcon size={12} /> Device
+              </span>
               <span>{device.text}</span>
             </div>
             <div className="flex items-center justify-between text-white/80">
-              <span className="flex items-center gap-1"><BrowserIcon size={12} /> Browser</span>
+              <span className="flex items-center gap-1">
+                <BrowserIcon size={12} /> Browser
+              </span>
               <span>{browser.text}</span>
             </div>
             <div className="flex items-center justify-between text-white/80">
-              <span className="flex items-center gap-1"><Battery size={12} /> Power</span>
+              <span className="flex items-center gap-1">
+                <Battery size={12} /> Power
+              </span>
               <span>{getBatteryInfo()}</span>
             </div>
             <div className="flex items-center justify-between text-white/80">
-              <span className="flex items-center gap-1">{networkStatus === "online" ? <Wifi size={12} /> : <WifiOff size={12} />} Network</span>
+              <span className="flex items-center gap-1">
+                {networkStatus === "online" ? <Wifi size={12} /> : <WifiOff size={12} />} Network
+              </span>
               <span className={networkStatus === "online" ? "text-emerald-300" : "text-red-300"}>
                 {networkStatus.toUpperCase()} • {getConnectionType().toUpperCase()}
               </span>
