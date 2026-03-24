@@ -1,10 +1,29 @@
-import { Search, Bell, Mail, User, LogOut, CalendarDays, FileText, Save, History, Trash2, Target, Plus, Hash, Check, X } from "lucide-react";
+import {
+  Search,
+  Bell,
+  Mail,
+  User,
+  LogOut,
+  FileText,
+  Save,
+  History,
+  Trash2,
+  Target,
+  Plus,
+  Hash,
+  Check,
+  X,
+  ChevronRight,
+} from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import { Link } from "react-router-dom";
-import CalendarWidget from "../dashboard/CalendarWidget";
+import ClockWidget from "../dashboard/ClockWidget";
+import SpotifyWidget from "../dashboard/SpotifyWidget";
+import RightSidebar from "./RightSidebar";
+import PokemonPopover from "./components/PokemonPopover";
 import {
   listDates,
   getHistory,
@@ -17,13 +36,11 @@ import {
 const Header = ({ forcedHeight }) => {
   const { user, logout, setUser } = useAuth();
   const [personaDropdownOpen, setPersonaDropdownOpen] = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const personaButtonRef = useRef(null);
-  const [pokemonOpen, setPokemonOpen] = useState(false);
-  const teamHoverTimer = useRef(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarHoverTimer = useRef(null);
   const [dailyOpen, setDailyOpen] = useState(false);
-  const dailyHoverTimer = useRef(null);
   const [dailyDateStr, setDailyDateStr] = useState(() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -34,6 +51,11 @@ const Header = ({ forcedHeight }) => {
   const [dailyContent, setDailyContent] = useState("");
   const [dailyHistory, setDailyHistory] = useState([]);
   const [dailyAllDates, setDailyAllDates] = useState([]);
+  const [clockPreview, setClockPreview] = useState(() =>
+    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  );
+  const [nowPlayingTitle, setNowPlayingTitle] = useState("No track");
+  const [spotifyOpen, setSpotifyOpen] = useState(false);
   const unlockedPersonas = user?.unlockedAbelPersonas || [];
   const activePersona = user?.activeAbelPersona || null;
   const activePersonaId = activePersona?._id || null;
@@ -42,6 +64,9 @@ const Header = ({ forcedHeight }) => {
   const [goalsOpen, setGoalsOpen] = useState(false);
   const goalsHoverTimer = useRef(null);
   const [customIncrement, setCustomIncrement] = useState({ index: null, val: "" });
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const rightSidebarHoverTimer = useRef(null);
+  const spotifyHoverTimer = useRef(null);
 
   // Construct the base URL for the server to correctly resolve image paths
   const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
@@ -57,20 +82,14 @@ const Header = ({ forcedHeight }) => {
           const totalPct = userGoals.reduce((acc, g) => acc + Math.min(g.current / g.target, 1), 0);
           setGoalProgress(Math.round((totalPct / userGoals.length) * 100));
         } else {
-            setGoalProgress(0);
+          setGoalProgress(0);
         }
-      } catch {}
+      } catch (_err) {
+        return;
+      }
     };
     fetchGoalProgress();
   }, [goalsOpen]); // Re-fetch when opened to ensure fresh data
-
-  const getPokemonSprite = (basePokemon) => {
-    if (!basePokemon) return null;
-    const firstForm = basePokemon.forms?.[0];
-    // Use Gen5 animated sprite specifically for header display
-    const sprite = firstForm?.spriteGen5Animated || null;
-    return sprite ? `${serverBaseUrl}${sprite}` : null;
-  };
 
   const handleUpdateGoal = async (index, amountToAdd) => {
     const add = Number(amountToAdd);
@@ -80,18 +99,18 @@ const Header = ({ forcedHeight }) => {
     const goal = updatedGoals[index];
 
     if (goal.current < goal.target) {
-        goal.current = Math.min(Number(goal.current) + add, Number(goal.target));
-        setGoals(updatedGoals); // Optimistic key update
+      goal.current = Math.min(Number(goal.current) + add, Number(goal.target));
+      setGoals(updatedGoals); // Optimistic key update
 
-        // Recalculate global header progress
-        const totalPct = updatedGoals.reduce((acc, g) => acc + Math.min(g.current / g.target, 1), 0);
-        setGoalProgress(Math.round((totalPct / updatedGoals.length) * 100));
+      // Recalculate global header progress
+      const totalPct = updatedGoals.reduce((acc, g) => acc + Math.min(g.current / g.target, 1), 0);
+      setGoalProgress(Math.round((totalPct / updatedGoals.length) * 100));
 
-        try {
-            await api.put("/users/me/goals", { goals: updatedGoals });
-        } catch (err) {
-            console.error("Failed to update goal increment", err);
-        }
+      try {
+        await api.put("/users/me/goals", { goals: updatedGoals });
+      } catch (err) {
+        console.error("Failed to update goal increment", err);
+      }
     }
   };
 
@@ -106,6 +125,46 @@ const Header = ({ forcedHeight }) => {
     if (dailyOpen) refreshDaily();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dailyDateStr, dailyOpen]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setClockPreview(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!user?.spotifyConnected) {
+      setNowPlayingTitle("Spotify not connected");
+      return;
+    }
+
+    let cancelled = false;
+    const fetchNowPlaying = async () => {
+      try {
+        const resp = await api.get("/spotify/currently-playing");
+        const d = resp?.data?.data;
+        const item = d?.item || d?.track;
+        if (item?.name) {
+          if (!cancelled) setNowPlayingTitle(item.name);
+          return;
+        }
+
+        const recent = await api.get("/spotify/recently-played?limit=1");
+        const recentItem = recent?.data?.items?.[0];
+        if (!cancelled) setNowPlayingTitle(recentItem?.trackName || "No recent track");
+      } catch {
+        if (!cancelled) setNowPlayingTitle("Unavailable");
+      }
+    };
+
+    fetchNowPlaying();
+    const interval = window.setInterval(fetchNowPlaying, 20000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [user?.spotifyConnected]);
 
   // Close Daily Drafts on Escape when modal is open
   useEffect(() => {
@@ -149,82 +208,7 @@ const Header = ({ forcedHeight }) => {
 
   // Keep header compact; Pokémon now render inside a popover
   const computedHeight = forcedHeight ? forcedHeight : 48;
-
-  // Moving sprites state/logic
-  const spriteSize = 72; // popover field; comfortable size
-  const containerRef = useRef(null);
-  const rafRef = useRef(0);
-  const [actors, setActors] = useState([]);
   const mailButtonRef = useRef(null);
-
-  // Initialize and run animation regardless of header expansion; size/wall adapt via state
-  useEffect(() => {
-    const team = (user?.displayedPokemon || []).slice(0, 6);
-    const el = containerRef.current;
-    if (!pokemonOpen || !el || team.length === 0) return;
-    const rect = el.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-
-    // Distribute actors across vertical lanes to avoid all hugging the bottom/top
-    const padding = 8; // keep off exact edges for nicer look
-    const usableH = Math.max(height - spriteSize - padding * 2, 0);
-    const laneCount = Math.max(team.length, 1);
-    const laneStep = laneCount > 1 ? usableH / (laneCount - 1) : 0;
-    const init = team.map((p, i) => {
-      const x = Math.random() * Math.max(width - spriteSize, 0);
-      // Evenly spaced lanes with a tiny jitter
-      let baseY = padding + i * laneStep;
-      const jitter = (Math.random() - 0.5) * 12; // +/- 6px
-      let y = Math.min(Math.max(baseY + jitter, 0), Math.max(height - spriteSize, 0));
-      const speed = 0.6 + Math.random() * 1.0; // px per frame
-      const dir = Math.random() < 0.5 ? -1 : 1; // start left or right
-      const vx = dir * speed;
-      const vy = 0; // horizontal-only movement
-      return { key: p?._id || p?.basePokemon?._id || `${i}`, x, y, vx, vy };
-    });
-    setActors(init);
-
-    let lastTs = performance.now();
-    const step = (ts) => {
-      const dt = Math.min((ts - lastTs) / (1000 / 60), 2); // normalize to ~60fps steps, cap to avoid jumps
-      lastTs = ts;
-      setActors((prev) => {
-        if (!el) return prev;
-        const { width: w, height: h } = el.getBoundingClientRect();
-        // Boundaries are simply the container edges inside the popover
-        const rightLimit = Math.max(w - spriteSize, 0);
-        const next = prev.map((a) => ({ ...a }));
-
-        // Integrate motion (horizontal only)
-        for (const a of next) {
-          a.x += a.vx * dt;
-
-          // Bounds with bounce (left/right)
-          if (a.x < 0) {
-            a.x = 0;
-            a.vx = Math.abs(a.vx);
-          } else if (a.x > rightLimit) {
-            a.x = Math.max(rightLimit, 0);
-            a.vx = -Math.abs(a.vx);
-          }
-
-          // Keep Y within bounds (no vertical motion, just clamp with padding)
-          const pad = 8;
-          if (a.y < pad) a.y = pad;
-          if (a.y > h - spriteSize - pad) a.y = Math.max(h - spriteSize - pad, 0);
-        }
-        // Allow overlapping — no separation logic
-        return next;
-      });
-      rafRef.current = requestAnimationFrame(step);
-    };
-    rafRef.current = requestAnimationFrame(step);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pokemonOpen, user?.displayedPokemon]);
   return (
     <header
       className="relative bg-black/20 backdrop-blur-xl border-b border-white/10 px-3 py-1.5 flex items-center justify-between sticky top-0 z-40 shadow-2xl shadow-black/50 transition-[height] duration-300 ease-out"
@@ -232,6 +216,100 @@ const Header = ({ forcedHeight }) => {
     >
       {/* Left Side: Logo/Brand */}
       <div className="flex items-center">
+        <div
+          className="relative mr-2"
+          onMouseEnter={() => {
+            if (calendarHoverTimer.current) {
+              clearTimeout(calendarHoverTimer.current);
+              calendarHoverTimer.current = null;
+            }
+            setCalendarOpen(true);
+          }}
+          onMouseLeave={() => {
+            calendarHoverTimer.current = setTimeout(() => setCalendarOpen(false), 280);
+          }}
+        >
+          <Link
+            to="/admin/calendar"
+            aria-haspopup="dialog"
+            aria-expanded={calendarOpen}
+            onClick={() => setCalendarOpen(false)}
+            title="Open calendar admin"
+            className="rounded-xl border border-white/20 bg-black/35 px-2 py-1.5 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300"
+          >
+            <span className="rounded-md bg-black/40 px-2 py-1 text-xs font-semibold tabular-nums tracking-wide text-primary border border-white/15">
+              {clockPreview}
+            </span>
+          </Link>
+          {calendarOpen && (
+            <div
+              role="dialog"
+              aria-label="Clock"
+              className="absolute left-0 top-full mt-2 z-50 w-[min(94vw,520px)]"
+              onMouseEnter={() => {
+                if (calendarHoverTimer.current) {
+                  clearTimeout(calendarHoverTimer.current);
+                  calendarHoverTimer.current = null;
+                }
+                setCalendarOpen(true);
+              }}
+              onMouseLeave={() => {
+                calendarHoverTimer.current = setTimeout(() => setCalendarOpen(false), 280);
+              }}
+            >
+              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-2 max-h-[78vh] overflow-auto">
+                <ClockWidget />
+              </div>
+            </div>
+          )}
+        </div>
+        <div
+          className="relative hidden sm:block"
+          onMouseEnter={() => {
+            if (spotifyHoverTimer.current) {
+              clearTimeout(spotifyHoverTimer.current);
+              spotifyHoverTimer.current = null;
+            }
+            setSpotifyOpen(true);
+          }}
+          onMouseLeave={() => {
+            spotifyHoverTimer.current = setTimeout(() => setSpotifyOpen(false), 180);
+          }}
+        >
+          <Link
+            to="/spotify-stats"
+            onClick={() => setSpotifyOpen(false)}
+            title="Open Spotify analytics"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-black/25 px-2 py-1.5 max-w-[300px] hover:bg-white/10 transition-all duration-300"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="uppercase tracking-[0.16em] text-[10px] text-white/55 shrink-0">Now Playing</span>
+            <span className="truncate text-[10px] text-white/85" title={nowPlayingTitle}>
+              {nowPlayingTitle}
+            </span>
+          </Link>
+          {spotifyOpen && (
+            <div
+              role="dialog"
+              aria-label="Spotify"
+              className="absolute left-0 top-full mt-2 z-50 w-[min(94vw,520px)]"
+              onMouseEnter={() => {
+                if (spotifyHoverTimer.current) {
+                  clearTimeout(spotifyHoverTimer.current);
+                  spotifyHoverTimer.current = null;
+                }
+                setSpotifyOpen(true);
+              }}
+              onMouseLeave={() => {
+                spotifyHoverTimer.current = setTimeout(() => setSpotifyOpen(false), 180);
+              }}
+            >
+              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-2 max-h-[78vh] overflow-auto">
+                <SpotifyWidget />
+              </div>
+            </div>
+          )}
+        </div>
         <div className="flex items-center space-x-2">
           <div className="hidden sm:block">
             <h1 className="text-white/90 font-bold text-base tracking-tight leading-tight"></h1>
@@ -262,6 +340,59 @@ const Header = ({ forcedHeight }) => {
         >
           <Mail size={16} />
         </button>
+        {/* Right sidebar widgets in header dropdown (expanded view) */}
+        <div
+          className="relative"
+          onMouseEnter={() => {
+            if (rightSidebarHoverTimer.current) {
+              clearTimeout(rightSidebarHoverTimer.current);
+              rightSidebarHoverTimer.current = null;
+            }
+            setRightSidebarOpen(true);
+          }}
+          onMouseLeave={() => {
+            rightSidebarHoverTimer.current = setTimeout(() => setRightSidebarOpen(false), 150);
+          }}
+        >
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={rightSidebarOpen}
+            onClick={() => setRightSidebarOpen((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setRightSidebarOpen(false);
+            }}
+            title={rightSidebarOpen ? "Hide sidebar widgets" : "Show sidebar widgets"}
+            className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
+              rightSidebarOpen
+                ? "bg-primary/20 text-primary hover:bg-primary/30"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Bell size={16} />
+          </button>
+          {rightSidebarOpen && (
+            <div
+              role="dialog"
+              aria-label="Sidebar Widgets"
+              className="absolute right-0 mt-2 z-50 w-[85vw] sm:w-[420px] h-[70vh] max-h-[680px]"
+              onMouseEnter={() => {
+                if (rightSidebarHoverTimer.current) {
+                  clearTimeout(rightSidebarHoverTimer.current);
+                  rightSidebarHoverTimer.current = null;
+                }
+                setRightSidebarOpen(true);
+              }}
+              onMouseLeave={() => {
+                rightSidebarHoverTimer.current = setTimeout(() => setRightSidebarOpen(false), 150);
+              }}
+            >
+              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-2 h-full overflow-hidden">
+                <RightSidebar condensed={false} disableEditControls className="h-full" />
+              </div>
+            </div>
+          )}
+        </div>
         {/* Daily Drafts modal trigger */}
         <div className="relative">
           <button
@@ -437,103 +568,11 @@ const Header = ({ forcedHeight }) => {
                   </div>
                 </div>
               </div>,
-              document.body
+              document.body,
             )}
         </div>
         {/* Team toggle - Poké Ball icon with popover */}
-        <div
-          className="relative"
-          onMouseEnter={() => {
-            if (teamHoverTimer.current) {
-              clearTimeout(teamHoverTimer.current);
-              teamHoverTimer.current = null;
-            }
-          }}
-          onMouseLeave={() => {
-            teamHoverTimer.current = setTimeout(() => setPokemonOpen(false), 150);
-          }}
-        >
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={pokemonOpen}
-            onClick={() => setPokemonOpen((v) => !v)}
-            onKeyDown={(e) => e.key === "Escape" && setPokemonOpen(false)}
-            title={pokemonOpen ? "Hide Pokémon team" : "Show Pokémon team"}
-            className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
-              pokemonOpen
-                ? "bg-primary/20 text-primary hover:bg-primary/30"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            {/* Pokéball icon */}
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M12 3a9 9 0 0 0-8.485 6h4.146a4.5 4.5 0 0 1 8.678 0h4.146A9 9 0 0 0 12 3Zm0 18a9 9 0 0 0 8.485-6h-4.146a4.5 4.5 0 0 1-8.678 0H3.515A9 9 0 0 0 12 21Zm0-12a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
-          {pokemonOpen && (
-            <div
-              role="dialog"
-              aria-label="Pokémon Team"
-              className="absolute right-0 mt-2 z-50"
-              onMouseEnter={() => {
-                if (teamHoverTimer.current) {
-                  clearTimeout(teamHoverTimer.current);
-                  teamHoverTimer.current = null;
-                }
-              }}
-              onMouseLeave={() => {
-                teamHoverTimer.current = setTimeout(() => setPokemonOpen(false), 150);
-              }}
-            >
-              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-2">
-                {/* Responsive moving field */}
-                <div className="relative w-[85vw] sm:w-[400px] h-[300px] overflow-hidden" ref={containerRef}>
-                  {(user?.displayedPokemon || []).slice(0, 6).map((p, idx) => {
-                    const base = p?.basePokemon;
-                    const sprite = getPokemonSprite(base);
-                    if (!sprite) return null;
-                    const actor = actors[idx];
-                    const x = actor?.x ?? 0;
-                    const y = actor?.y ?? 0;
-                    const vx = actor?.vx ?? 0.8;
-                    const mirrorOnRight = vx > 0; // mirror when moving right
-                    return (
-                      <img
-                        key={actor?.key || p?._id || base?._id || idx}
-                        src={sprite}
-                        alt={base?.name || "Pokemon"}
-                        height={spriteSize}
-                        className="pointer-events-none"
-                        style={{
-                          position: "absolute",
-                          left: x,
-                          top: y,
-                          height: spriteSize,
-                          width: "auto",
-                          transform: mirrorOnRight ? "scaleX(-1)" : "none",
-                          transformOrigin: "center",
-                          imageRendering: "auto",
-                          filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.5))",
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <PokemonPopover displayedPokemon={user?.displayedPokemon || []} serverBaseUrl={serverBaseUrl} />
 
         {/* Yearly Goals Tracker */}
         <div
@@ -586,84 +625,99 @@ const Header = ({ forcedHeight }) => {
                 {goals.length === 0 ? (
                   <div className="text-xs text-slate-400 py-2">No goals set yet.</div>
                 ) : (
-                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
-                        {goals.map((g, i) => {
-                            const pct = Math.min(100, Math.round((g.current / g.target) * 100));
-                            const isCompleted = g.current >= g.target;
-                            const isEditing = customIncrement.index === i;
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
+                    {goals.map((g, i) => {
+                      const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+                      const isCompleted = g.current >= g.target;
+                      const isEditing = customIncrement.index === i;
 
-                            return (
-                                <div key={i} className="space-y-1 group/item">
-                                    <div className="flex justify-between text-xs items-center h-8">
-                                        <span className="text-white/90 truncate pr-2 flex-1 font-medium">{g.name}</span>
-                                        {isEditing ? (
-                                            <div className="flex items-center gap-1 bg-black/60 rounded px-1.5 py-0.5 border border-white/20 animate-in fade-in zoom-in duration-200" onClick={(e) => e.preventDefault()}>
-                                                <input 
-                                                    type="number" 
-                                                    className="w-12 bg-transparent text-white text-right focus:outline-none text-sm appearance-none font-bold placeholder-white/20"
-                                                    value={customIncrement.val}
-                                                    onChange={(e) => setCustomIncrement(prev => ({...prev, val: e.target.value}))}
-                                                    placeholder="#"
-                                                    autoFocus
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    onKeyDown={(e) => {
-                                                        if(e.key === 'Enter') {
-                                                            e.preventDefault();
-                                                            handleUpdateGoal(i, customIncrement.val);
-                                                            setCustomIncrement({index: null, val: ""});
-                                                        }
-                                                    }}
-                                                />
-                                                <button onClick={(e) => {
-                                                     e.preventDefault();
-                                                     handleUpdateGoal(i, customIncrement.val);
-                                                     setCustomIncrement({index: null, val: ""});
-                                                }} className="w-6 h-6 flex items-center justify-center text-emerald-400 hover:text-emerald-300 hover:bg-white/10 rounded"><Check size={16} /></button>
-                                                <button onClick={(e) => {
-                                                    e.preventDefault();
-                                                    setCustomIncrement({index: null, val: ""});
-                                                }} className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-white/10 rounded"><X size={16} /></button>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-slate-400 text-[10px] font-mono tracking-tighter">{g.current}/{g.target}</span>
-                                                {!isCompleted && (
-                                                    <div className="flex gap-1.5 opacity-0 group-hover/item:opacity-100 transition-all duration-200">
-                                                        <button 
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                handleUpdateGoal(i, 1);
-                                                            }}
-                                                            className="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black hover:border-emerald-400 transition-all text-emerald-400 shadow-sm"
-                                                            title="Quick Add +1"
-                                                        >
-                                                            <Plus size={16} strokeWidth={2.5} />
-                                                        </button>
-                                                        <button 
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                setCustomIncrement({ index: i, val: "" });
-                                                            }}
-                                                            className="w-7 h-7 flex items-center justify-center rounded-md bg-white/5 border border-white/10 hover:bg-blue-500 hover:text-white hover:border-blue-400 transition-all text-slate-400 shadow-sm"
-                                                            title="Add Custom Amount"
-                                                        >
-                                                            <Hash size={14} />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                                        <div 
-                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-                                            style={{ width: `${pct}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
+                      return (
+                        <div key={i} className="space-y-1 group/item">
+                          <div className="flex justify-between text-xs items-center h-8">
+                            <span className="text-white/90 truncate pr-2 flex-1 font-medium">{g.name}</span>
+                            {isEditing ? (
+                              <div
+                                className="flex items-center gap-1 bg-black/60 rounded px-1.5 py-0.5 border border-white/20 animate-in fade-in zoom-in duration-200"
+                                onClick={(e) => e.preventDefault()}
+                              >
+                                <input
+                                  type="number"
+                                  className="w-12 bg-transparent text-white text-right focus:outline-none text-sm appearance-none font-bold placeholder-white/20"
+                                  value={customIncrement.val}
+                                  onChange={(e) => setCustomIncrement((prev) => ({ ...prev, val: e.target.value }))}
+                                  placeholder="#"
+                                  autoFocus
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleUpdateGoal(i, customIncrement.val);
+                                      setCustomIncrement({ index: null, val: "" });
+                                    }
+                                  }}
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleUpdateGoal(i, customIncrement.val);
+                                    setCustomIncrement({ index: null, val: "" });
+                                  }}
+                                  className="w-6 h-6 flex items-center justify-center text-emerald-400 hover:text-emerald-300 hover:bg-white/10 rounded"
+                                >
+                                  <Check size={16} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setCustomIncrement({ index: null, val: "" });
+                                  }}
+                                  className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-white/10 rounded"
+                                >
+                                  <X size={16} />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 text-[10px] font-mono tracking-tighter">
+                                  {g.current}/{g.target}
+                                </span>
+                                {!isCompleted && (
+                                  <div className="flex gap-1.5 opacity-0 group-hover/item:opacity-100 transition-all duration-200">
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        handleUpdateGoal(i, 1);
+                                      }}
+                                      className="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black hover:border-emerald-400 transition-all text-emerald-400 shadow-sm"
+                                      title="Quick Add +1"
+                                    >
+                                      <Plus size={16} strokeWidth={2.5} />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        setCustomIncrement({ index: i, val: "" });
+                                      }}
+                                      className="w-7 h-7 flex items-center justify-center rounded-md bg-white/5 border border-white/10 hover:bg-blue-500 hover:text-white hover:border-blue-400 transition-all text-slate-400 shadow-sm"
+                                      title="Add Custom Amount"
+                                    >
+                                      <Hash size={14} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
                 <div className="pt-2 border-t border-white/10">
                   <Link
@@ -678,61 +732,14 @@ const Header = ({ forcedHeight }) => {
           )}
         </div>
 
-        {/* Calendar icon and popover - placed to the right of the Pokémon icon */}
-        <div
-          className="relative"
-          onMouseEnter={() => {
-            if (calendarHoverTimer.current) {
-              clearTimeout(calendarHoverTimer.current);
-              calendarHoverTimer.current = null;
-            }
-            setCalendarOpen(true);
-          }}
-          onMouseLeave={() => {
-            calendarHoverTimer.current = setTimeout(() => setCalendarOpen(false), 120);
-          }}
-        >
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={calendarOpen}
-            onClick={() => setCalendarOpen((v) => !v)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setCalendarOpen(false);
-            }}
-            title="Show calendar"
-            className="p-2 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95"
-          >
-            <CalendarDays size={16} />
-          </button>
-          {calendarOpen && (
-            <div
-              role="dialog"
-              aria-label="Calendar"
-              className="absolute right-0 mt-2 z-50 w-[85vw] sm:w-[400px]"
-              onMouseEnter={() => {
-                if (calendarHoverTimer.current) {
-                  clearTimeout(calendarHoverTimer.current);
-                  calendarHoverTimer.current = null;
-                }
-                setCalendarOpen(true);
-              }}
-              onMouseLeave={() => {
-                calendarHoverTimer.current = setTimeout(() => setCalendarOpen(false), 120);
-              }}
-            >
-              {/* Using the full CalendarWidget inside a lightweight container */}
-              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-2">
-                <CalendarWidget />
-              </div>
-            </div>
-          )}
-        </div>
         <div className="h-6 w-px bg-white/15"></div>
         <div
           className="relative group"
           onMouseEnter={() => setPersonaDropdownOpen(true)}
-          onMouseLeave={() => setPersonaDropdownOpen(false)}
+          onMouseLeave={() => {
+            setPersonaDropdownOpen(false);
+            setThemeMenuOpen(false);
+          }}
         >
           <button
             ref={personaButtonRef}
@@ -756,43 +763,65 @@ const Header = ({ forcedHeight }) => {
             </div>
           </button>
           <div
-            className={`absolute right-0 mt-2 w-56 bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl shadow-black/50 z-50 overflow-hidden transition-all duration-300 ${
+            className={`absolute right-0 mt-2 w-56 bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl shadow-black/50 z-50 transition-all duration-300 ${
               personaDropdownOpen ? "opacity-100 visible" : "opacity-0 invisible"
             }`}
           >
             <div className="py-2">
-              {/* Persona Selector Dropdown */}
-              <div className="border-b border-white/10 pb-2 mb-2">
-                <div className="px-4 py-2 text-xs text-white/60 font-semibold">Persona Selector</div>
+              <div className="relative border-b border-white/10 pb-2 mb-2">
                 <button
-                  onClick={() => handleSelectPersona(null)}
-                  className={`w-full px-4 py-2 text-left hover:bg-gray-700 transition-all duration-200 border-b border-gray-700 last:border-b-0 ${
-                    !activePersonaId ? "bg-primary/20" : ""
-                  }`}
+                  type="button"
+                  onClick={() => setThemeMenuOpen((v) => !v)}
+                  onMouseEnter={() => setThemeMenuOpen(true)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-all duration-200"
                 >
-                  <span className="text-sm font-bold text-text-main">Standard Issue</span>
-                  {!activePersonaId && <span className="text-primary text-xs ml-2">●</span>}
+                  <span className="font-semibold">Theme</span>
+                  <ChevronRight
+                    size={16}
+                    className={`transition-transform duration-200 ${themeMenuOpen ? "rotate-90" : ""}`}
+                  />
                 </button>
-                {unlockedPersonas.map((persona) => {
-                  const isActive = activePersonaId === persona._id;
-                  return (
-                    <button
-                      key={persona._id}
-                      onClick={() => handleSelectPersona(persona._id)}
-                      className={`w-full px-4 py-2 text-left hover:bg-gray-700 transition-all duration-200 border-b border-gray-700 last:border-b-0 ${
-                        isActive ? "bg-opacity-20" : ""
-                      }`}
-                      style={{ backgroundColor: isActive ? `${persona.colors?.primary}20` : "" }}
-                    >
-                      <span className="text-sm font-bold text-text-main">{persona.name}</span>
-                      {isActive && (
-                        <span className="text-xs ml-2" style={{ color: persona.colors?.primary || "#2DD4BF" }}>
-                          ●
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+
+                <div
+                  className={`absolute right-full top-0 w-56 bg-black/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden z-[60] transition-all duration-200 ${
+                    themeMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
+                  }`}
+                  onMouseEnter={() => setThemeMenuOpen(true)}
+                  onMouseLeave={() => setThemeMenuOpen(false)}
+                >
+                  <div className="px-4 py-2 text-xs text-white/60 font-semibold border-b border-white/10">
+                    Choose Theme
+                  </div>
+                  <button
+                    onClick={() => handleSelectPersona(null)}
+                    className={`w-full px-4 py-2 text-left hover:bg-gray-700 transition-all duration-200 border-b border-gray-700 last:border-b-0 ${
+                      !activePersonaId ? "bg-primary/20" : ""
+                    }`}
+                  >
+                    <span className="text-sm font-bold text-text-main">Standard Issue</span>
+                    {!activePersonaId && <span className="text-primary text-xs ml-2">●</span>}
+                  </button>
+                  {unlockedPersonas.map((persona) => {
+                    const isActive = activePersonaId === persona._id;
+                    return (
+                      <button
+                        key={persona._id}
+                        onClick={() => handleSelectPersona(persona._id)}
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-700 transition-all duration-200 border-b border-gray-700 last:border-b-0 ${
+                          isActive ? "bg-opacity-20" : ""
+                        }`}
+                        style={{ backgroundColor: isActive ? `${persona.colors?.primary}20` : "" }}
+                      >
+                        <span className="text-sm font-bold text-text-main">{persona.name}</span>
+                        {isActive && (
+                          <span className="text-xs ml-2" style={{ color: persona.colors?.primary || "#2DD4BF" }}>
+                            ●
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <Link
                 to="/profile"

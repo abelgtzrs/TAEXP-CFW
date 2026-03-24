@@ -124,7 +124,7 @@ function RightSidebarControlsPopover({ gapPx, setGapPx, paddingPx, setPaddingPx 
 }
 
 // Persistent right sidebar content. Assumes its parent positions and sizes the aside area.
-export default function RightSidebar({ condensed = false }) {
+export default function RightSidebar({ condensed = false, disableEditControls = false, className = "" }) {
   const { editMode } = useLayout();
   const draggingRef = useRef(false);
   // Adjustable vertical gap between widgets (in px)
@@ -148,12 +148,16 @@ export default function RightSidebar({ condensed = false }) {
   useEffect(() => {
     try {
       localStorage.setItem("tae.rightSidebar.gapPx", String(gapPx));
-    } catch {}
+    } catch (_err) {
+      return;
+    }
   }, [gapPx]);
   useEffect(() => {
     try {
       localStorage.setItem("tae.rightSidebar.paddingPx", String(paddingPx));
-    } catch {}
+    } catch (_err) {
+      return;
+    }
   }, [paddingPx]);
   // Per-widget heights removed for flex layout
 
@@ -255,7 +259,7 @@ export default function RightSidebar({ condensed = false }) {
           minute: "2-digit",
           hour12: false,
         }),
-      [now]
+      [now],
     );
     const dateStr = useMemo(
       () =>
@@ -263,7 +267,7 @@ export default function RightSidebar({ condensed = false }) {
           month: "short",
           day: "2-digit",
         }),
-      [now]
+      [now],
     );
     const tz = useMemo(() => {
       const parts = now.toLocaleTimeString("en-US", { timeZoneName: "short" }).split(" ");
@@ -458,9 +462,9 @@ export default function RightSidebar({ condensed = false }) {
   }
 
   return (
-    <div className="h-full p-0 relative">
+    <div className={`h-full p-0 relative ${className}`}>
       {/* Edit controls trigger + popover */}
-      {editMode && (
+      {editMode && !disableEditControls && (
         <RightSidebarControlsPopover
           gapPx={gapPx}
           setGapPx={setGapPx}
@@ -509,7 +513,7 @@ export default function RightSidebar({ condensed = false }) {
         </div>
       </div>
       {/* Left-edge drag handle appears in Edit Layout & Size mode; disabled in condensed */}
-      {editMode && !condensed && (
+      {editMode && !condensed && !disableEditControls && (
         <div
           title="Drag to resize sidebar width"
           onMouseDown={(e) => {

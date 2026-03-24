@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Outlet, Link, NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import Header from "./Header";
-import RightSidebar from "./RightSidebar";
 import BottomNav from "./BottomNav";
 import UiCustomizerModal from "../settings/UiCustomizerModal";
 import GlobalToastHost from "../ui/GlobalToastHost";
@@ -107,36 +106,6 @@ const AdminLayout = () => {
   const sidebarCollapsedWidth = 48; // w-12 (was ~40)
   const sidebarExpandedWidth = 208; // w-52 (was 176)
   const headerHeight = 48; // compact header height (was 56)
-  // Persistent right sidebar width (px), adjustable in Edit Layout & Size mode
-  const [rightSidebarWidthPx, setRightSidebarWidthPx] = useState(() => {
-    try {
-      const v = Number(localStorage.getItem("tae.rightSidebar.widthPx") || 360);
-      return isNaN(v) ? 360 : v;
-    } catch {
-      return 360;
-    }
-  });
-  // Right sidebar mode: expanded (resizable) or condensed (10% width)
-  const [rightSidebarMode, setRightSidebarMode] = useState(() => {
-    try {
-      const saved = localStorage.getItem("tae.rightSidebar.mode");
-      if (saved === "expanded" || saved === "condensed") return saved;
-      return "expanded";
-    } catch {
-      return "expanded";
-    }
-  });
-  // Expanded right sidebar width set to 20% of viewport width (vw). Condensed remains 10vw.
-  const rightSidebarWidth = rightSidebarMode === "condensed" ? "10vw" : "20vw";
-  const toggleRightSidebar = () => {
-    setRightSidebarMode((mode) => {
-      const next = mode === "expanded" ? "condensed" : "expanded";
-      try {
-        localStorage.setItem("tae.rightSidebar.mode", next);
-      } catch {}
-      return next;
-    });
-  };
   const sidebarWidth = isSidebarCollapsed ? sidebarCollapsedWidth : sidebarExpandedWidth;
   const mobileBottomNavHeight = 56;
 
@@ -336,25 +305,11 @@ const AdminLayout = () => {
     localStorage.setItem("tae.theme.presets", JSON.stringify(next));
   };
 
-  // Wire window event for right sidebar resizing (from RightSidebar drag handle)
-  useEffect(() => {
-    const onResizeEvt = (e) => {
-      if (!e || !e.detail) return;
-      const w = Math.max(240, Math.min(Number(e.detail.widthPx) || 0, 640));
-      setRightSidebarWidthPx(w);
-      try {
-        localStorage.setItem("tae.rightSidebar.widthPx", String(w));
-      } catch {}
-    };
-    window.addEventListener("tae:rightSidebar:resize", onResizeEvt);
-    return () => window.removeEventListener("tae:rightSidebar:resize", onResizeEvt);
-  }, []);
-
-  // Expose the active right sidebar width as a CSS variable for descendant layouts (e.g. VolumesPage fixed panels)
+  // Right sidebar is now rendered as a header dropdown, so reserve no persistent width.
   useEffect(() => {
     const root = document.documentElement;
-    if (root) root.style.setProperty("--right-sidebar-width", rightSidebarWidth);
-  }, [rightSidebarWidth]);
+    if (root) root.style.setProperty("--right-sidebar-width", "0px");
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -369,12 +324,6 @@ const AdminLayout = () => {
       <div className="relative h-screen w-screen overflow-hidden bg-background text-text-main text-xs">
         {/* Global toast host for cross-app notifications */}
         <GlobalToastHost />
-        {/* Listen for sidebar resize events from RightSidebar handle */}
-        {/* Using a small effect here to wire window event to local state */}
-        {(() => {
-          // inline IIFE to use hooks conditionally is not allowed; define effect below
-          return null;
-        })()}
         {/* Default gradient background (visible when no custom image set) */}
         <div
           aria-hidden
@@ -724,10 +673,10 @@ const AdminLayout = () => {
           anchorBottom={8}
         />
 
-        {/* Header offset by left sidebar and ending before right sidebar */}
+        {/* Header offset by left sidebar */}
         <div
           className="fixed top-0 right-0 z-40 transition-[left,width] duration-500"
-          style={{ left: effectiveSidebarWidth, right: isMobile ? 0 : rightSidebarWidth, height: headerHeight }}
+          style={{ left: effectiveSidebarWidth, right: 0, height: headerHeight }}
         >
           <Header />
         </div>
@@ -738,7 +687,7 @@ const AdminLayout = () => {
           style={{
             left: effectiveSidebarWidth,
             top: headerHeight,
-            right: isMobile ? 0 : rightSidebarWidth,
+            right: 0,
             bottom: isMobile ? mobileBottomNavHeight : 0,
           }}
         >
@@ -746,24 +695,6 @@ const AdminLayout = () => {
             <Outlet />
           </div>
         </main>
-
-        {/* Persistent Right Sidebar (full height) - Hidden on mobile by default for now */}
-        <aside className="fixed z-30 hidden lg:block" style={{ top: 0, right: 0, bottom: 0, width: rightSidebarWidth }}>
-          <RightSidebar condensed={rightSidebarMode === "condensed"} />
-        </aside>
-
-        {/* Right Sidebar Toggle Tab (15px from bottom) - Desktop only */}
-        <button
-          onClick={toggleRightSidebar}
-          className="fixed z-40 bg-surface/80 backdrop-blur-md border border-gray-700/40 rounded-l-md px-2 py-1 text-white hover:bg-gray-700/60 transition-all duration-300 hidden lg:block"
-          style={{
-            bottom: 15,
-            right: rightSidebarWidth,
-          }}
-          title={rightSidebarMode === "condensed" ? "Expand sidebar" : "Contract sidebar"}
-        >
-          {rightSidebarMode === "condensed" ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-        </button>
 
         {/* Mobile Bottom Navigation */}
         <BottomNav onMenuClick={toggleSidebar} />

@@ -4,7 +4,6 @@ import MonthlyCalendar from "../components/calendar/MonthlyCalendar";
 import {
   Edit2,
   Trash2,
-  Check,
   X,
   Plus,
   DollarSign,
@@ -12,22 +11,52 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
+
+const MONTH_OPTIONS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const MOBILE_TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "event", label: "Add Event" },
+  { id: "bills", label: "Bills" },
+  { id: "yearly", label: "Yearly" },
+];
 
 export default function CalendarAdminPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1); // 1-12
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [activeFormTab, setActiveFormTab] = useState("event");
 
   const [events, setEvents] = useState([]);
   const [bills, setBills] = useState([]);
+  const [monthlyFeed, setMonthlyFeed] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [activeMobileTab, setActiveMobileTab] = useState("overview");
+  const [isMdUp, setIsMdUp] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
 
-  // View toggle
   const [showBillList, setShowBillList] = useState(true);
-
-  // Bill Editing
   const [editingBillId, setEditingBillId] = useState(null);
 
   const [eventForm, setEventForm] = useState({
@@ -38,6 +67,7 @@ export default function CalendarAdminPage() {
     category: "personal",
     color: "#4f46e5",
   });
+
   const [billForm, setBillForm] = useState({
     name: "",
     amount: 0,
@@ -47,15 +77,30 @@ export default function CalendarAdminPage() {
     autoPay: false,
     isActive: true,
   });
+
   const [yearlyForm, setYearlyForm] = useState({
     title: "",
-    month: month,
+    month,
     day: 1,
     category: "birthday",
     color: "#10b981",
     notes: "",
     isActive: true,
   });
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const handleChange = (e) => setIsMdUp(e.matches);
+    setIsMdUp(media.matches);
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (["event", "bills", "yearly"].includes(activeMobileTab)) {
+      setActiveFormTab(activeMobileTab);
+    }
+  }, [activeMobileTab]);
 
   const refresh = async () => {
     setLoading(true);
@@ -76,13 +121,24 @@ export default function CalendarAdminPage() {
   }, []);
 
   const monthlyItems = useMemo(() => ({ year, month }), [year, month]);
-  const [monthlyFeed, setMonthlyFeed] = useState([]);
   useEffect(() => {
     calendarService
       .getMonthlySchedule(monthlyItems)
       .then(setMonthlyFeed)
       .catch(() => setMonthlyFeed([]));
-  }, [monthlyItems.year, monthlyItems.month, events, bills]);
+  }, [monthlyItems, events, bills]);
+
+  const resetBillForm = () => {
+    setBillForm({
+      name: "",
+      amount: 0,
+      dueDay: 1,
+      category: "general",
+      notes: "",
+      autoPay: false,
+      isActive: true,
+    });
+  };
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
@@ -90,6 +146,7 @@ export default function CalendarAdminPage() {
       await calendarService.createEvent({ ...eventForm, date: new Date(eventForm.date) });
       setEventForm({ title: "", description: "", date: "", allDay: true, category: "personal", color: "#4f46e5" });
       await refresh();
+      setActiveMobileTab("overview");
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Failed to create event");
     }
@@ -103,9 +160,10 @@ export default function CalendarAdminPage() {
       } else {
         await calendarService.createBill(billForm);
       }
-      setBillForm({ name: "", amount: 0, dueDay: 1, category: "general", notes: "", autoPay: false, isActive: true });
+      resetBillForm();
       setEditingBillId(null);
       await refresh();
+      setActiveMobileTab("overview");
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Failed to save bill");
     }
@@ -114,11 +172,11 @@ export default function CalendarAdminPage() {
   const handleEditBill = (bill) => {
     setBillForm({ ...bill });
     setEditingBillId(bill._id);
-    // Scroll to form if needed, or maybe put form in a modal later. For now, inline is fine.
+    setActiveMobileTab("bills");
   };
 
   const handleCancelEditBill = () => {
-    setBillForm({ name: "", amount: 0, dueDay: 1, category: "general", notes: "", autoPay: false, isActive: true });
+    resetBillForm();
     setEditingBillId(null);
   };
 
@@ -138,401 +196,561 @@ export default function CalendarAdminPage() {
       await calendarService.createYearly(yearlyForm);
       setYearlyForm({ title: "", month, day: 1, category: "birthday", color: "#10b981", notes: "", isActive: true });
       await refresh();
+      setActiveMobileTab("overview");
     } catch (err) {
       setError(err?.response?.data?.message || err.message || "Failed to create yearly event");
     }
   };
 
+  const goToMonth = (delta) => {
+    const current = new Date(year, month - 1, 1);
+    current.setMonth(current.getMonth() + delta);
+    setYear(current.getFullYear());
+    setMonth(current.getMonth() + 1);
+    setYearlyForm((prev) => ({ ...prev, month: current.getMonth() + 1 }));
+  };
+
+  const handleCalendarQuickAdd = ({ action, year: y, month: m, day: d }) => {
+    const dateStr = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+    if (action === "bill") {
+      setEditingBillId(null);
+      setBillForm((prev) => ({ ...prev, dueDay: d }));
+      setShowBillList(true);
+      setActiveFormTab("bills");
+      setActiveMobileTab("bills");
+      return;
+    }
+
+    if (action === "event") {
+      setEventForm((prev) => ({ ...prev, date: dateStr }));
+      setActiveFormTab("event");
+      setActiveMobileTab("event");
+      return;
+    }
+
+    if (action === "yearly") {
+      setYearlyForm((prev) => ({ ...prev, month: m, day: d }));
+      setActiveFormTab("yearly");
+      setActiveMobileTab("yearly");
+    }
+  };
+
+  const activeBillsCount = useMemo(() => bills.filter((bill) => bill.isActive !== false).length, [bills]);
+  const monthlyItemCount = monthlyFeed.length;
+  const monthlyBillCount = monthlyFeed.filter((it) => it.type === "bill").length;
+
+  const cardClass =
+    "relative overflow-hidden rounded-[30px] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--color-surface),black_6%),color-mix(in_srgb,var(--color-bg),black_2%))] ring-1 ring-emerald-400/10 backdrop-blur-xl shadow-[0_22px_44px_rgba(0,0,0,0.28)]";
+  const panelClass =
+    "rounded-[24px] bg-[linear-gradient(170deg,color-mix(in_srgb,var(--color-surface),black_8%),color-mix(in_srgb,var(--color-bg),black_3%))] ring-1 ring-emerald-400/8 backdrop-blur-md shadow-[0_14px_30px_rgba(0,0,0,0.22)]";
+  const sectionTitleClass = "text-base sm:text-lg font-semibold text-text-main tracking-tight";
+  const subsectionTitleClass = "text-sm font-semibold text-text-main tracking-tight";
+  const inputClass =
+    "w-full rounded-2xl bg-[color-mix(in_srgb,var(--color-bg),black_4%)] ring-1 ring-emerald-400/12 text-text-main placeholder:text-text-secondary px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/24 transition";
+  const labelClass = "text-xs uppercase tracking-[0.14em] text-text-secondary font-semibold";
+
+  const visibleOnMobile = (tabId) => (activeMobileTab === tabId || isMdUp ? "block" : "hidden");
+  const visibleForm = (tabId) =>
+    activeFormTab === tabId && (isMdUp || activeMobileTab === tabId) ? "block" : "hidden";
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6 w-full">
-        <h1 className="text-3xl font-bold text-main">Calendar Admin</h1>
+    <div className="relative isolate space-y-6 pb-20 md:pb-12 xl:pb-6 xl:h-[calc(100vh-64px)] xl:flex xl:flex-col xl:overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+        <div className="absolute -top-48 left-[8%] h-[28rem] w-[28rem] rounded-full bg-emerald-400/12 blur-[110px]" />
+        <div className="absolute top-[28%] right-[6%] h-80 w-80 rounded-full bg-cyan-400/10 blur-[100px]" />
+        <div className="absolute -bottom-28 left-1/3 h-72 w-72 rounded-full bg-teal-400/10 blur-[90px]" />
       </div>
 
-      {error && <div className="mb-4 text-red-400">{error}</div>}
+      {/* Header Section */}
+      <section className={`${cardClass} p-6 sm:p-8 xl:p-7`}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6 xl:gap-8 mb-6">
+          <div className="flex-1">
+            <h1 className="text-4xl sm:text-5xl xl:text-[3.3rem] leading-[0.95] font-bold tracking-tight text-text-main mb-2">
+              Calendar
+            </h1>
+            <p className="max-w-2xl text-sm sm:text-base text-text-secondary/90">
+              Plan events, automate bills, and track yearly milestones from one focused control surface.
+            </p>
+          </div>
+          <div className="flex lg:justify-end">
+            <div className="w-full lg:max-w-[320px] rounded-[22px] bg-[linear-gradient(150deg,color-mix(in_srgb,var(--color-bg),black_3%),color-mix(in_srgb,var(--color-surface),black_8%))] p-4 ring-1 ring-emerald-300/14 shadow-[0_14px_30px_rgba(0,0,0,0.22)]">
+              <p className="text-[10px] uppercase tracking-[0.16em] font-semibold text-text-secondary mb-2">
+                Focused Month
+              </p>
+              <p className="text-xl font-semibold text-text-main leading-tight">
+                {MONTH_OPTIONS[month - 1]} {year}
+              </p>
+              <p className="text-xs text-text-secondary mt-2">{monthlyItemCount} scheduled entries in view</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <div className="flex items-center gap-3 mb-3">
-            <select
-              value={month}
-              onChange={(e) => setMonth(parseInt(e.target.value))}
-              className="p-2 rounded border"
-              style={{
-                backgroundColor: "var(--color-bg)",
-                borderColor: "var(--color-primary)",
-                color: "var(--color-text-main)",
-              }}
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  {m}
+      {error && (
+        <div className="rounded-2xl bg-emerald-400/10 px-5 py-4 text-sm font-medium text-text-main shadow-[0_8px_16px_rgba(0,0,0,0.18)] ring-1 ring-emerald-300/18 backdrop-blur-sm">
+          <div className="flex items-start gap-3">
+            <div className="h-2 w-2 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation & Controls */}
+      <section className={`${cardClass} p-5 sm:p-6 xl:p-5`}>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 className={subsectionTitleClass}>Navigate Calendar</h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => goToMonth(-1)}
+                className="h-10 w-10 rounded-full bg-[color-mix(in_srgb,var(--color-bg),black_3%)] text-text-secondary hover:text-text-main hover:bg-emerald-400/12 ring-1 ring-emerald-400/12 transition flex items-center justify-center"
+                aria-label="Previous month"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() => {
+                  setYear(now.getFullYear());
+                  setMonth(now.getMonth() + 1);
+                }}
+                className="rounded-full bg-emerald-400/10 px-4 py-2 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-300/16 hover:bg-emerald-400/16 transition"
+              >
+                Today
+              </button>
+              <button
+                onClick={() => goToMonth(1)}
+                className="h-10 w-10 rounded-full bg-[color-mix(in_srgb,var(--color-bg),black_3%)] text-text-secondary hover:text-text-main hover:bg-emerald-400/12 ring-1 ring-emerald-400/12 transition flex items-center justify-center"
+                aria-label="Next month"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:max-w-sm">
+            <select value={month} onChange={(e) => setMonth(parseInt(e.target.value, 10))} className={inputClass}>
+              {MONTH_OPTIONS.map((name, idx) => (
+                <option key={name} value={idx + 1}>
+                  {name}
                 </option>
               ))}
             </select>
             <input
               type="number"
               value={year}
-              onChange={(e) => setYear(parseInt(e.target.value || now.getFullYear()))}
-              className="p-2 rounded border"
-              style={{
-                backgroundColor: "var(--color-bg)",
-                borderColor: "var(--color-primary)",
-                color: "var(--color-text-main)",
-              }}
+              onChange={(e) => setYear(parseInt(e.target.value || now.getFullYear(), 10))}
+              className={inputClass}
             />
-            <button
-              onClick={() => calendarService.getMonthlySchedule({ year, month }).then(setMonthlyFeed)}
-              className="px-3 py-2 rounded bg-primary/20 hover:bg-primary/30 border border-primary/40 text-main"
-            >
-              Refresh
-            </button>
           </div>
-          <MonthlyCalendar year={year} month={month} items={monthlyFeed} />
         </div>
+      </section>
 
-        <div className="space-y-6">
-          <form
-            onSubmit={handleCreateEvent}
-            className="p-4 rounded-lg border shadow-sm"
-            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-primary)" }}
+      {/* Mobile Navigation Tabs */}
+      <div className="flex md:hidden gap-2 px-2 overflow-x-auto pb-2">
+        {MOBILE_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveMobileTab(tab.id)}
+            className={`shrink-0 rounded-full px-5 py-2.5 text-xs font-semibold tracking-wide transition ${
+              activeMobileTab === tab.id
+                ? "bg-emerald-400/16 text-text-main shadow-[0_4px_12px_rgba(0,0,0,0.2)] ring-1 ring-emerald-300/14"
+                : "bg-[color-mix(in_srgb,var(--color-bg),black_3%)] text-text-secondary hover:bg-emerald-400/8 ring-1 ring-emerald-400/8"
+            }`}
           >
-            <h2 className="text-xl font-semibold text-main mb-3">Add Event</h2>
-            <input
-              placeholder="Title"
-              value={eventForm.title}
-              onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-              className="w-full p-2 mb-2 rounded border"
-              style={{
-                backgroundColor: "var(--color-bg)",
-                borderColor: "var(--color-primary)",
-                color: "var(--color-text-main)",
-              }}
-            />
-            <textarea
-              placeholder="Description"
-              value={eventForm.description}
-              onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-              className="w-full p-2 mb-2 rounded border"
-              style={{
-                backgroundColor: "var(--color-bg)",
-                borderColor: "var(--color-primary)",
-                color: "var(--color-text-main)",
-              }}
-            />
-            <input
-              type="date"
-              value={eventForm.date}
-              onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
-              className="w-full p-2 mb-2 rounded border"
-              style={{
-                backgroundColor: "var(--color-bg)",
-                borderColor: "var(--color-primary)",
-                color: "var(--color-text-main)",
-              }}
-            />
-            <div className="flex items-center gap-2 mb-2">
-              <label className="text-text-secondary text-sm">All Day</label>
-              <input
-                type="checkbox"
-                checked={eventForm.allDay}
-                onChange={(e) => setEventForm({ ...eventForm, allDay: e.target.checked })}
-              />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:flex-1 xl:min-h-0 px-2 sm:px-0">
+        {/* Left: Calendar */}
+        <section className="xl:col-span-7 space-y-4 xl:min-h-0">
+          <div className={`${cardClass} p-4 sm:p-5 xl:h-full xl:flex xl:flex-col ${visibleOnMobile("overview")}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={sectionTitleClass}>Monthly Schedule</h2>
+              {loading && <span className="text-xs text-emerald-400 font-medium">Syncing...</span>}
             </div>
-            <div className="flex items-center gap-2 mb-2">
-              <label className="text-text-secondary text-sm">Category</label>
-              <select
-                value={eventForm.category}
-                onChange={(e) => setEventForm({ ...eventForm, category: e.target.value })}
-                className="p-2 rounded border"
-                style={{
-                  backgroundColor: "var(--color-bg)",
-                  borderColor: "var(--color-primary)",
-                  color: "var(--color-text-main)",
-                }}
-              >
-                <option value="personal">Personal</option>
-                <option value="work">Work</option>
-                <option value="bill">Bill</option>
-                <option value="other">Other</option>
-              </select>
+            <div className="xl:flex-1 xl:min-h-0">
+              <MonthlyCalendar year={year} month={month} items={monthlyFeed} onQuickAdd={handleCalendarQuickAdd} />
             </div>
-            <div className="flex items-center gap-2 mb-4">
-              <label className="text-text-secondary text-sm">Color</label>
-              <input
-                type="color"
-                value={eventForm.color}
-                onChange={(e) => setEventForm({ ...eventForm, color: e.target.value })}
-              />
+          </div>
+        </section>
+
+        {/* Right: Forms */}
+        <section className="xl:col-span-5 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-2">
+          {/* Form Tabs */}
+          <div className={`${panelClass} p-2`}>
+            <div className="grid grid-cols-3 gap-1.5 bg-[color-mix(in_srgb,var(--color-bg),black_2%)] rounded-2xl p-1.5 ring-1 ring-emerald-400/8">
+              {[
+                { id: "event", label: "Events", icon: CalendarIcon },
+                { id: "bills", label: "Bills", icon: DollarSign },
+                { id: "yearly", label: "Yearly", icon: null },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveFormTab(tab.id);
+                    if (!isMdUp) setActiveMobileTab(tab.id);
+                  }}
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2 text-xs font-semibold transition ${
+                    activeFormTab === tab.id
+                      ? "bg-emerald-400/12 text-text-main shadow-[0_4px_10px_rgba(0,0,0,0.18)] ring-1 ring-emerald-300/16"
+                      : "text-text-secondary hover:bg-emerald-400/8"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* Event Form Panel */}
+          <form onSubmit={handleCreateEvent} className={`${panelClass} p-5 sm:p-6 space-y-5 ${visibleForm("event")}`}>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarIcon size={16} className="text-emerald-400" />
+                <h3 className={subsectionTitleClass}>Create Event</h3>
+              </div>
+              <p className="text-xs text-text-secondary">Add a new event to your calendar</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass}>Event Title</label>
+                <input
+                  placeholder="Morning workout, client call..."
+                  value={eventForm.title}
+                  onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
+                  className={`${inputClass} mt-2`}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Description</label>
+                <textarea
+                  placeholder="Add notes, links, reminders..."
+                  value={eventForm.description}
+                  onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                  className={`${inputClass} mt-2 min-h-[90px] resize-none`}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Date</label>
+                <input
+                  type="date"
+                  value={eventForm.date}
+                  onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
+                  className={`${inputClass} mt-2`}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Category</label>
+                  <select
+                    value={eventForm.category}
+                    onChange={(e) => setEventForm({ ...eventForm, category: e.target.value })}
+                    className={`${inputClass} mt-2`}
+                  >
+                    <option value="personal">Personal</option>
+                    <option value="work">Work</option>
+                    <option value="bill">Bill</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Color</label>
+                  <div className="mt-2">
+                    <input
+                      type="color"
+                      value={eventForm.color}
+                      onChange={(e) => setEventForm({ ...eventForm, color: e.target.value })}
+                      className="h-[44px] w-full rounded-2xl bg-[color-mix(in_srgb,var(--color-bg),black_3%)] px-2 py-2 cursor-pointer ring-1 ring-emerald-400/14"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <label className="inline-flex items-center gap-2.5 text-sm text-text-secondary cursor-pointer p-3 rounded-xl bg-[color-mix(in_srgb,var(--color-bg),black_2%)] ring-1 ring-emerald-400/10">
+                <input
+                  type="checkbox"
+                  checked={eventForm.allDay}
+                  onChange={(e) => setEventForm({ ...eventForm, allDay: e.target.checked })}
+                  className="rounded border-emerald-400/16 bg-[color-mix(in_srgb,var(--color-bg),black_3%)] text-emerald-400 focus:ring-emerald-400/20"
+                />
+                Mark as all-day event
+              </label>
+            </div>
+
             <button
               type="submit"
-              className="px-3 py-2 rounded bg-primary/20 hover:bg-primary/30 border border-primary/40 text-main"
+              className="w-full rounded-2xl bg-emerald-400/12 py-3 text-sm font-semibold text-text-main hover:bg-emerald-400/16 transition shadow-[0_6px_16px_rgba(0,0,0,0.2)] ring-1 ring-emerald-300/16"
             >
               Create Event
             </button>
           </form>
 
-          {/* Bill Management Section */}
-          <div
-            className="rounded-lg border shadow-sm"
-            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-primary)" }}
-          >
-            <div className="p-4 border-b" style={{ borderColor: "var(--color-primary)" }}>
-              <div
-                className="flex items-center justify-between cursor-pointer"
-                onClick={() => setShowBillList(!showBillList)}
+          {/* Bills Form Panel */}
+          <div className={`${panelClass} overflow-hidden flex flex-col ${visibleForm("bills")}`}>
+            {/* Bills Header */}
+            <div className="p-5 sm:p-6 border-b border-emerald-400/10">
+              <button
+                className="w-full flex items-center justify-between gap-3 group"
+                onClick={() => setShowBillList((v) => !v)}
               >
-                <h2 className="text-xl font-semibold text-main flex items-center gap-2">
-                  <DollarSign className="text-emerald-400" size={20} />
-                  Monthly Bills
-                </h2>
-                {showBillList ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <div className="text-left">
+                    <h3 className={subsectionTitleClass}>Monthly Bills</h3>
+                    <p className="text-xs text-text-secondary mt-0.5">{bills.length} bills configured</p>
+                  </div>
+                </div>
+                {showBillList ? (
+                  <ChevronUp size={20} className="text-text-secondary group-hover:text-text-main transition" />
+                ) : (
+                  <ChevronDown size={20} className="text-text-secondary group-hover:text-text-main transition" />
+                )}
+              </button>
             </div>
 
-            {showBillList && (
-              <div className="p-4 space-y-4">
-                {/* List of Bills */}
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
+            {/* Bills Content */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {showBillList && (
+                <div className="flex-1 overflow-y-auto flex flex-col">
                   {bills.length === 0 ? (
-                    <p className="text-text-secondary text-sm italic">No active bills configured.</p>
+                    <div className="p-5 sm:p-6 flex items-center justify-center min-h-[120px] text-sm italic text-text-secondary">
+                      No bills configured yet
+                    </div>
                   ) : (
-                    bills.map((bill) => (
-                      <div
-                        key={bill._id}
-                        className="flex justify-between items-center p-3 rounded bg-black/20 border border-white/5 hover:border-white/20 transition-colors group"
-                      >
-                        <div>
-                          <div className="font-medium text-white">{bill.name}</div>
-                          <div className="text-xs text-text-secondary flex gap-2">
-                            <span className="text-emerald-400">${bill.amount}</span>
-                            <span>•</span>
-                            <span>Due Day: {bill.dueDay}</span>
-                            {bill.autoPay && <span className="text-blue-400">• AutoPay</span>}
+                    <div className="p-4 sm:p-5 space-y-2 flex-1">
+                      {bills.map((bill) => (
+                        <div
+                          key={bill._id}
+                          className="rounded-xl bg-[color-mix(in_srgb,var(--color-bg),black_2%)] p-3 flex items-start justify-between gap-3 ring-1 ring-emerald-400/10 hover:ring-emerald-300/18 transition"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-text-main text-sm truncate">{bill.name}</p>
+                            <p className="text-xs text-text-secondary mt-1 space-x-2">
+                              <span className="text-emerald-400 font-semibold">${bill.amount}</span>
+                              <span>•</span>
+                              <span>Day {bill.dueDay}</span>
+                              {bill.autoPay && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-emerald-400/70">AutoPay</span>
+                                </>
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button
+                              onClick={() => handleEditBill(bill)}
+                              className="p-1.5 rounded-lg hover:bg-emerald-400/20 text-text-secondary hover:text-text-main transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBill(bill._id)}
+                              className="p-1.5 rounded-lg hover:bg-emerald-400/20 text-text-secondary hover:text-text-main transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add/Edit Bill Form */}
+                  <div className="p-4 sm:p-5 border-t border-emerald-400/10 space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className={labelClass}>{editingBillId ? "Edit Bill" : "Add New Bill"}</label>
+                        {editingBillId && (
                           <button
-                            onClick={() => handleEditBill(bill)}
-                            className="p-1.5 rounded hover:bg-blue-500/20 text-blue-400 transition-colors"
-                            title="Edit"
+                            type="button"
+                            onClick={handleCancelEditBill}
+                            className="text-xs text-text-secondary hover:text-text-main inline-flex items-center gap-1"
                           >
-                            <Edit2 size={14} />
+                            <X size={12} /> Cancel
                           </button>
-                          <button
-                            onClick={() => handleDeleteBill(bill._id)}
-                            className="p-1.5 rounded hover:bg-red-500/20 text-red-400 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleCreateOrUpdateBill} className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <input
+                          placeholder="Bill name"
+                          value={billForm.name}
+                          onChange={(e) => setBillForm({ ...billForm, name: e.target.value })}
+                          className={inputClass}
+                          required
+                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-3 text-text-secondary text-sm">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="Amount"
+                            value={billForm.amount}
+                            onChange={(e) => setBillForm({ ...billForm, amount: parseFloat(e.target.value || 0) })}
+                            className={`${inputClass} pl-7`}
+                            required
+                          />
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
 
-                <div className="w-full h-px bg-white/10 my-4" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <input
+                          type="number"
+                          min="1"
+                          max="31"
+                          placeholder="Due day"
+                          value={billForm.dueDay}
+                          onChange={(e) => setBillForm({ ...billForm, dueDay: parseInt(e.target.value || 1, 10) })}
+                          className={inputClass}
+                          required
+                        />
+                        <input
+                          placeholder="Category"
+                          value={billForm.category}
+                          onChange={(e) => setBillForm({ ...billForm, category: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
 
-                {/* Edit/Create Form */}
-                <form onSubmit={handleCreateOrUpdateBill} className="space-y-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-                      {editingBillId ? "Edit Bill" : "Add New Bill"}
-                    </h3>
-                    {editingBillId && (
+                      <div className="flex flex-wrap gap-3">
+                        <label className="inline-flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={billForm.autoPay}
+                            onChange={(e) => setBillForm({ ...billForm, autoPay: e.target.checked })}
+                            className="rounded border-emerald-400/16 bg-[color-mix(in_srgb,var(--color-bg),black_3%)] text-emerald-400"
+                          />
+                          Auto-Pay
+                        </label>
+                        <label className="inline-flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={billForm.isActive}
+                            onChange={(e) => setBillForm({ ...billForm, isActive: e.target.checked })}
+                            className="rounded border-emerald-400/16 bg-[color-mix(in_srgb,var(--color-bg),black_3%)] text-emerald-400"
+                          />
+                          Active
+                        </label>
+                      </div>
+
                       <button
-                        type="button"
-                        onClick={handleCancelEditBill}
-                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                        type="submit"
+                        className="w-full rounded-xl py-2.5 text-sm font-semibold bg-emerald-400/10 text-text-main hover:bg-emerald-400/14 transition ring-1 ring-emerald-300/14"
                       >
-                        <X size={12} /> Cancel Edit
+                        <span className="inline-flex items-center justify-center gap-2">
+                          {editingBillId ? <RefreshCw size={14} /> : <Plus size={14} />}
+                          {editingBillId ? "Update" : "Add Bill"}
+                        </span>
                       </button>
-                    )}
+                    </form>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      placeholder="Name (e.g. Rent)"
-                      value={billForm.name}
-                      onChange={(e) => setBillForm({ ...billForm, name: e.target.value })}
-                      className="w-full p-2 rounded border text-sm"
-                      style={{
-                        backgroundColor: "var(--color-bg)",
-                        borderColor: "var(--color-primary)",
-                        color: "var(--color-text-main)",
-                      }}
-                      required
-                    />
-                    <div className="relative">
-                      <span className="absolute left-2 top-2 text-text-secondary">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Amount"
-                        value={billForm.amount}
-                        onChange={(e) => setBillForm({ ...billForm, amount: parseFloat(e.target.value || 0) })}
-                        className="w-full p-2 pl-6 rounded border text-sm"
-                        style={{
-                          backgroundColor: "var(--color-bg)",
-                          borderColor: "var(--color-primary)",
-                          color: "var(--color-text-main)",
-                        }}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      placeholder="Due Day (1-31)"
-                      value={billForm.dueDay}
-                      onChange={(e) => setBillForm({ ...billForm, dueDay: parseInt(e.target.value || 1) })}
-                      className="w-full p-2 rounded border text-sm"
-                      style={{
-                        backgroundColor: "var(--color-bg)",
-                        borderColor: "var(--color-primary)",
-                        color: "var(--color-text-main)",
-                      }}
-                      required
-                    />
-                    <input
-                      placeholder="Category"
-                      value={billForm.category}
-                      onChange={(e) => setBillForm({ ...billForm, category: e.target.value })}
-                      className="w-full p-2 rounded border text-sm"
-                      style={{
-                        backgroundColor: "var(--color-bg)",
-                        borderColor: "var(--color-primary)",
-                        color: "var(--color-text-main)",
-                      }}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-4 py-1">
-                    <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={billForm.autoPay}
-                        onChange={(e) => setBillForm({ ...billForm, autoPay: e.target.checked })}
-                        className="rounded border-gray-600 bg-black/40 text-emerald-500 focus:ring-offset-0 focus:ring-emerald-500"
-                      />
-                      Auto-Pay
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={billForm.isActive}
-                        onChange={(e) => setBillForm({ ...billForm, isActive: e.target.checked })}
-                        className="rounded border-gray-600 bg-black/40 text-emerald-500 focus:ring-offset-0 focus:ring-emerald-500"
-                      />
-                      Active
-                    </label>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className={`w-full py-2 rounded text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                      editingBillId
-                        ? "bg-blue-600/20 text-blue-400 border border-blue-500/50 hover:bg-blue-600/30"
-                        : "bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-600/30"
-                    }`}
-                  >
-                    {editingBillId ? <RefreshCw size={16} /> : <Plus size={16} />}
-                    {editingBillId ? "Update Bill" : "Create Bill"}
-                  </button>
-                </form>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
 
-          <form
-            onSubmit={handleCreateYearly}
-            className="p-4 rounded-lg border shadow-sm"
-            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-primary)" }}
-          >
-            <h2 className="text-xl font-semibold text-main mb-3">Add Yearly Event</h2>
-            <input
-              placeholder="Title"
-              value={yearlyForm.title}
-              onChange={(e) => setYearlyForm({ ...yearlyForm, title: e.target.value })}
-              className="w-full p-2 mb-2 rounded border"
-              style={{
-                backgroundColor: "var(--color-bg)",
-                borderColor: "var(--color-primary)",
-                color: "var(--color-text-main)",
-              }}
-            />
-            <div className="flex items-center gap-2 mb-2">
-              <label className="text-text-secondary text-sm">Month</label>
-              <select
-                value={yearlyForm.month}
-                onChange={(e) => setYearlyForm({ ...yearlyForm, month: parseInt(e.target.value) })}
-                className="p-2 rounded border"
-                style={{
-                  backgroundColor: "var(--color-bg)",
-                  borderColor: "var(--color-primary)",
-                  color: "var(--color-text-main)",
-                }}
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <label className="text-text-secondary text-sm">Day</label>
-              <input
-                type="number"
-                min="1"
-                max="31"
-                value={yearlyForm.day}
-                onChange={(e) => setYearlyForm({ ...yearlyForm, day: parseInt(e.target.value || 1) })}
-                className="p-2 rounded border"
-                style={{
-                  backgroundColor: "var(--color-bg)",
-                  borderColor: "var(--color-primary)",
-                  color: "var(--color-text-main)",
-                }}
-              />
+          {/* Yearly Events Form Panel */}
+          <form onSubmit={handleCreateYearly} className={`${panelClass} p-5 sm:p-6 space-y-5 ${visibleForm("yearly")}`}>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                <h3 className={subsectionTitleClass}>Create Yearly Event</h3>
+              </div>
+              <p className="text-xs text-text-secondary">Add birthdays, anniversaries, and milestones</p>
             </div>
-            <div className="flex items-center gap-2 mb-2">
-              <label className="text-text-secondary text-sm">Category</label>
-              <select
-                value={yearlyForm.category}
-                onChange={(e) => setYearlyForm({ ...yearlyForm, category: e.target.value })}
-                className="p-2 rounded border"
-                style={{
-                  backgroundColor: "var(--color-bg)",
-                  borderColor: "var(--color-primary)",
-                  color: "var(--color-text-main)",
-                }}
-              >
-                <option value="birthday">Birthday</option>
-                <option value="anniversary">Anniversary</option>
-                <option value="other">Other</option>
-              </select>
+
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass}>Event Title</label>
+                <input
+                  placeholder="Birthday, anniversary, milestone..."
+                  value={yearlyForm.title}
+                  onChange={(e) => setYearlyForm({ ...yearlyForm, title: e.target.value })}
+                  className={`${inputClass} mt-2`}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Month</label>
+                  <select
+                    value={yearlyForm.month}
+                    onChange={(e) => setYearlyForm({ ...yearlyForm, month: parseInt(e.target.value, 10) })}
+                    className={`${inputClass} mt-2`}
+                  >
+                    {MONTH_OPTIONS.map((name, idx) => (
+                      <option key={name} value={idx + 1}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Day</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={yearlyForm.day}
+                    onChange={(e) => setYearlyForm({ ...yearlyForm, day: parseInt(e.target.value || 1, 10) })}
+                    className={`${inputClass} mt-2`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Category</label>
+                  <select
+                    value={yearlyForm.category}
+                    onChange={(e) => setYearlyForm({ ...yearlyForm, category: e.target.value })}
+                    className={`${inputClass} mt-2`}
+                  >
+                    <option value="birthday">Birthday</option>
+                    <option value="anniversary">Anniversary</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Color</label>
+                  <div className="mt-2">
+                    <input
+                      type="color"
+                      value={yearlyForm.color}
+                      onChange={(e) => setYearlyForm({ ...yearlyForm, color: e.target.value })}
+                      className="h-[44px] w-full rounded-2xl bg-[color-mix(in_srgb,var(--color-bg),black_3%)] px-2 py-2 cursor-pointer ring-1 ring-emerald-400/14"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 mb-4">
-              <label className="text-text-secondary text-sm">Color</label>
-              <input
-                type="color"
-                value={yearlyForm.color}
-                onChange={(e) => setYearlyForm({ ...yearlyForm, color: e.target.value })}
-              />
-            </div>
+
             <button
               type="submit"
-              className="px-3 py-2 rounded bg-primary/20 hover:bg-primary/30 border border-primary/40 text-main"
+              className="w-full rounded-2xl bg-emerald-400/12 py-3 text-sm font-semibold text-text-main hover:bg-emerald-400/16 transition shadow-[0_6px_16px_rgba(0,0,0,0.2)] ring-1 ring-emerald-300/16"
             >
-              Create Yearly
+              Create Yearly Event
             </button>
           </form>
-        </div>
+        </section>
       </div>
     </div>
   );
