@@ -1,24 +1,58 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   listBlessingDefs,
   createBlessingDef,
   updateBlessingDef,
   deleteBlessingDef,
 } from "../services/blessingsService";
-import { fetchVolumes } from "./volumeFunctionality/volumeApi";
+import { fetchVolumes, updateVolume } from "./volumeFunctionality/volumeApi";
 
 const emptyForm = { key: "", name: "", context: "", defaultDescription: "", tags: "", active: true, index: 0 };
+
+const toSlug = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+
+const normalize = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const sortByIndex = (list = []) =>
+  [...list].sort((a, b) => {
+    const ai = Number.isFinite(Number(a?.index)) ? Number(a.index) : 0;
+    const bi = Number.isFinite(Number(b?.index)) ? Number(b.index) : 0;
+    if (ai !== bi) return ai - bi;
+    return String(a?.name || "").localeCompare(String(b?.name || ""));
+  });
+
+const emptyInlineForm = { name: "", key: "", defaultDescription: "", context: "", tags: "", active: true };
 
 export default function BlessingsAdminPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(emptyForm);
+  const [keyTouched, setKeyTouched] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [updatingIds, setUpdatingIds] = useState(new Set());
   const [volumes, setVolumes] = useState([]);
-  const [viewVolume, setViewVolume] = useState(null);
+  const [insertAfterId, setInsertAfterId] = useState(null); // null | "__TOP__" | "__END__" | blessingId
+  const [inlineForm, setInlineForm] = useState(emptyInlineForm);
+  const [inlineKeyTouched, setInlineKeyTouched] = useState(false);
+  const [inlineError, setInlineError] = useState("");
+  const [inlineSaving, setInlineSaving] = useState(false);
+  const [usageModalItem, setUsageModalItem] = useState(null);
+  const [updatingVolumeIds, setUpdatingVolumeIds] = useState(new Set());
+  const [bulkAddingMissing, setBulkAddingMissing] = useState(false);
+  const [modalInsertIndex, setModalInsertIndex] = useState("0");
+  const [modalDescription, setModalDescription] = useState("");
+  const [hoverVolumeId, setHoverVolumeId] = useState(null);
 
   const fetchAll = async () => {
     try {
@@ -38,29 +72,120 @@ export default function BlessingsAdminPage() {
     fetchAll();
   }, []);
 
+  const orderedItems = useMemo(() => sortByIndex(items), [items]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((x) =>
+    if (!q) return orderedItems;
+    return orderedItems.filter((x) =>
       [x.key, x.name, x.context, x.defaultDescription, (x.tags || []).join(", ")]
         .filter(Boolean)
-        .some((field) => String(field).toLowerCase().includes(q))
+        .some((field) => String(field).toLowerCase().includes(q)),
     );
-  }, [items, search]);
+  }, [orderedItems, search]);
 
   const resetForm = () => {
     setForm(emptyForm);
+    setKeyTouched(false);
+    setFormError("");
     setEditingId(null);
   };
+
+  const normalizedKeySet = useMemo(() => {
+    const set = new Set();
+    items.forEach((item) => {
+      if (item._id === editingId) return;
+      const key = normalize(item.key);
+      if (key) set.add(key);
+    });
+    return set;
+  }, [items, editingId]);
+
+  const createOnlyKeySet = useMemo(() => {
+    const set = new Set();
+    items.forEach((item) => {
+      const key = normalize(item.key);
+      if (key) set.add(key);
+    });
+    return set;
+  }, [items]);
+
+  const usageByBlessing = useMemo(() => {
+    const map = new Map();
+    (volumes || []).forEach((v) => {
+      (v.blessings || []).forEach((b) => {
+        const blessingItem = normalize(b?.item);
+        if (!blessingItem) return;
+        if (!map.has(blessingItem)) map.set(blessingItem, []);
+        map.get(blessingItem).push(v);
+      });
+    });
+    return map;
+  }, [volumes]);
+
+  const getUsageCount = (item) => {
+    const byName = usageByBlessing.get(normalize(item?.name));
+    const byKey = usageByBlessing.get(normalize(item?.key));
+    const uniq = new Set([...(byName || []), ...(byKey || [])].map((v) => v?._id).filter(Boolean));
+    return uniq.size;
+  };
+
+  const getMissingVolumes = (item) => {
+    const blessingNames = new Set([normalize(item?.name), normalize(item?.key)].filter(Boolean));
+    return (volumes || []).filter((v) => {
+      const present = new Set((v?.blessings || []).map((b) => normalize(b?.item)).filter(Boolean));
+      for (const name of blessingNames) {
+        if (present.has(name)) return false;
+      }
+      return true;
+    });
+  };
+
+  const getUsageTooltip = (item) => {
+    const missing = getMissingVolumes(item);
+    if (!missing.length) return "Included in all volumes.";
+    const lines = missing
+      .map((v) => {
+        const num = Number.isFinite(Number(v?.volumeNumber)) ? `V${v.volumeNumber}` : "Unnumbered";
+        const title = String(v?.title || "Untitled").trim();
+        return `${num}: ${title}`;
+      })
+      .join("\n");
+    return `Missing from ${missing.length} volume${missing.length === 1 ? "" : "s"}:\n${lines}`;
+  };
+
+  const modalMissingVolumes = useMemo(() => {
+    if (!usageModalItem) return [];
+    return getMissingVolumes(usageModalItem);
+  }, [usageModalItem, volumes]);
+
+  const hoveredModalVolume = useMemo(() => {
+    if (!modalMissingVolumes.length) return null;
+    const byId = modalMissingVolumes.find((v) => v._id === hoverVolumeId);
+    return byId || modalMissingVolumes[0];
+  }, [modalMissingVolumes, hoverVolumeId]);
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setFormError("");
     try {
+      const cleanName = form.name.trim();
+      const cleanKey = toSlug(form.key);
+
+      if (!cleanName) throw new Error("Name is required.");
+      if (!cleanKey) throw new Error("Key is required.");
+      if (!/^[a-z0-9-]+$/.test(cleanKey)) {
+        throw new Error("Key can only contain lowercase letters, numbers, and hyphens.");
+      }
+      if (normalizedKeySet.has(cleanKey)) {
+        throw new Error("That key already exists. Use a different key.");
+      }
+
       const payload = {
-        key: form.key.trim(),
-        name: form.name.trim(),
+        key: cleanKey,
+        name: cleanName,
         context: form.context || "",
         defaultDescription: form.defaultDescription || "",
         tags: String(form.tags || "")
@@ -78,7 +203,7 @@ export default function BlessingsAdminPage() {
       resetForm();
       await fetchAll();
     } catch (e) {
-      setError(e?.response?.data?.message || e?.message || "Failed to save");
+      setFormError(e?.response?.data?.message || e?.message || "Failed to save blessing");
     } finally {
       setLoading(false);
     }
@@ -95,6 +220,8 @@ export default function BlessingsAdminPage() {
       active: !!item.active,
       index: item.index || 0,
     });
+    setKeyTouched(true);
+    setFormError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -108,41 +235,222 @@ export default function BlessingsAdminPage() {
     }
   };
 
-  const handleIndexChange = (id, val) => {
-    setItems((prev) => prev.map((item) => (item._id === id ? { ...item, index: val } : item)));
+  const quickToggleActive = async (item) => {
+    try {
+      await updateBlessingDef(item._id, { active: !item.active });
+      await fetchAll();
+    } catch (e) {
+      setError(e?.message || "Failed to update blessing status");
+    }
   };
 
-  const saveIndex = async (item) => {
+  const onNameChange = (value) => {
+    setForm((prev) => {
+      if (editingId || keyTouched) return { ...prev, name: value };
+      return { ...prev, name: value, key: toSlug(value) };
+    });
+  };
+
+  const resetInline = () => {
+    setInsertAfterId(null);
+    setInlineForm(emptyInlineForm);
+    setInlineKeyTouched(false);
+    setInlineError("");
+  };
+
+  const openInlineAfter = (id) => {
+    setInsertAfterId(id);
+    setInlineForm(emptyInlineForm);
+    setInlineKeyTouched(false);
+    setInlineError("");
+  };
+
+  const onInlineNameChange = (value) => {
+    setInlineForm((prev) => {
+      if (inlineKeyTouched) return { ...prev, name: value };
+      return { ...prev, name: value, key: toSlug(value) };
+    });
+  };
+
+  const getInsertPosition = (afterId) => {
+    if (afterId === "__TOP__") return 0;
+    if (afterId === "__END__" || !afterId) return orderedItems.length;
+    const anchorIndex = orderedItems.findIndex((x) => x._id === afterId);
+    if (anchorIndex < 0) return orderedItems.length;
+    return anchorIndex + 1;
+  };
+
+  const persistSequentialIndexes = async (orderedList) => {
+    const updates = [];
+    orderedList.forEach((it, idx) => {
+      if (!it?._id) return;
+      if (Number(it.index) !== idx) updates.push(updateBlessingDef(it._id, { index: idx }));
+    });
+    if (updates.length) await Promise.all(updates);
+  };
+
+  const submitInlineInsert = async () => {
+    setInlineSaving(true);
+    setInlineError("");
+    setError("");
     try {
-      setUpdatingIds((prev) => new Set(prev).add(item._id));
-      await updateBlessingDef(item._id, { index: Number(item.index) });
+      const cleanName = inlineForm.name.trim();
+      const cleanKey = toSlug(inlineForm.key);
+      if (!cleanName) throw new Error("Inline insert requires a blessing name.");
+      if (!cleanKey) throw new Error("Inline insert requires a key.");
+      if (!/^[a-z0-9-]+$/.test(cleanKey)) {
+        throw new Error("Inline key can only contain lowercase letters, numbers, and hyphens.");
+      }
+      if (createOnlyKeySet.has(cleanKey)) {
+        throw new Error("That key already exists. Use a different key.");
+      }
+
+      const insertAt = getInsertPosition(insertAfterId);
+      const created = await createBlessingDef({
+        key: cleanKey,
+        name: cleanName,
+        context: inlineForm.context || "",
+        defaultDescription: inlineForm.defaultDescription || "",
+        tags: String(inlineForm.tags || "")
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        active: !!inlineForm.active,
+        index: insertAt,
+      });
+
+      const nextOrder = [...orderedItems];
+      nextOrder.splice(insertAt, 0, { ...created, index: insertAt });
+      await persistSequentialIndexes(nextOrder);
+      resetInline();
+      await fetchAll();
     } catch (e) {
-      console.error(e);
-      setError("Failed to update index");
+      setInlineError(e?.response?.data?.message || e?.message || "Failed to insert blessing");
     } finally {
-      setUpdatingIds((prev) => {
+      setInlineSaving(false);
+    }
+  };
+
+  const openUsageModal = (item) => {
+    setUsageModalItem(item);
+    const idx = Number.isFinite(Number(item?.index)) ? Math.max(0, Number(item.index)) : 0;
+    setModalInsertIndex(String(idx));
+    setModalDescription(String(item?.defaultDescription || ""));
+    setError("");
+  };
+
+  const closeUsageModal = () => {
+    setUsageModalItem(null);
+    setUpdatingVolumeIds(new Set());
+    setBulkAddingMissing(false);
+    setModalInsertIndex("0");
+    setModalDescription("");
+    setHoverVolumeId(null);
+  };
+
+  const addBlessingToVolume = async (blessingItem, volume, options = {}) => {
+    const normalizedName = normalize(blessingItem?.name);
+    const normalizedKey = normalize(blessingItem?.key);
+    const existing = (volume?.blessings || []).map((b) => normalize(b?.item));
+    if ((normalizedName && existing.includes(normalizedName)) || (normalizedKey && existing.includes(normalizedKey))) {
+      return;
+    }
+
+    const currentBlessings = [...(volume?.blessings || [])];
+    const requestedIndex = Number(options.insertIndex);
+    const safeIndex = Number.isFinite(requestedIndex)
+      ? Math.max(0, Math.min(requestedIndex, currentBlessings.length))
+      : currentBlessings.length;
+    const selectedDescription = String(options.description ?? blessingItem?.defaultDescription ?? "").trim();
+
+    const newEntry = {
+      item: String(blessingItem?.name || blessingItem?.key || "").trim(),
+      description: selectedDescription,
+      context: String(blessingItem?.context || "").trim(),
+    };
+    if (!newEntry.item) return;
+
+    setUpdatingVolumeIds((prev) => new Set(prev).add(volume._id));
+    try {
+      const nextBlessings = [
+        ...currentBlessings.slice(0, safeIndex),
+        newEntry,
+        ...currentBlessings.slice(safeIndex),
+      ];
+      await updateVolume(volume._id, { blessings: nextBlessings });
+      const latest = await fetchVolumes();
+      setVolumes(latest || []);
+    } finally {
+      setUpdatingVolumeIds((prev) => {
         const next = new Set(prev);
-        next.delete(item._id);
+        next.delete(volume._id);
         return next;
       });
     }
   };
 
+  const addToAllMissingVolumes = async () => {
+    if (!usageModalItem || !modalMissingVolumes.length) return;
+    setBulkAddingMissing(true);
+    setError("");
+    try {
+      for (const vol of modalMissingVolumes) {
+        await addBlessingToVolume(usageModalItem, vol, {
+          insertIndex: modalInsertIndex,
+          description: modalDescription,
+        });
+      }
+      const latest = await fetchVolumes();
+      setVolumes(latest || []);
+    } catch (e) {
+      setError(e?.message || "Failed to add blessing to some volumes");
+    } finally {
+      setBulkAddingMissing(false);
+    }
+  };
+
   return (
-    <div className="p-2">
-      <h1 className="text-2xl font-bold text-primary mb-4">Master Blessings</h1>
+    <div className="p-3 md:p-4 space-y-4">
+      <div
+        className="rounded border p-4"
+        style={{ background: "var(--color-surface)", borderColor: "var(--color-primary)" }}
+      >
+        <h1 className="text-2xl font-bold text-primary">Master Blessings</h1>
+        <p className="text-xs text-text-secondary mt-1">
+          Create your canonical blessings here. Every new greentext volume auto-includes all active blessings.
+        </p>
+      </div>
 
       {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
 
       <form
         onSubmit={submit}
-        className="p-4 rounded border mb-6"
+        className="p-4 rounded border"
         style={{ background: "var(--color-surface)", borderColor: "var(--color-primary)" }}
       >
-        <h2 className="text-lg text-text-main mb-3">{editingId ? "Edit Blessing" : "Create Blessing"}</h2>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="text-lg text-text-main">{editingId ? "Edit Blessing" : "Add Blessing"}</h2>
+          <div className="text-[11px] text-text-secondary">Fields marked with * are required</div>
+        </div>
+        {formError && <div className="text-red-400 mb-3 text-xs">{formError}</div>}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="md:col-span-2">
+            <label className="block text-xs text-text-secondary mb-1">Blessing Name *</label>
+            <input
+              className="w-full p-2 rounded border"
+              style={{
+                background: "var(--color-background)",
+                borderColor: "var(--color-primary)",
+                color: "var(--color-text-main)",
+              }}
+              value={form.name}
+              onChange={(e) => onNameChange(e.target.value)}
+              placeholder="Example: Boundless Faith"
+              required
+            />
+          </div>
           <div>
-            <label className="block text-xs text-text-secondary mb-1">Key (unique)</label>
+            <label className="block text-xs text-text-secondary mb-1">Key (unique) *</label>
             <input
               className="w-full p-2 rounded border"
               style={{
@@ -151,13 +459,18 @@ export default function BlessingsAdminPage() {
                 color: "var(--color-text-main)",
               }}
               value={form.key}
-              onChange={(e) => setForm({ ...form, key: e.target.value })}
+              onChange={(e) => {
+                setKeyTouched(true);
+                setForm({ ...form, key: toSlug(e.target.value) });
+              }}
+              placeholder="boundless-faith"
               required={!editingId}
               disabled={!!editingId}
             />
+            <div className="text-[10px] mt-1 text-text-secondary">Lowercase letters, numbers, hyphens only.</div>
           </div>
           <div>
-            <label className="block text-xs text-text-secondary mb-1">Index (Order)</label>
+            <label className="block text-xs text-text-secondary mb-1">Display Order</label>
             <input
               type="number"
               className="w-full p-2 rounded border"
@@ -168,20 +481,6 @@ export default function BlessingsAdminPage() {
               }}
               value={form.index}
               onChange={(e) => setForm({ ...form, index: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-text-secondary mb-1">Name</label>
-            <input
-              className="w-full p-2 rounded border"
-              style={{
-                background: "var(--color-background)",
-                borderColor: "var(--color-primary)",
-                color: "var(--color-text-main)",
-              }}
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
             />
           </div>
           <div className="md:col-span-2">
@@ -197,6 +496,9 @@ export default function BlessingsAdminPage() {
               value={form.context}
               onChange={(e) => setForm({ ...form, context: e.target.value })}
             />
+            <div className="text-[10px] mt-1 text-text-secondary">
+              Used as guidance for volume generation quality and consistency.
+            </div>
           </div>
           <div className="md:col-span-2">
             <label className="block text-xs text-text-secondary mb-1">Default Description</label>
@@ -244,7 +546,7 @@ export default function BlessingsAdminPage() {
             style={{ borderColor: "var(--color-primary)" }}
             disabled={loading}
           >
-            {loading ? "Saving..." : editingId ? "Update" : "Create"}
+            {loading ? "Saving..." : editingId ? "Update Blessing" : "Create Blessing"}
           </button>
           {editingId && (
             <button
@@ -259,135 +561,511 @@ export default function BlessingsAdminPage() {
         </div>
       </form>
 
-      <div className="mb-2 flex justify-between items-center">
-        <h2 className="text-lg text-text-main">All Blessings</h2>
-        <input
-          placeholder="Search..."
-          className="w-56 p-2 rounded border text-xs"
-          style={{
-            background: "var(--color-background)",
-            borderColor: "var(--color-primary)",
-            color: "var(--color-text-main)",
-          }}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-      <div className="overflow-x-auto rounded border" style={{ borderColor: "var(--color-primary)" }}>
-        <table className="min-w-full text-left text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          <thead style={{ background: "var(--color-surface)" }}>
-            <tr>
-              <th className="p-2 text-text-secondary">Index</th>
-              <th className="p-2 text-text-secondary">Volume</th>
-              <th className="p-2 text-text-secondary">Key</th>
-              <th className="p-2 text-text-secondary">Name</th>
-              <th className="p-2 text-text-secondary">Tags</th>
-              <th className="p-2 text-text-secondary">Active</th>
-              <th className="p-2 text-text-secondary">Actions</th>
-            </tr>
-          </thead>
-          <tbody style={{ background: "var(--color-background)" }}>
-            {filtered.map((it) => (
-              <tr key={it._id} className="border-t" style={{ borderColor: "var(--color-primary)" }}>
-                <td className="p-2 text-text-secondary">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      className="w-16 p-1 rounded border text-xs"
-                      style={{
-                        background: "var(--color-background)",
-                        borderColor: "var(--color-primary)",
-                        color: "var(--color-text-main)",
-                      }}
-                      value={it.index}
-                      onChange={(e) => handleIndexChange(it._id, e.target.value)}
-                      onBlur={() => saveIndex(it)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.target.blur();
-                      }}
-                    />
-                    {updatingIds.has(it._id) && <span className="text-[10px] text-primary animate-pulse">...</span>}
-                  </div>
-                </td>
-                <td className="p-2 text-text-secondary">
-                  {(() => {
-                    const vol = volumes.find((v) => v.blessings?.some((b) => b.item === it.key));
-                    if (!vol) return <span className="opacity-50">-</span>;
-                    return (
-                      <button
-                        onClick={() => setViewVolume(vol)}
-                        className="text-primary hover:underline text-left"
-                      >
-                        V{vol.volumeNumber}: {vol.title}
-                      </button>
-                    );
-                  })()}
-                </td>
-                <td className="p-2 font-mono text-[11px] text-text-main">{it.key}</td>
-                <td className="p-2 text-text-main">{it.name}</td>
-                <td className="p-2 text-text-secondary">{(it.tags || []).join(", ")}</td>
-                <td className="p-2 text-text-secondary">{it.active ? "Yes" : "No"}</td>
-                <td className="p-2 space-x-2">
-                  <button className="text-primary hover:opacity-90" onClick={() => edit(it)}>
-                    Edit
-                  </button>
-                  <button className="text-red-400 hover:text-red-300" onClick={() => remove(it._id)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
+      <div
+        className="rounded border p-3"
+        style={{ background: "var(--color-surface)", borderColor: "var(--color-primary)" }}
+      >
+        <div className="mb-3 flex flex-wrap justify-between items-center gap-2">
+          <h2 className="text-lg text-text-main">Blessings Library</h2>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <input
+              placeholder="Search by name, key, context or tags..."
+              className="w-full md:w-80 p-2 rounded border text-xs"
+              style={{
+                background: "var(--color-background)",
+                borderColor: "var(--color-primary)",
+                color: "var(--color-text-main)",
+              }}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button
+              type="button"
+              className="px-2.5 py-2 text-xs rounded border text-text-main hover:opacity-90 whitespace-nowrap"
+              style={{ borderColor: "var(--color-primary)", background: "var(--color-background)" }}
+              onClick={() => openInlineAfter("__TOP__")}
+            >
+              Insert At Top
+            </button>
+          </div>
+        </div>
+        <div className="text-[11px] text-text-secondary mb-3">
+          {filtered.length} result{filtered.length === 1 ? "" : "s"} • {items.filter((x) => x.active).length} active
+        </div>
+
+        <div className="overflow-x-auto rounded border" style={{ borderColor: "var(--color-primary)" }}>
+          <table className="min-w-full text-left text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            <thead style={{ background: "var(--color-background)" }}>
               <tr>
-                <td className="p-3 text-center text-text-secondary" colSpan={7}>
-                  No results
+                <th className="p-2 text-text-secondary">Order</th>
+                <th className="p-2 text-text-secondary">Name</th>
+                <th className="p-2 text-text-secondary">Key</th>
+                <th className="p-2 text-text-secondary">Usage</th>
+                <th className="p-2 text-text-secondary">Status</th>
+                <th className="p-2 text-text-secondary">Actions</th>
+              </tr>
+            </thead>
+            <tbody style={{ background: "var(--color-surface)" }}>
+              {insertAfterId === "__TOP__" && (
+                <tr className="border-t" style={{ borderColor: "var(--color-primary)" }}>
+                  <td className="p-2" colSpan={6}>
+                    <div className="rounded border p-2.5" style={{ borderColor: "var(--color-primary)" }}>
+                      <div className="text-[11px] text-text-secondary mb-2">
+                        Insert at index 0 (all existing rows shift down by 1)
+                      </div>
+                      {inlineError && <div className="text-red-400 text-xs mb-2">{inlineError}</div>}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <input
+                          className="p-2 rounded border text-xs"
+                          style={{
+                            background: "var(--color-background)",
+                            borderColor: "var(--color-primary)",
+                            color: "var(--color-text-main)",
+                          }}
+                          placeholder="Blessing name"
+                          value={inlineForm.name}
+                          onChange={(e) => onInlineNameChange(e.target.value)}
+                        />
+                        <input
+                          className="p-2 rounded border text-xs"
+                          style={{
+                            background: "var(--color-background)",
+                            borderColor: "var(--color-primary)",
+                            color: "var(--color-text-main)",
+                          }}
+                          placeholder="key-slug"
+                          value={inlineForm.key}
+                          onChange={(e) => {
+                            setInlineKeyTouched(true);
+                            setInlineForm((prev) => ({ ...prev, key: toSlug(e.target.value) }));
+                          }}
+                        />
+                        <input
+                          className="p-2 rounded border text-xs"
+                          style={{
+                            background: "var(--color-background)",
+                            borderColor: "var(--color-primary)",
+                            color: "var(--color-text-main)",
+                          }}
+                          placeholder="Default description (optional)"
+                          value={inlineForm.defaultDescription}
+                          onChange={(e) => setInlineForm((prev) => ({ ...prev, defaultDescription: e.target.value }))}
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="px-2.5 py-2 text-xs rounded bg-primary text-white border hover:opacity-90"
+                            style={{ borderColor: "var(--color-primary)" }}
+                            onClick={submitInlineInsert}
+                            disabled={inlineSaving}
+                          >
+                            {inlineSaving ? "Inserting..." : "Insert"}
+                          </button>
+                          <button
+                            type="button"
+                            className="px-2.5 py-2 text-xs rounded border text-text-main"
+                            style={{ borderColor: "var(--color-primary)" }}
+                            onClick={resetInline}
+                            disabled={inlineSaving}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {filtered.map((it) => (
+                <Fragment key={it._id}>
+                  <tr key={it._id} className="border-t" style={{ borderColor: "var(--color-primary)" }}>
+                    <td className="p-2">{it.index ?? 0}</td>
+                    <td className="p-2 text-text-main">
+                      <div className="font-medium">{it.name}</div>
+                      {it.defaultDescription && <div className="opacity-70 mt-0.5">{it.defaultDescription}</div>}
+                    </td>
+                    <td className="p-2 font-mono text-[11px] text-text-main">{it.key}</td>
+                    <td className="p-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center rounded px-2 py-0.5 border cursor-pointer hover:opacity-90"
+                        style={{ borderColor: "var(--color-primary)" }}
+                        title={getUsageTooltip(it)}
+                        onClick={() => openUsageModal(it)}
+                      >
+                        {getUsageCount(it)} volume{getUsageCount(it) === 1 ? "" : "s"}
+                      </button>
+                    </td>
+                    <td className="p-2">
+                      <button
+                        type="button"
+                        onClick={() => quickToggleActive(it)}
+                        className={`px-2 py-0.5 rounded text-[11px] border ${
+                          it.active ? "text-green-300" : "text-text-secondary"
+                        }`}
+                        style={{ borderColor: "var(--color-primary)" }}
+                      >
+                        {it.active ? "Active" : "Inactive"}
+                      </button>
+                    </td>
+                    <td className="p-2 space-x-2 whitespace-nowrap">
+                      <button className="text-primary hover:opacity-90" onClick={() => edit(it)}>
+                        Edit
+                      </button>
+                      <button className="text-primary hover:opacity-90" onClick={() => openInlineAfter(it._id)}>
+                        Insert Below
+                      </button>
+                      <button className="text-red-400 hover:text-red-300" onClick={() => remove(it._id)}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+
+                  {insertAfterId === it._id && (
+                    <tr className="border-t" style={{ borderColor: "var(--color-primary)" }}>
+                      <td className="p-2" colSpan={6}>
+                        <div className="rounded border p-2.5" style={{ borderColor: "var(--color-primary)" }}>
+                          <div className="text-[11px] text-text-secondary mb-2">
+                            Insert at index {getInsertPosition(insertAfterId)} (later rows shift up by 1)
+                          </div>
+                          {inlineError && <div className="text-red-400 text-xs mb-2">{inlineError}</div>}
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                            <input
+                              className="p-2 rounded border text-xs"
+                              style={{
+                                background: "var(--color-background)",
+                                borderColor: "var(--color-primary)",
+                                color: "var(--color-text-main)",
+                              }}
+                              placeholder="Blessing name"
+                              value={inlineForm.name}
+                              onChange={(e) => onInlineNameChange(e.target.value)}
+                            />
+                            <input
+                              className="p-2 rounded border text-xs"
+                              style={{
+                                background: "var(--color-background)",
+                                borderColor: "var(--color-primary)",
+                                color: "var(--color-text-main)",
+                              }}
+                              placeholder="key-slug"
+                              value={inlineForm.key}
+                              onChange={(e) => {
+                                setInlineKeyTouched(true);
+                                setInlineForm((prev) => ({ ...prev, key: toSlug(e.target.value) }));
+                              }}
+                            />
+                            <input
+                              className="p-2 rounded border text-xs"
+                              style={{
+                                background: "var(--color-background)",
+                                borderColor: "var(--color-primary)",
+                                color: "var(--color-text-main)",
+                              }}
+                              placeholder="Default description (optional)"
+                              value={inlineForm.defaultDescription}
+                              onChange={(e) =>
+                                setInlineForm((prev) => ({ ...prev, defaultDescription: e.target.value }))
+                              }
+                            />
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                className="px-2.5 py-2 text-xs rounded bg-primary text-white border hover:opacity-90"
+                                style={{ borderColor: "var(--color-primary)" }}
+                                onClick={submitInlineInsert}
+                                disabled={inlineSaving}
+                              >
+                                {inlineSaving ? "Inserting..." : "Insert"}
+                              </button>
+                              <button
+                                type="button"
+                                className="px-2.5 py-2 text-xs rounded border text-text-main"
+                                style={{ borderColor: "var(--color-primary)" }}
+                                onClick={resetInline}
+                                disabled={inlineSaving}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+
+              {insertAfterId === "__END__" && (
+                <tr className="border-t" style={{ borderColor: "var(--color-primary)" }}>
+                  <td className="p-2" colSpan={6}>
+                    <div className="rounded border p-2.5" style={{ borderColor: "var(--color-primary)" }}>
+                      <div className="text-[11px] text-text-secondary mb-2">Insert at end (new highest index)</div>
+                      {inlineError && <div className="text-red-400 text-xs mb-2">{inlineError}</div>}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <input
+                          className="p-2 rounded border text-xs"
+                          style={{
+                            background: "var(--color-background)",
+                            borderColor: "var(--color-primary)",
+                            color: "var(--color-text-main)",
+                          }}
+                          placeholder="Blessing name"
+                          value={inlineForm.name}
+                          onChange={(e) => onInlineNameChange(e.target.value)}
+                        />
+                        <input
+                          className="p-2 rounded border text-xs"
+                          style={{
+                            background: "var(--color-background)",
+                            borderColor: "var(--color-primary)",
+                            color: "var(--color-text-main)",
+                          }}
+                          placeholder="key-slug"
+                          value={inlineForm.key}
+                          onChange={(e) => {
+                            setInlineKeyTouched(true);
+                            setInlineForm((prev) => ({ ...prev, key: toSlug(e.target.value) }));
+                          }}
+                        />
+                        <input
+                          className="p-2 rounded border text-xs"
+                          style={{
+                            background: "var(--color-background)",
+                            borderColor: "var(--color-primary)",
+                            color: "var(--color-text-main)",
+                          }}
+                          placeholder="Default description (optional)"
+                          value={inlineForm.defaultDescription}
+                          onChange={(e) => setInlineForm((prev) => ({ ...prev, defaultDescription: e.target.value }))}
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="px-2.5 py-2 text-xs rounded bg-primary text-white border hover:opacity-90"
+                            style={{ borderColor: "var(--color-primary)" }}
+                            onClick={submitInlineInsert}
+                            disabled={inlineSaving}
+                          >
+                            {inlineSaving ? "Inserting..." : "Insert"}
+                          </button>
+                          <button
+                            type="button"
+                            className="px-2.5 py-2 text-xs rounded border text-text-main"
+                            style={{ borderColor: "var(--color-primary)" }}
+                            onClick={resetInline}
+                            disabled={inlineSaving}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {filtered.length === 0 && (
+                <tr>
+                  <td className="p-4 text-center text-text-secondary" colSpan={6}>
+                    No blessings found.
+                  </td>
+                </tr>
+              )}
+              <tr className="border-t" style={{ borderColor: "var(--color-primary)" }}>
+                <td className="p-2" colSpan={6}>
+                  <button
+                    type="button"
+                    className="text-xs px-2.5 py-1.5 rounded border text-text-main hover:opacity-90"
+                    style={{ borderColor: "var(--color-primary)", background: "var(--color-background)" }}
+                    onClick={() => openInlineAfter("__END__")}
+                  >
+                    Insert At End
+                  </button>
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {viewVolume && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setViewVolume(null)}
-        >
+      {usageModalItem && (
+        <div className="fixed inset-0 z-50 bg-black/70 p-4 flex items-center justify-center" onClick={closeUsageModal}>
           <div
-            className="w-full max-w-2xl max-h-[80vh] overflow-auto rounded border shadow-xl p-6"
+            className="w-full max-w-2xl max-h-[82vh] overflow-auto rounded border p-4"
             style={{ background: "var(--color-surface)", borderColor: "var(--color-primary)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-xl font-bold text-primary">
-                Volume {viewVolume.volumeNumber}: {viewVolume.title}
-              </h2>
-              <button onClick={() => setViewVolume(null)} className="text-text-secondary hover:text-white">
-                ✕
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3 className="text-lg text-text-main font-semibold">Missing Volumes</h3>
+                <p className="text-xs text-text-secondary mt-1">
+                  Blessing: <span className="text-text-main">{usageModalItem.name}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="text-xs px-2 py-1 rounded border text-text-main"
+                style={{ borderColor: "var(--color-primary)" }}
+                onClick={closeUsageModal}
+              >
+                Close
               </button>
             </div>
-            <div className="space-y-4 text-text-main">
-              <div>
-                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1">Blessings</h3>
-                <div className="space-y-2">
-                  {viewVolume.blessings?.map((b, i) => (
-                    <div key={i} className="p-2 rounded border border-white/10 bg-black/20">
-                      <div className="font-mono text-xs text-primary">{b.item}</div>
-                      <div className="text-sm">{b.description}</div>
-                    </div>
-                  ))}
-                  {(!viewVolume.blessings || viewVolume.blessings.length === 0) && (
-                    <div className="text-sm opacity-50">No blessings in this volume.</div>
-                  )}
-                </div>
+
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="text-xs text-text-secondary">
+                {modalMissingVolumes.length === 0
+                  ? "This blessing is already present in all volumes."
+                  : `Missing from ${modalMissingVolumes.length} volume${modalMissingVolumes.length === 1 ? "" : "s"}.`}
               </div>
+              <button
+                type="button"
+                className="px-2.5 py-1.5 text-xs rounded border text-white bg-primary hover:opacity-90 disabled:opacity-60"
+                style={{ borderColor: "var(--color-primary)" }}
+                onClick={addToAllMissingVolumes}
+                disabled={!modalMissingVolumes.length || bulkAddingMissing}
+              >
+                {bulkAddingMissing ? "Adding..." : "Add To All Missing"}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
               <div>
-                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1">Body Lines</h3>
-                <div className="text-sm space-y-1 opacity-80">
-                  {viewVolume.bodyLines?.map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
-                </div>
+                <label className="block text-[11px] text-text-secondary mb-1">Insert Index</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="w-full p-2 rounded border text-xs"
+                  style={{
+                    background: "var(--color-background)",
+                    borderColor: "var(--color-primary)",
+                    color: "var(--color-text-main)",
+                  }}
+                  value={modalInsertIndex}
+                  onChange={(e) => setModalInsertIndex(e.target.value)}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[11px] text-text-secondary mb-1">Description For Added Blessing</label>
+                <input
+                  className="w-full p-2 rounded border text-xs"
+                  style={{
+                    background: "var(--color-background)",
+                    borderColor: "var(--color-primary)",
+                    color: "var(--color-text-main)",
+                  }}
+                  placeholder="Write a custom description for this add action"
+                  value={modalDescription}
+                  onChange={(e) => setModalDescription(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                {modalMissingVolumes.map((vol) => {
+                  const isUpdating = updatingVolumeIds.has(vol._id);
+                  const isHovered = hoverVolumeId === vol._id;
+                  return (
+                    <div
+                      key={vol._id}
+                      className="rounded border p-2.5 flex items-center justify-between gap-3"
+                      style={{
+                        borderColor: "var(--color-primary)",
+                        background: isHovered ? "var(--color-surface)" : "var(--color-background)",
+                      }}
+                      onMouseEnter={() => setHoverVolumeId(vol._id)}
+                    >
+                      <div>
+                        <div className="text-sm text-text-main">
+                          V{vol.volumeNumber}: {vol.title}
+                        </div>
+                        <div className="text-[11px] text-text-secondary">{(vol.blessings || []).length} blessing entries</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="px-2.5 py-1.5 text-xs rounded border text-text-main hover:opacity-90 disabled:opacity-60"
+                        style={{ borderColor: "var(--color-primary)" }}
+                        onClick={() =>
+                          addBlessingToVolume(usageModalItem, vol, {
+                            insertIndex: modalInsertIndex,
+                            description: modalDescription,
+                          })
+                        }
+                        disabled={isUpdating || bulkAddingMissing}
+                      >
+                        {isUpdating ? "Adding..." : "Add To Volume"}
+                      </button>
+                    </div>
+                  );
+                })}
+                {!modalMissingVolumes.length && (
+                  <div
+                    className="rounded border p-3 text-xs text-text-secondary"
+                    style={{ borderColor: "var(--color-primary)", background: "var(--color-background)" }}
+                  >
+                    No missing volumes for this blessing.
+                  </div>
+                )}
+              </div>
+
+              <div
+                className="rounded border p-3 max-h-[52vh] overflow-auto"
+                style={{ borderColor: "var(--color-primary)", background: "var(--color-background)" }}
+              >
+                {!hoveredModalVolume && (
+                  <div className="text-xs text-text-secondary">Hover a volume on the left to preview it here.</div>
+                )}
+                {hoveredModalVolume && (
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-sm font-semibold text-text-main">
+                        V{hoveredModalVolume.volumeNumber}: {hoveredModalVolume.title}
+                      </div>
+                      <div className="text-[11px] text-text-secondary mt-0.5">
+                        {hoveredModalVolume.status || "draft"} • {(hoveredModalVolume.blessings || []).length} blessings
+                      </div>
+                    </div>
+
+                    {hoveredModalVolume.rawPastedText ? (
+                      <pre className="text-[11px] whitespace-pre-wrap text-text-main leading-relaxed">
+                        {hoveredModalVolume.rawPastedText}
+                      </pre>
+                    ) : (
+                      <div className="space-y-2">
+                        {!!hoveredModalVolume.bodyLines?.length && (
+                          <div>
+                            <div className="text-[11px] uppercase tracking-wide text-text-secondary mb-1">Body</div>
+                            <div className="text-[11px] whitespace-pre-wrap text-text-main">
+                              {hoveredModalVolume.bodyLines.join("\n")}
+                            </div>
+                          </div>
+                        )}
+                        {!!hoveredModalVolume.blessings?.length && (
+                          <div>
+                            <div className="text-[11px] uppercase tracking-wide text-text-secondary mb-1">Blessings</div>
+                            <div className="space-y-1">
+                              {hoveredModalVolume.blessings.map((b, i) => (
+                                <div key={`${hoveredModalVolume._id}-b-${i}`} className="text-[11px] text-text-main">
+                                  • {b?.item}
+                                  {b?.description ? ` (${b.description})` : ""}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {!!hoveredModalVolume.dream && (
+                          <div>
+                            <div className="text-[11px] uppercase tracking-wide text-text-secondary mb-1">Dream</div>
+                            <div className="text-[11px] text-text-main">{hoveredModalVolume.dream}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

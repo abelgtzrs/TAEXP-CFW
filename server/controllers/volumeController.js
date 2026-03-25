@@ -1,6 +1,7 @@
 // server/controllers/volumeController.js
 
 const Volume = require("../models/Volume"); // Import the Volume model
+const BlessingDefinition = require("../models/BlessingDefinition");
 /*
  * --- The Parser Function ---
  * This helper function takes a block of raw text and parses it into a structured object.
@@ -72,6 +73,41 @@ const parseRawGreentext = (rawText) => {
   return parsedData;
 };
 
+const normalizeBlessingItem = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const mergeWithMasterBlessings = async (parsedBlessings = []) => {
+  const normalizedExisting = new Set(
+    (Array.isArray(parsedBlessings) ? parsedBlessings : []).map((b) => normalizeBlessingItem(b?.item)).filter(Boolean),
+  );
+
+  const merged = (Array.isArray(parsedBlessings) ? parsedBlessings : []).map((b) => ({
+    item: String(b?.item || "").trim(),
+    description: String(b?.description || "").trim(),
+    context: String(b?.context || "").trim(),
+  }));
+
+  const defs = await BlessingDefinition.find({ active: true }).sort({ index: 1, name: 1 }).lean();
+  for (const def of defs) {
+    const item = String(def?.name || "").trim();
+    if (!item) continue;
+
+    const normalized = normalizeBlessingItem(item);
+    if (normalizedExisting.has(normalized)) continue;
+
+    merged.push({
+      item,
+      description: String(def?.defaultDescription || "").trim(),
+      context: String(def?.context || "").trim(),
+    });
+    normalizedExisting.add(normalized);
+  }
+
+  return merged;
+};
+
 // --- Controller Functions ---
 
 // @desc    Create a Volume from raw text
@@ -85,6 +121,7 @@ exports.createVolumeFromRaw = async (req, res) => {
 
     // Parse the raw text into our structured format.
     const parsedData = parseRawGreentext(rawPastedText);
+    parsedData.blessings = await mergeWithMasterBlessings(parsedData.blessings);
 
     if (!parsedData.volumeNumber || !parsedData.title) {
       return res.status(400).json({
