@@ -3,7 +3,7 @@ import api from "../../services/api";
 import Widget from "../ui/Widget";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const CalendarWidget = () => {
+const CalendarWidget = ({ compact = false }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bills, setBills] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -36,7 +36,6 @@ const CalendarWidget = () => {
   };
 
   const renderHeader = () => {
-    const dateFormat = "MMMM yyyy";
     return (
       <div className="flex justify-between items-center mb-2">
         <button onClick={handlePrevMonth} className="p-1 rounded-full hover:bg-gray-700">
@@ -133,7 +132,7 @@ const CalendarWidget = () => {
     const billsForSelectedDay = bills.filter((b) => b.dueDay === selectedDate.getDate());
 
     return (
-      <div className="mt-3 pt-3 border-t border-gray-700/50">
+      <div className={`${compact ? "mt-2 pt-2" : "mt-3 pt-3"} border-t border-gray-700/50`}>
         <h3 className="font-semibold text-white mb-1 text-sm">
           Events for: {selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
         </h3>
@@ -156,7 +155,11 @@ const CalendarWidget = () => {
   };
 
   return (
-    <Widget title="Monthly Schedule" className="flex flex-col h-auto">
+    <Widget
+      title="Monthly Schedule"
+      className="flex flex-col h-auto"
+      padding={compact ? "p-3" : "p-6"}
+    >
       <div className="flex-grow">
         {renderHeader()}
         {renderDays()}
