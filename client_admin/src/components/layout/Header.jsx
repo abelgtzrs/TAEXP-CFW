@@ -1,6 +1,6 @@
 import {
+  CalendarDays,
   Search,
-  Bell,
   Mail,
   User,
   LogOut,
@@ -21,8 +21,8 @@ import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import { Link } from "react-router-dom";
 import ClockWidget from "../dashboard/ClockWidget";
+import CalendarWidget from "../dashboard/CalendarWidget";
 import SpotifyWidget from "../dashboard/SpotifyWidget";
-import RightSidebar from "./RightSidebar";
 import PokemonPopover from "./components/PokemonPopover";
 import {
   listDates,
@@ -41,6 +41,7 @@ const Header = ({ forcedHeight }) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarHoverTimer = useRef(null);
   const [dailyOpen, setDailyOpen] = useState(false);
+  const [headerCalendarOpen, setHeaderCalendarOpen] = useState(false);
   const [dailyDateStr, setDailyDateStr] = useState(() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -64,9 +65,8 @@ const Header = ({ forcedHeight }) => {
   const [goalsOpen, setGoalsOpen] = useState(false);
   const goalsHoverTimer = useRef(null);
   const [customIncrement, setCustomIncrement] = useState({ index: null, val: "" });
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
-  const rightSidebarHoverTimer = useRef(null);
   const spotifyHoverTimer = useRef(null);
+  const headerCalendarRef = useRef(null);
 
   // Construct the base URL for the server to correctly resolve image paths
   const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
@@ -166,6 +166,27 @@ const Header = ({ forcedHeight }) => {
     };
   }, [user?.spotifyConnected]);
 
+  useEffect(() => {
+    if (!headerCalendarOpen) return;
+
+    const onDocClick = (e) => {
+      if (headerCalendarRef.current && !headerCalendarRef.current.contains(e.target)) {
+        setHeaderCalendarOpen(false);
+      }
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setHeaderCalendarOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [headerCalendarOpen]);
+
   // Close Daily Drafts on Escape when modal is open
   useEffect(() => {
     if (!dailyOpen) return;
@@ -229,18 +250,18 @@ const Header = ({ forcedHeight }) => {
             calendarHoverTimer.current = setTimeout(() => setCalendarOpen(false), 280);
           }}
         >
-          <Link
-            to="/admin/calendar"
+          <button
+            type="button"
             aria-haspopup="dialog"
             aria-expanded={calendarOpen}
-            onClick={() => setCalendarOpen(false)}
-            title="Open calendar admin"
+            onClick={() => setCalendarOpen(true)}
+            title="Open clock"
             className="rounded-xl border border-white/20 bg-black/35 px-2 py-1.5 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300"
           >
             <span className="rounded-md bg-black/40 px-2 py-1 text-xs font-semibold tabular-nums tracking-wide text-primary border border-white/15">
               {clockPreview}
             </span>
-          </Link>
+          </button>
           {calendarOpen && (
             <div
               role="dialog"
@@ -257,7 +278,7 @@ const Header = ({ forcedHeight }) => {
                 calendarHoverTimer.current = setTimeout(() => setCalendarOpen(false), 280);
               }}
             >
-              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-2 max-h-[78vh] overflow-auto">
+              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-1 sm:p-2 max-h-[78vh] overflow-auto">
                 <ClockWidget />
               </div>
             </div>
@@ -340,55 +361,29 @@ const Header = ({ forcedHeight }) => {
         >
           <Mail size={16} />
         </button>
-        {/* Right sidebar widgets in header dropdown (expanded view) */}
-        <div
-          className="relative"
-          onMouseEnter={() => {
-            if (rightSidebarHoverTimer.current) {
-              clearTimeout(rightSidebarHoverTimer.current);
-              rightSidebarHoverTimer.current = null;
-            }
-            setRightSidebarOpen(true);
-          }}
-          onMouseLeave={() => {
-            rightSidebarHoverTimer.current = setTimeout(() => setRightSidebarOpen(false), 150);
-          }}
-        >
+        <div className="relative" ref={headerCalendarRef}>
           <button
             type="button"
             aria-haspopup="dialog"
-            aria-expanded={rightSidebarOpen}
-            onClick={() => setRightSidebarOpen((v) => !v)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setRightSidebarOpen(false);
-            }}
-            title={rightSidebarOpen ? "Hide sidebar widgets" : "Show sidebar widgets"}
+            aria-expanded={headerCalendarOpen}
+            onClick={() => setHeaderCalendarOpen((v) => !v)}
+            title={headerCalendarOpen ? "Hide calendar" : "Show calendar"}
             className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
-              rightSidebarOpen
+              headerCalendarOpen
                 ? "bg-primary/20 text-primary hover:bg-primary/30"
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <Bell size={16} />
+            <CalendarDays size={16} />
           </button>
-          {rightSidebarOpen && (
+          {headerCalendarOpen && (
             <div
               role="dialog"
-              aria-label="Sidebar Widgets"
-              className="absolute right-0 mt-2 z-50 w-[85vw] sm:w-[420px] h-[70vh] max-h-[680px]"
-              onMouseEnter={() => {
-                if (rightSidebarHoverTimer.current) {
-                  clearTimeout(rightSidebarHoverTimer.current);
-                  rightSidebarHoverTimer.current = null;
-                }
-                setRightSidebarOpen(true);
-              }}
-              onMouseLeave={() => {
-                rightSidebarHoverTimer.current = setTimeout(() => setRightSidebarOpen(false), 150);
-              }}
+              aria-label="Calendar"
+              className="absolute right-0 mt-2 z-50 w-[min(94vw,520px)]"
             >
-              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-2 h-full overflow-hidden">
-                <RightSidebar condensed={false} disableEditControls className="h-full" />
+              <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-1 sm:p-2 max-h-[78vh] overflow-auto">
+                <CalendarWidget />
               </div>
             </div>
           )}
