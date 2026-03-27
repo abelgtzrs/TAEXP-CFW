@@ -377,13 +377,9 @@ const Header = ({ forcedHeight }) => {
             <CalendarDays size={16} />
           </button>
           {headerCalendarOpen && (
-            <div
-              role="dialog"
-              aria-label="Calendar"
-              className="absolute right-0 mt-2 z-50 w-[520px] max-w-[calc(100vw-1rem)] max-[724px]:fixed max-[724px]:left-2 max-[724px]:right-2 max-[724px]:top-14 max-[724px]:mt-0 max-[724px]:w-auto"
-            >
+            <div role="dialog" aria-label="Calendar" className="absolute right-0 mt-2 z-50 w-[min(94vw,520px)]">
               <div className="rounded-xl bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-1 sm:p-2 max-h-[78vh] overflow-auto">
-                <CalendarWidget compact />
+                <CalendarWidget />
               </div>
             </div>
           )}

@@ -64,6 +64,37 @@ const BookTrackerWidget = () => {
   const start = currentPage * pageSize;
   const pageItems = filtered.slice(start, start + pageSize);
 
+  const stats = useMemo(() => {
+    const totalBooks = recentBooks.length;
+    const finishedBooks = recentBooks.filter((book) => book.isFinished).length;
+    const activeBooks = totalBooks - finishedBooks;
+    const totalPagesRead = recentBooks.reduce((sum, book) => sum + (Number(book.pagesRead) || 0), 0);
+
+    return {
+      totalBooks,
+      finishedBooks,
+      activeBooks,
+      totalPagesRead,
+    };
+  }, [recentBooks]);
+
+  const getProgressTone = (percent) => {
+    if (percent >= 90) return "from-status-success to-emerald-300";
+    if (percent >= 55) return "from-status-info to-cyan-300";
+    if (percent >= 25) return "from-status-warning to-amber-300";
+    return "from-rose-500 to-orange-300";
+  };
+
+  const formatLastUpdated = (dateValue) => {
+    if (!dateValue) return "Unknown";
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return "Unknown";
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   useEffect(() => {
     // Reset to first page whenever filter changes
     setPage(0);
@@ -72,91 +103,149 @@ const BookTrackerWidget = () => {
   if (recentBooks.length === 0) {
     return (
       <Widget title="Book Tracker">
-        <p className="text-sm text-text-tertiary">No active books. Go to the Book Tracker to start one!</p>
+        <div className="rounded-xl border border-dashed border-white/20 bg-black/20 p-5 text-center">
+          <p className="text-sm text-text-secondary">No active books in your tracker yet.</p>
+          <p className="mt-1 text-xs text-text-tertiary">Start one from the Book Tracker page to build your reading momentum.</p>
+        </div>
       </Widget>
     );
   }
 
   return (
-    <Widget title="Book Tracker">
-      {/* Controls */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-xs text-text-secondary">
-          {filtered.length} book{filtered.length !== 1 ? "s" : ""}
+    <Widget title="Book Tracker" className="overflow-hidden">
+      <div className="space-y-4">
+        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-slate-900/80 via-slate-900/40 to-black/40 p-4">
+          <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />
+          <div className="pointer-events-none absolute -left-6 bottom-0 h-20 w-20 rounded-full bg-cyan-300/10 blur-xl" />
+
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-text-tertiary">Reading Command Center</p>
+              <p className="mt-1 text-sm font-semibold text-white">{stats.totalPagesRead.toLocaleString()} pages logged</p>
+            </div>
+            <div className="rounded-full border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-text-secondary">
+              {filtered.length} visible
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-text-tertiary">Active</p>
+              <p className="text-lg font-semibold text-white">{stats.activeBooks}</p>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-text-tertiary">Finished</p>
+              <p className="text-lg font-semibold text-white">{stats.finishedBooks}</p>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-text-tertiary">Total</p>
+              <p className="text-lg font-semibold text-white">{stats.totalBooks}</p>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowAll((s) => !s)}
-            className={`px-2 py-1 rounded text-xs border ${
-              showAll ? "bg-primary text-white border-transparent" : "bg-background border-white/20 hover:bg-white/10"
-            }`}
-          >
-            {showAll ? "Showing All" : "Active Only"}
-          </button>
-          <div className="inline-flex items-center gap-1">
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="inline-flex rounded-lg border border-white/10 bg-black/20 p-1">
+            <button
+              onClick={() => setShowAll(false)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                !showAll ? "bg-primary text-white" : "text-text-secondary hover:text-white"
+              }`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setShowAll(true)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                showAll ? "bg-primary text-white" : "text-text-secondary hover:text-white"
+              }`}
+            >
+              All Books
+            </button>
+          </div>
+
+          <div className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/20 p-1">
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={currentPage === 0}
-              className="px-2 py-1 rounded text-xs bg-background border border-white/20 disabled:opacity-50"
+              className="rounded-md px-2 py-1 text-xs text-text-secondary transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               Prev
             </button>
-            <span className="text-xs text-text-secondary">
-              Page {currentPage + 1} / {totalPages}
+            <span className="px-2 text-xs text-text-secondary">
+              {currentPage + 1} / {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={currentPage >= totalPages - 1}
-              className="px-2 py-1 rounded text-xs bg-background border border-white/20 disabled:opacity-50"
+              className="rounded-md px-2 py-1 text-xs text-text-secondary transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
             </button>
           </div>
         </div>
-      </div>
 
-      <div className="space-y-3">
-        {pageItems.map((book, index) => {
+        <div className="space-y-3">
+          {pageItems.map((book) => {
           const total = Number(book.totalPages) || 0;
           const read = Number(book.pagesRead) || 0;
           const progressPercent = total > 0 ? (read / total) * 100 : 0;
           const currentPages = pageUpdates[book._id] ?? read;
+          const progressTone = getProgressTone(progressPercent);
 
           return (
-            <div key={book._id} className={`${index < pageItems.length - 1 ? "border-b border-gray-700/30 pb-3" : ""}`}>
+            <article key={book._id} className="rounded-xl border border-white/10 bg-gradient-to-b from-black/30 to-black/10 p-3">
               <div className="flex gap-3">
-                {/* Cover Image */}
-                {book.coverImageUrl && (
+                {book.coverImageUrl ? (
                   <img
                     src={book.coverImageUrl}
                     alt={book.title}
-                    className="w-12 h-16 object-cover rounded shadow-md flex-shrink-0"
+                    className="h-20 w-14 flex-shrink-0 rounded-md object-cover shadow-lg shadow-black/40"
                     onError={(e) => {
                       e.target.style.display = "none";
                     }}
                   />
+                ) : (
+                  <div className="grid h-20 w-14 flex-shrink-0 place-items-center rounded-md border border-white/10 bg-slate-900/70 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
+                    Book
+                  </div>
                 )}
 
-                {/* Book Details */}
-                <div className="flex-1 min-w-0">
-                  <div className="mb-2">
-                    <p className="text-xs font-bold text-white truncate">
-                      {book.title} {book.year && `(${book.year})`}
-                    </p>
-                    <p className="text-xs text-text-secondary truncate">{book.author}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">
+                        {book.title} {book.year ? `(${book.year})` : ""}
+                      </p>
+                      <p className="truncate text-xs text-text-secondary">{book.author || "Unknown Author"}</p>
+                    </div>
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                        book.isFinished
+                          ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+                          : "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
+                      }`}
+                    >
+                      {book.isFinished ? "Complete" : "In Progress"}
+                    </span>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div className="w-full bg-background rounded-full h-1.5 mb-2">
-                    <div className="bg-primary h-1.5 rounded-full" style={{ width: `${progressPercent}%` }}></div>
+                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${progressTone}`}
+                      style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+                    />
                   </div>
 
-                  {/* Progress Text and Update Controls */}
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-text-tertiary">
-                      {book.pagesRead} / {book.totalPages} pages ({Math.round(progressPercent)}%)
-                    </p>
-                    <div className="flex items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-text-tertiary">
+                        {book.pagesRead} / {book.totalPages} pages ({Math.round(progressPercent)}%)
+                      </p>
+                      <p className="text-[11px] text-text-tertiary/80">Updated {formatLastUpdated(book.updatedAt || book.createdAt)}</p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
                       <input
                         type="number"
                         value={currentPages}
@@ -165,14 +254,14 @@ const BookTrackerWidget = () => {
                           const clamped = Math.max(0, Math.min(total, Number.isFinite(val) ? val : 0));
                           handlePageChange(book._id, clamped);
                         }}
-                        className="w-16 p-1 bg-background rounded border border-gray-700/50 text-white text-xs"
+                        className="w-16 rounded-md border border-white/15 bg-black/40 px-2 py-1 text-xs text-white outline-none transition focus:border-primary"
                         min="0"
                         max={book.totalPages}
                       />
                       <button
                         onClick={() => handleUpdateProgress(book._id)}
                         disabled={Number(currentPages) === read}
-                        className="bg-status-info hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-1 px-2 rounded text-xs"
+                        className="rounded-md border border-cyan-300/30 bg-cyan-400/20 px-2.5 py-1 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/35 disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         Update
                       </button>
@@ -180,9 +269,10 @@ const BookTrackerWidget = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </article>
           );
-        })}
+          })}
+        </div>
       </div>
     </Widget>
   );

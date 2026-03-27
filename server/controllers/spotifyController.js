@@ -277,77 +277,93 @@ exports.getRecentlyPlayed = async (req, res) => {
   }
 };
 
+const syncRecentTracksForUser = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user || !user.spotifyConnected) {
+    const err = new Error("Spotify not connected.");
+    err.code = "SPOTIFY_NOT_CONNECTED";
+    throw err;
+  }
+
+  if (!user.spotifyAccessToken && !user.spotifyRefreshToken) {
+    const err = new Error("Spotify session missing. Please reconnect your Spotify account.");
+    err.code = "SPOTIFY_SESSION_MISSING";
+    throw err;
+  }
+
+  // Get the most recent track timestamp to avoid duplicates
+  const lastLog = await SpotifyLog.findOne({ user: user._id }).sort({ playedAt: -1 });
+  const after = lastLog ? Math.floor(new Date(lastLog.playedAt).getTime()) : null;
+
+  const url = after
+    ? `https://api.spotify.com/v1/me/player/recently-played?limit=50&after=${after}`
+    : `https://api.spotify.com/v1/me/player/recently-played?limit=50`;
+
+  const response = await makeSpotifyRequest(user, url);
+
+  const tracks = response.data.items;
+  if (!tracks || tracks.length === 0) {
+    return { success: true, message: "No new tracks to sync.", newTracks: 0, totalFetched: 0 };
+  }
+
+  const newLogs = tracks.map((item) => ({
+    user: user._id,
+    trackId: item.track.id,
+    trackName: item.track.name,
+    artistName: item.track.artists.map((a) => a.name).join(", "),
+    albumName: item.track.album.name,
+    playedAt: new Date(item.played_at),
+    durationMs: item.track.duration_ms,
+  }));
+
+  // Use ordered:false to insert all valid logs even if some are duplicates (which will be ignored)
+  let insertedCount = 0;
+  try {
+    const result = await SpotifyLog.insertMany(newLogs, { ordered: false });
+    insertedCount = result.length;
+  } catch (err) {
+    // Handle duplicate key errors gracefully across driver versions
+    const isDup = err?.code === 11000 || (Array.isArray(err?.writeErrors) && err.writeErrors.some((e) => e?.code === 11000));
+    if (isDup) {
+      // Some driver versions don't expose insertedIds on error reliably; default to 0 and proceed
+      insertedCount = 0;
+      console.log(`Sync completed with duplicates skipped. Inserted ${insertedCount} new tracks (duplicates ignored).`);
+    } else {
+      console.error("Sync error (non-duplicate):", err);
+      throw err;
+    }
+  }
+
+  return {
+    success: true,
+    message: `Sync complete. ${insertedCount} new tracks logged.`,
+    newTracks: insertedCount,
+    totalFetched: newLogs.length,
+  };
+};
+
 // @desc    Sync recent tracks and log them to the database
 // @route   POST /api/spotify/sync
 exports.syncRecentTracks = async (req, res) => {
-  const user = await User.findById(req.user.id);
-  if (!user || !user.spotifyConnected) {
-    return res.status(400).json({ success: false, message: "Spotify not connected." });
-  }
-  if (!user.spotifyAccessToken && !user.spotifyRefreshToken) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Spotify session missing. Please reconnect your Spotify account." });
-  }
-
   try {
-    // Get the most recent track timestamp to avoid duplicates
-    const lastLog = await SpotifyLog.findOne({ user: user._id }).sort({ playedAt: -1 });
-    const after = lastLog ? Math.floor(new Date(lastLog.playedAt).getTime()) : null;
-
-    const url = after
-      ? `https://api.spotify.com/v1/me/player/recently-played?limit=50&after=${after}`
-      : `https://api.spotify.com/v1/me/player/recently-played?limit=50`;
-
-    const response = await makeSpotifyRequest(user, url);
-
-    const tracks = response.data.items;
-    if (!tracks || tracks.length === 0) {
-      return res.status(200).json({ success: true, message: "No new tracks to sync.", newTracks: 0, totalFetched: 0 });
-    }
-
-    const newLogs = tracks.map((item) => ({
-      user: user._id,
-      trackId: item.track.id,
-      trackName: item.track.name,
-      artistName: item.track.artists.map((a) => a.name).join(", "),
-      albumName: item.track.album.name,
-      playedAt: new Date(item.played_at),
-      durationMs: item.track.duration_ms,
-    }));
-
-    // Use ordered:false to insert all valid logs even if some are duplicates (which will be ignored)
-    let insertedCount = 0;
-    try {
-      const result = await SpotifyLog.insertMany(newLogs, { ordered: false });
-      insertedCount = result.length;
-    } catch (err) {
-      // Handle duplicate key errors gracefully across driver versions
-      const isDup =
-        err?.code === 11000 || (Array.isArray(err?.writeErrors) && err.writeErrors.some((e) => e?.code === 11000));
-      if (isDup) {
-        // Some driver versions don't expose insertedIds on error reliably; default to 0 and proceed
-        insertedCount = 0;
-        console.log(
-          `Sync completed with duplicates skipped. Inserted ${insertedCount} new tracks (duplicates ignored).`,
-        );
-      } else {
-        console.error("Sync error (non-duplicate):", err);
-        throw err;
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      message: `Sync complete. ${insertedCount} new tracks logged.`,
-      newTracks: insertedCount,
-      totalFetched: newLogs.length,
-    });
+    const result = await syncRecentTracksForUser(req.user.id);
+    return res.status(200).json(result);
   } catch (error) {
+    if (error.code === "SPOTIFY_NOT_CONNECTED") {
+      return res.status(400).json({ success: false, message: "Spotify not connected." });
+    }
+    if (error.code === "SPOTIFY_SESSION_MISSING") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Spotify session missing. Please reconnect your Spotify account." });
+    }
+
     console.error("Sync error:", error.response?.data || error.message || error);
     return sendSpotifyErrorResponse(res, error, "Could not sync from Spotify.");
   }
 };
+
+exports.syncRecentTracksForUser = syncRecentTracksForUser;
 
 // @desc    Get Spotify statistics
 // @route   GET /api/spotify/stats

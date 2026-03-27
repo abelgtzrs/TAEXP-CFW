@@ -50,10 +50,55 @@ require("./models/StrokesAlbum");
 require("./models/StrokesSong");
 
 const strokesRoutes = require("./routes/strokesRoutes");
+const User = require("./models/User");
+const { syncRecentTracksForUser } = require("./controllers/spotifyController");
 // Initialize app and database connection
 dotenv.config();
 const app = express();
 connectDB();
+
+const SPOTIFY_AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+let spotifyAutoSyncRunning = false;
+
+const runSpotifyAutoSync = async () => {
+  if (spotifyAutoSyncRunning) {
+    console.log("[Spotify AutoSync] Previous cycle still running, skipping this tick.");
+    return;
+  }
+
+  spotifyAutoSyncRunning = true;
+  try {
+    const connectedUsers = await User.find({ spotifyConnected: true, spotifyRefreshToken: { $exists: true, $ne: null } })
+      .select("_id username")
+      .lean();
+
+    if (!connectedUsers.length) {
+      console.log("[Spotify AutoSync] No connected Spotify users to sync.");
+      return;
+    }
+
+    let totalNewTracks = 0;
+    for (const user of connectedUsers) {
+      try {
+        const result = await syncRecentTracksForUser(user._id);
+        totalNewTracks += result.newTracks || 0;
+      } catch (error) {
+        console.error(
+          `[Spotify AutoSync] User ${user.username || user._id} sync failed:`,
+          error.response?.data || error.message || error,
+        );
+      }
+    }
+
+    console.log(
+      `[Spotify AutoSync] Synced ${connectedUsers.length} user(s), ${totalNewTracks} new track(s) logged at ${new Date().toISOString()}`,
+    );
+  } catch (error) {
+    console.error("[Spotify AutoSync] Cycle failed:", error.message || error);
+  } finally {
+    spotifyAutoSyncRunning = false;
+  }
+};
 
 // Essential middleware stack
 const rawOrigins = process.env.CORS_ORIGIN || process.env.CORS_ORIGINS;
@@ -200,4 +245,12 @@ The Abel Experience™ API is now operational.
 Temporal Sync Initialized @ ${new Date().toLocaleTimeString()}
 Listening on http://localhost:${PORT}
 `);
+
+  if (process.env.SPOTIFY_AUTO_SYNC_DISABLED !== "true") {
+    console.log("[Spotify AutoSync] Enabled (every 5 minutes).");
+    setTimeout(runSpotifyAutoSync, 60 * 1000);
+    setInterval(runSpotifyAutoSync, SPOTIFY_AUTO_SYNC_INTERVAL_MS);
+  } else {
+    console.log("[Spotify AutoSync] Disabled via SPOTIFY_AUTO_SYNC_DISABLED=true");
+  }
 });
