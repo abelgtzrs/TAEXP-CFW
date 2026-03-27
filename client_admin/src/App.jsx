@@ -32,6 +32,7 @@ import TasksPage from "./pages/TasksPage";
 import FinancePage from "./pages/FinancePage";
 import RichFinancePage from "./pages/RichFinancePage";
 import SpotifyStatsPage from "./pages/SpotifyStatsPage";
+import StrokesLyricsAdminPage from "./pages/StrokesLyricsAdminPage";
 import VolumeWorkbenchPage from "./pages/VolumeWorkbenchPage";
 import AdminUserManagementPage from "./pages/AdminUserManagementPage";
 import BlessingsAdminPage from "./pages/BlessingsAdminPage";
@@ -96,6 +97,7 @@ function App() {
           <Route path="/admin/users" element={<AdminUserManagementPage />} />
           <Route path="/admin/blessings" element={<BlessingsAdminPage />} />
           <Route path="/admin/blessings/usage" element={<BlessingsUsagePage />} />
+          <Route path="/admin/strokes" element={<StrokesLyricsAdminPage />} />
           <Route path="/admin/calendar" element={<CalendarAdminPage />} />
           <Route path="/admin/workouts/bulk-import" element={<BulkWorkoutImportPage />} />
           <Route path="/admin/badge-collections" element={<AdminBadgeCollectionsPage />} />

@@ -323,7 +323,8 @@ const syncRecentTracksForUser = async (userId) => {
     insertedCount = result.length;
   } catch (err) {
     // Handle duplicate key errors gracefully across driver versions
-    const isDup = err?.code === 11000 || (Array.isArray(err?.writeErrors) && err.writeErrors.some((e) => e?.code === 11000));
+    const isDup =
+      err?.code === 11000 || (Array.isArray(err?.writeErrors) && err.writeErrors.some((e) => e?.code === 11000));
     if (isDup) {
       // Some driver versions don't expose insertedIds on error reliably; default to 0 and proceed
       insertedCount = 0;

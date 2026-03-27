@@ -515,6 +515,11 @@ const AdminLayout = () => {
                 <NavItem to="/spotify-stats" icon={Music} isCollapsed={isSidebarCollapsed}>
                   Spotify Analytics
                 </NavItem>
+                {user?.role === "admin" && (
+                  <NavItem to="/admin/strokes" icon={Music} isCollapsed={isSidebarCollapsed}>
+                    Strokes Lyrics
+                  </NavItem>
+                )}
               </ul>
             </div>
 
