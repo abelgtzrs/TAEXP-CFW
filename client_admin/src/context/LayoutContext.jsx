@@ -3,6 +3,7 @@ import { useAuth } from "./AuthContext";
 import layoutService from "../services/layoutService";
 
 const LS_KEY = "dashboardLayoutV1";
+const COLUMN_IDS = ["col1", "col2", "col3", "col4"];
 
 const defaultLayout = {
   col1: [
@@ -24,6 +25,8 @@ const defaultLayout = {
     { id: "recent", key: "recent", size: "md" },
     { id: "top", key: "top", size: "md" },
     { id: "currency", key: "currency", size: "md" },
+  ],
+  col4: [
     { id: "quick-notes", key: "quick-notes", size: "md" },
     { id: "quick-links", key: "quick-links", size: "md" },
     { id: "focus-timer", key: "focus-timer", size: "sm" },
@@ -52,9 +55,17 @@ export function LayoutProvider({ children }) {
     }
   };
 
+  const cloneColumns = (source) => {
+    const copy = {};
+    for (const id of COLUMN_IDS) {
+      copy[id] = [...(source[id] || [])];
+    }
+    return copy;
+  };
+
   const withHeights = (layout) => {
-    const copy = { col1: [], col2: [], col3: [] };
-    for (const c of ["col1", "col2", "col3"]) {
+    const copy = cloneColumns({});
+    for (const c of COLUMN_IDS) {
       copy[c] = (layout[c] || []).map((it) => ({
         ...it,
         height: it.height ?? sizeToPx(it.size || "md"),
@@ -65,11 +76,14 @@ export function LayoutProvider({ children }) {
   };
 
   const ensureNewItems = (layout) => {
+    const normalized = cloneColumns(layout || {});
+
     // Ensure additional widgets exist if user had an older saved layout
     const present = new Set([
-      ...layout.col1.map((i) => i.id),
-      ...layout.col2.map((i) => i.id),
-      ...layout.col3.map((i) => i.id),
+      ...normalized.col1.map((i) => i.id),
+      ...normalized.col2.map((i) => i.id),
+      ...normalized.col3.map((i) => i.id),
+      ...normalized.col4.map((i) => i.id),
     ]);
     const toAdd = [
       { id: "quick-notes", key: "quick-notes", size: "md" },
@@ -78,8 +92,10 @@ export function LayoutProvider({ children }) {
       { id: "daily-quote", key: "daily-quote", size: "sm" },
       { id: "countdown", key: "countdown", size: "sm" },
     ].filter((it) => !present.has(it.id));
-    if (toAdd.length === 0) return layout;
-    return { ...layout, col3: [...layout.col3, ...toAdd] };
+    if (toAdd.length > 0) {
+      normalized.col4 = [...normalized.col4, ...toAdd];
+    }
+    return normalized;
   };
 
   const [columns, setColumns] = React.useState(() => {
@@ -144,7 +160,7 @@ export function LayoutProvider({ children }) {
   const moveWidget = (id, toColId, toIndex) => {
     setColumns((prev) => {
       const loc = (() => {
-        for (const c of Object.keys(prev)) {
+        for (const c of COLUMN_IDS) {
           const i = prev[c].findIndex((x) => x.id === id);
           if (i !== -1) return { colId: c, idx: i };
         }
@@ -152,7 +168,7 @@ export function LayoutProvider({ children }) {
       })();
       if (!loc) return prev;
       const item = prev[loc.colId][loc.idx];
-      const next = { col1: [...prev.col1], col2: [...prev.col2], col3: [...prev.col3] };
+      const next = cloneColumns(prev);
       next[loc.colId].splice(loc.idx, 1);
       const insertIndex = Math.max(0, Math.min(toIndex ?? next[toColId].length, next[toColId].length));
       next[toColId].splice(insertIndex, 0, item);
@@ -171,8 +187,8 @@ export function LayoutProvider({ children }) {
 
   const resizeWidget = (id, size) => {
     setColumns((prev) => {
-      const next = { col1: [...prev.col1], col2: [...prev.col2], col3: [...prev.col3] };
-      for (const c of Object.keys(next)) {
+      const next = cloneColumns(prev);
+      for (const c of COLUMN_IDS) {
         const i = next[c].findIndex((x) => x.id === id);
         if (i !== -1) {
           next[c][i] = { ...next[c][i], size, height: sizeToPx(size) };
@@ -185,8 +201,8 @@ export function LayoutProvider({ children }) {
 
   const adjustHeight = (id, deltaPx) => {
     setColumns((prev) => {
-      const next = { col1: [...prev.col1], col2: [...prev.col2], col3: [...prev.col3] };
-      for (const c of Object.keys(next)) {
+      const next = cloneColumns(prev);
+      for (const c of COLUMN_IDS) {
         const i = next[c].findIndex((x) => x.id === id);
         if (i !== -1) {
           const cur = next[c][i].height ?? sizeToPx(next[c][i].size || "md");
@@ -201,8 +217,8 @@ export function LayoutProvider({ children }) {
 
   const setMaxWidth = (id, pxOrNull) => {
     setColumns((prev) => {
-      const next = { col1: [...prev.col1], col2: [...prev.col2], col3: [...prev.col3] };
-      for (const c of Object.keys(next)) {
+      const next = cloneColumns(prev);
+      for (const c of COLUMN_IDS) {
         const i = next[c].findIndex((x) => x.id === id);
         if (i !== -1) {
           next[c][i] = { ...next[c][i], maxWidth: pxOrNull };
@@ -215,8 +231,8 @@ export function LayoutProvider({ children }) {
 
   const adjustMaxWidth = (id, deltaPx) => {
     setColumns((prev) => {
-      const next = { col1: [...prev.col1], col2: [...prev.col2], col3: [...prev.col3] };
-      for (const c of Object.keys(next)) {
+      const next = cloneColumns(prev);
+      for (const c of COLUMN_IDS) {
         const i = next[c].findIndex((x) => x.id === id);
         if (i !== -1) {
           const cur = next[c][i].maxWidth ?? 0; // 0 means no cap; treat as 0 then clamp upwards
@@ -231,7 +247,7 @@ export function LayoutProvider({ children }) {
 
   const moveWidgetToAdjacentColumn = (id, direction) => {
     setColumns((prev) => {
-      const order = ["col1", "col2", "col3"];
+      const order = COLUMN_IDS;
       // locate
       let fromCol = null;
       let fromIdx = -1;
@@ -248,7 +264,7 @@ export function LayoutProvider({ children }) {
       const toPos = fromPos + (direction === "right" ? 1 : -1);
       if (toPos < 0 || toPos >= order.length) return prev;
       const toCol = order[toPos];
-      const next = { col1: [...prev.col1], col2: [...prev.col2], col3: [...prev.col3] };
+      const next = cloneColumns(prev);
       const [item] = next[fromCol].splice(fromIdx, 1);
       next[toCol].splice(next[toCol].length, 0, item);
       return next;

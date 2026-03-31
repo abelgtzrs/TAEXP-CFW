@@ -28,6 +28,7 @@ import PersonaWidget from "../components/dashboard/PersonaWidget";
 import CalendarWidget from "../components/dashboard/CalendarWidget";
 import StrokesLyricsWidget from "../components/dashboard/StrokesLyricsWidget";
 import LeftColumns from "../components/dashboard/layout/LeftColumns";
+import StreakCompactPreview from "../components/dashboard/StreakCompactPreview";
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -161,10 +162,11 @@ const DashboardPage = () => {
             title="Dashboard"
             subtitle={`Cognitive Framework Status for ${user.username || "Admin"}.`}
             className="mt-1 mb-1 pl-4"
+            actions={
+              !loading ? <StreakCompactPreview streak={streakStatus.currentLoginStreak || 0} mode="inline" /> : null
+            }
           />
           {/* Layout edit toggle is in the sidebar footer above Customize UI */}
-          {/* Current streak hint below header with countdown to next NY midnight */}
-          {!loading && <StreakCountdown streak={streakStatus.currentLoginStreak || 0} />}
         </motion.div>
 
         {/* --- Main Dashboard Grid --- */}
@@ -234,7 +236,7 @@ const DashboardPage = () => {
                 <button
                   onClick={handleTickStreak}
                   disabled={ticking}
-                  className="inline-flex items-center gap-2 rounded-md bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed shadow"
+                  className="inline-flex items-center gap-2 rounded-md bg-emerald-600 text-white px-4 py-2 text-xl hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed shadow"
                   title="Count today's login toward your streak"
                 >
                   {ticking ? "Updating…" : "Count today’s login"}
@@ -246,7 +248,7 @@ const DashboardPage = () => {
                   Not now
                 </button>
               </div>
-              <div className="mt-3 text-xs text-slate-400">Current streak: {streakStatus.currentLoginStreak || 0}</div>
+              <div className="mt-3 text-xl text-slate-400">Current streak: {streakStatus.currentLoginStreak || 0}</div>
             </div>
           </div>
         )}
@@ -256,68 +258,3 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
-
-// Lightweight countdown component (America/New_York midnight)
-const StreakCountdown = ({ streak }) => {
-  const [remaining, setRemaining] = useState(getRemaining());
-
-  useEffect(() => {
-    const id = setInterval(() => setRemaining(getRemaining()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  function getRemaining() {
-    try {
-      const tz = "America/New_York";
-      const now = new Date();
-      // Current NY parts
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: tz,
-        hour12: false,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
-        .formatToParts(now)
-        .reduce((acc, p) => {
-          if (p.type !== "literal") acc[p.type] = p.value;
-          return acc;
-        }, {});
-      const y = parseInt(parts.year, 10);
-      const m = parseInt(parts.month, 10) - 1;
-      const d = parseInt(parts.day, 10);
-      // Next midnight NY time -> create Date in NY by constructing local then offsetting via target UTC difference
-      const nextLocalMidnightNY = new Date(Date.UTC(y, m, d + 1, 5, 0, 0));
-      // Explanation: Midnight in New York relative to UTC varies (EST=UTC-5, EDT=UTC-4).
-      // Instead of hard-coding offset we derive it by getting current NY offset.
-      const currentOffsetMinutes = -now.getTimezoneOffset(); // local offset, not NY
-      // We can't rely on local offset. Simpler approach: compute actual NY midnight by using Date for now in NY then constructing next day and formatting back to UTC.
-      const nowNY = new Date(new Intl.DateTimeFormat("en-US", { timeZone: tz }).format(now)); // This fallback may produce local interpretation; we use a safer relative method below.
-      // Simpler robust approach: compute seconds until next midnight using NY parts.
-      const secNow = parseInt(parts.hour, 10) * 3600 + parseInt(parts.minute, 10) * 60 + parseInt(parts.second, 10);
-      const secLeft = 24 * 3600 - secNow;
-      return Math.max(secLeft, 0);
-    } catch {
-      return 0;
-    }
-  }
-
-  const format = (secs) => {
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    const s = secs % 60;
-    return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
-  };
-
-  return (
-    <div className="px-4 text-xs opacity-70 flex items-center gap-3" aria-live="polite">
-      <span>Current streak: {streak}</span>
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 border border-white/10">
-        Reset in {format(remaining)}
-      </span>
-    </div>
-  );
-};

@@ -58,11 +58,13 @@ function Column({ id: columnId, items, extraProps }) {
 
 export default function LeftColumns({ extraProps }) {
   const { columns } = useLayout();
+  const columnIds = ["col1", "col2", "col3", "col4"];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
-      <Column id="col1" items={columns.col1} extraProps={extraProps} />
-      <Column id="col2" items={columns.col2} extraProps={extraProps} />
-      <Column id="col3" items={columns.col3} extraProps={extraProps} />
+    <div className="grid grid-cols-1 md:grid-cols-3 min-[1600px]:grid-cols-4 gap-3 items-start">
+      {columnIds.map((id) => (
+        <Column key={id} id={id} items={columns[id] || []} extraProps={extraProps} />
+      ))}
     </div>
   );
 }
