@@ -72,6 +72,14 @@ const CalendarWidget = ({ compact = false }) => {
     return "bg-red-500";
   };
 
+  const formatCurrency = (value) => {
+    const parsed = Number(value || 0);
+    return `$${parsed.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
   const getDayKey = (date) => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   };
@@ -197,18 +205,40 @@ const CalendarWidget = ({ compact = false }) => {
     setClickPopoverError("");
   };
 
+  const totalBillCount = bills.length;
+  const paidBillCount = bills.filter((bill) => bill.paidForMonths?.includes(currentMonthKey)).length;
+  const remainingBillCount = Math.max(totalBillCount - paidBillCount, 0);
+
+  const monthlyTotal = bills.reduce((acc, bill) => acc + Number(bill.amount || 0), 0);
+  const monthlyPaid = bills
+    .filter((bill) => bill.paidForMonths?.includes(currentMonthKey))
+    .reduce((acc, bill) => acc + Number(bill.amount || 0), 0);
+  const monthlyRemaining = Math.max(monthlyTotal - monthlyPaid, 0);
+  const paidProgress = monthlyTotal ? (monthlyPaid / monthlyTotal) * 100 : 0;
+
   const renderHeader = () => {
     return (
-      <div className="flex justify-between items-center mb-2">
-        <button onClick={handlePrevMonth} className="p-1 rounded-full hover:bg-gray-700">
-          <ChevronLeft size={16} />
-        </button>
-        <h2 className="text-base font-semibold text-white">
-          {currentDate.toLocaleString("default", { month: "long", year: "numeric" })}
-        </h2>
-        <button onClick={handleNextMonth} className="p-1 rounded-full hover:bg-gray-700">
-          <ChevronRight size={16} />
-        </button>
+      <div className="mb-2">
+        <div className="flex justify-between items-center">
+          <button onClick={handlePrevMonth} className="p-1 rounded-full hover:bg-gray-700">
+            <ChevronLeft size={16} />
+          </button>
+          <h2 className="text-base font-semibold text-white">
+            {currentDate.toLocaleString("default", { month: "long", year: "numeric" })}
+          </h2>
+          <button onClick={handleNextMonth} className="p-1 rounded-full hover:bg-gray-700">
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
+        <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
+          <span className="inline-flex items-center rounded-full border border-rose-400/50 bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-100">
+            {remainingBillCount} pending bill{remainingBillCount === 1 ? "" : "s"}
+          </span>
+          <span className="inline-flex items-center rounded-full border border-rose-300/45 bg-black/35 px-2 py-0.5 text-[10px] font-mono text-white">
+            {formatCurrency(monthlyRemaining)} remaining
+          </span>
+        </div>
       </div>
     );
   };
@@ -257,6 +287,11 @@ const CalendarWidget = ({ compact = false }) => {
         const isDetailedPopoverOpen = openClickPopoverKey === dayKey;
 
         const billsForDay = bills.filter((b) => b.dueDay === day.getDate());
+        const unpaidBillsForDay = billsForDay.filter((bill) => !bill.paidForMonths?.includes(currentMonthKey));
+        const dayAmount = billsForDay.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+        const unpaidAmountForDay = unpaidBillsForDay.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+        const hasBillsInCurrentMonth = isCurrentMonth && billsForDay.length > 0;
+        const hasUnpaidBillsInCurrentMonth = hasBillsInCurrentMonth && unpaidBillsForDay.length > 0;
         const openUpward = rowIndex >= totalRows - 2;
         const horizontalPosition = i <= 1 ? "left-0" : i >= 5 ? "right-0" : "left-1/2 -translate-x-1/2";
         const verticalPosition = openUpward ? "bottom-full mb-1" : "top-full mt-1";
@@ -265,32 +300,47 @@ const CalendarWidget = ({ compact = false }) => {
           <div
             className={`p-1 h-12 flex flex-col items-center justify-start cursor-pointer border rounded-lg transition-colors
               ${!isCurrentMonth ? "text-text-tertiary border-transparent" : "text-text-main border-transparent"}
+              ${hasBillsInCurrentMonth ? "border-rose-400/45 bg-rose-500/10 hover:bg-rose-500/20" : "hover:bg-gray-700/50"}
               ${isToday ? "bg-primary/30 ring-2 ring-primary/70" : ""}
-              ${isSelected ? "border-primary" : ""}
-              hover:bg-gray-700/50 relative`}
+              ${isSelected ? (hasBillsInCurrentMonth ? "ring-2 ring-rose-400/70" : "border-primary") : ""}
+              relative`}
             key={dayKey}
             onClick={() => setSelectedDate(cloneDay)}
           >
-            <div className="relative inline-flex">
+            <div className="relative inline-flex items-center gap-1">
               <span
-                className={`peer cursor-pointer text-xs ${isToday ? "font-bold text-white" : ""}`}
+                className={`peer cursor-pointer text-xs ${
+                  isToday ? "font-bold text-white" : hasBillsInCurrentMonth ? "font-semibold text-rose-100" : ""
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDayClick(cloneDay, isCurrentMonth && billsForDay.length > 0);
+                  handleDayClick(cloneDay, hasBillsInCurrentMonth);
                 }}
               >
                 {day.getDate()}
               </span>
+              {hasBillsInCurrentMonth && (
+                <span
+                  className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold ${
+                    hasUnpaidBillsInCurrentMonth ? "bg-rose-500 text-white" : "bg-emerald-500/85 text-white"
+                  }`}
+                >
+                  {hasUnpaidBillsInCurrentMonth ? unpaidBillsForDay.length : "P"}
+                </span>
+              )}
 
-              {isCurrentMonth && billsForDay.length > 0 && (
+              {hasBillsInCurrentMonth && (
                 <div
-                  className={`pointer-events-none opacity-0 peer-hover:opacity-100 transition-all duration-200 absolute ${horizontalPosition} ${verticalPosition} z-20 w-72 rounded-xl border border-primary/45 bg-gradient-to-b from-[#0f1513] to-[#0a0f0d] shadow-2xl ring-1 ring-black/40 p-3 text-left backdrop-blur-sm`}
+                  className={`pointer-events-none opacity-0 peer-hover:opacity-100 transition-all duration-200 absolute ${horizontalPosition} ${verticalPosition} z-20 w-72 rounded-xl border border-rose-400/45 bg-gradient-to-b from-[#1a1214] to-[#110c0d] shadow-2xl ring-1 ring-black/40 p-3 text-left backdrop-blur-sm`}
                 >
                   <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-700/70">
                     <div className="text-[11px] uppercase tracking-[0.08em] text-text-secondary font-semibold">
                       Due on day {day.getDate()}
                     </div>
-                    <div className="text-[11px] font-semibold text-primary">{billsForDay.length} total</div>
+                    <div className="text-right">
+                      <div className="text-[11px] font-semibold text-rose-200">{billsForDay.length} total</div>
+                      <div className="text-[10px] font-mono text-white">{formatCurrency(dayAmount)}</div>
+                    </div>
                   </div>
                   <ul className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
                     {billsForDay.map((bill) => {
@@ -300,7 +350,9 @@ const CalendarWidget = ({ compact = false }) => {
                         <li
                           key={`popover-${bill._id}`}
                           className={`rounded-lg border px-2 py-1.5 flex items-center gap-2.5 text-xs ${
-                            isPaid ? "border-emerald-700/60 bg-emerald-900/20" : "border-gray-700/80 bg-black/20"
+                            isPaid
+                              ? "border-emerald-700/60 bg-emerald-900/20"
+                              : "border-rose-400/45 bg-rose-900/25 shadow-[0_0_0_1px_rgba(251,113,133,0.2)]"
                           }`}
                         >
                           <input
@@ -312,7 +364,7 @@ const CalendarWidget = ({ compact = false }) => {
                               e.stopPropagation();
                               await handleTogglePaid(bill, e.target.checked);
                             }}
-                            className="h-4 w-4 accent-green-500"
+                            className={`h-4 w-4 ${isPaid ? "accent-green-500" : "accent-rose-500"}`}
                           />
                           <span
                             className={`flex-grow truncate font-medium ${
@@ -321,8 +373,8 @@ const CalendarWidget = ({ compact = false }) => {
                           >
                             {bill.name}
                           </span>
-                          <span className={`font-mono text-[12px] ${isPaid ? "text-gray-400" : "text-white"}`}>
-                            ${bill.amount.toFixed(2)}
+                          <span className={`font-mono text-[12px] ${isPaid ? "text-gray-400" : "text-rose-100"}`}>
+                            {formatCurrency(bill.amount)}
                           </span>
                         </li>
                       );
@@ -331,21 +383,29 @@ const CalendarWidget = ({ compact = false }) => {
                 </div>
               )}
             </div>
-            <div className="flex flex-wrap justify-center gap-0.5 mt-0.5">
-              {isCurrentMonth &&
-                billsForDay.map((bill) => (
-                  <div
-                    key={bill._id}
-                    className={`w-1.5 h-1.5 rounded-full ${getBillColor(bill.amount)}`}
-                    title={`${bill.name} - $${bill.amount}`}
-                  ></div>
-                ))}
+            <div className="mt-0.5 min-h-[16px] flex flex-col items-center justify-start gap-0.5">
+              {hasBillsInCurrentMonth && (
+                <>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[9px] font-semibold leading-none ${
+                      hasUnpaidBillsInCurrentMonth
+                        ? "border-rose-400/60 bg-rose-500/20 text-rose-100"
+                        : "border-emerald-400/50 bg-emerald-500/20 text-emerald-100"
+                    }`}
+                  >
+                    {billsForDay.length} bill{billsForDay.length === 1 ? "" : "s"}
+                  </span>
+                  <span className="text-[9px] font-mono leading-none text-white/90">
+                    {formatCurrency(hasUnpaidBillsInCurrentMonth ? unpaidAmountForDay : dayAmount)}
+                  </span>
+                </>
+              )}
             </div>
 
-            {isCurrentMonth && billsForDay.length > 0 && isDetailedPopoverOpen && (
+            {hasBillsInCurrentMonth && isDetailedPopoverOpen && (
               <div
                 ref={isDetailedPopoverOpen ? clickPopoverRef : null}
-                className={`absolute ${horizontalPosition} ${verticalPosition} z-30 w-[24rem] max-w-[min(24rem,calc(100vw-1.5rem))] rounded-xl border border-primary/50 bg-gradient-to-b from-[#101b18] to-[#0b110f] shadow-2xl ring-1 ring-black/50 p-3 text-left`}
+                className={`absolute ${horizontalPosition} ${verticalPosition} z-30 w-[24rem] max-w-[min(24rem,calc(100vw-1.5rem))] rounded-xl border border-rose-400/50 bg-gradient-to-b from-[#1f1316] to-[#130d0f] shadow-2xl ring-1 ring-black/50 p-3 text-left`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-2 flex items-center justify-between border-b border-gray-700/70 pb-2">
@@ -353,7 +413,9 @@ const CalendarWidget = ({ compact = false }) => {
                     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary">
                       {cloneDay.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
                     </p>
-                    <p className="text-[11px] text-text-tertiary">Detailed items and editing</p>
+                    <p className="text-[11px] text-rose-200/90">
+                      {unpaidBillsForDay.length} unpaid • {formatCurrency(unpaidAmountForDay)}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -378,30 +440,45 @@ const CalendarWidget = ({ compact = false }) => {
                     const isEditing = editingBillId === bill._id;
 
                     return (
-                      <li key={`detailed-${bill._id}`} className="rounded-lg border border-gray-700/80 bg-black/25 p-2">
+                      <li
+                        key={`detailed-${bill._id}`}
+                        className={`rounded-lg border p-2 ${
+                          isPaid
+                            ? "border-emerald-700/60 bg-emerald-900/20"
+                            : "border-rose-400/45 bg-rose-900/20 shadow-[0_0_0_1px_rgba(251,113,133,0.18)]"
+                        }`}
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="truncate text-xs font-semibold text-white">{bill.name}</p>
                             <p className="text-[11px] text-text-secondary">
-                              ${Number(bill.amount || 0).toFixed(2)} | due day {bill.dueDay} |{" "}
-                              {bill.category || "general"}
+                              due day {bill.dueDay} | {bill.category || "general"}
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (isEditing) {
-                                setEditingBillId(null);
-                                setClickPopoverError("");
-                              } else {
-                                startEditBill(bill);
-                              }
-                            }}
-                            className="rounded-md border border-primary/40 px-2 py-1 text-[11px] text-primary hover:bg-primary/10"
-                          >
-                            {isEditing ? "Cancel" : "Edit"}
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-mono ${
+                                isPaid ? "bg-emerald-500/25 text-emerald-100" : "bg-rose-500/35 text-rose-100"
+                              }`}
+                            >
+                              {formatCurrency(bill.amount)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isEditing) {
+                                  setEditingBillId(null);
+                                  setClickPopoverError("");
+                                } else {
+                                  startEditBill(bill);
+                                }
+                              }}
+                              className="rounded-md border border-primary/40 px-2 py-1 text-[11px] text-primary hover:bg-primary/10"
+                            >
+                              {isEditing ? "Cancel" : "Edit"}
+                            </button>
+                          </div>
                         </div>
 
                         <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] text-text-secondary">
@@ -549,19 +626,40 @@ const CalendarWidget = ({ compact = false }) => {
     if (!selectedDate) return null;
 
     const billsForSelectedDay = bills.filter((b) => Number(b.dueDay) === selectedDate.getDate());
+    const unpaidForSelectedDay = billsForSelectedDay.filter((bill) => !bill.paidForMonths?.includes(currentMonthKey));
 
     return (
       <div className={`${compact ? "mt-2 pt-2" : "mt-3 pt-3"} border-t border-gray-700/50`}>
-        <h3 className="font-semibold text-white mb-1 text-sm">
-          Events for: {selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
-        </h3>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-white text-sm">
+            Bills for: {selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
+          </h3>
+          {billsForSelectedDay.length > 0 && (
+            <span className="inline-flex items-center rounded-full border border-rose-400/50 bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-100">
+              {unpaidForSelectedDay.length} unpaid
+            </span>
+          )}
+        </div>
         {billsForSelectedDay.length > 0 ? (
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {billsForSelectedDay.map((bill) => (
-              <li key={bill._id} className="flex items-center text-xs">
-                <div className={`w-2 h-2 rounded-full mr-2 ${getBillColor(bill.amount)}`}></div>
-                <span className="flex-grow text-text-secondary">{bill.name}</span>
-                <span className="font-mono text-white text-xs">${bill.amount.toFixed(2)}</span>
+              <li
+                key={bill._id}
+                className={`rounded-lg border px-2.5 py-1.5 flex items-center gap-2 text-xs ${
+                  bill.paidForMonths?.includes(currentMonthKey)
+                    ? "border-emerald-700/60 bg-emerald-900/20"
+                    : "border-rose-400/45 bg-rose-900/25"
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full ${getBillColor(bill.amount)}`}></div>
+                <span
+                  className={`flex-grow font-medium ${
+                    bill.paidForMonths?.includes(currentMonthKey) ? "text-emerald-100/80 line-through" : "text-gray-100"
+                  }`}
+                >
+                  {bill.name}
+                </span>
+                <span className="font-mono text-white text-xs">{formatCurrency(bill.amount)}</span>
               </li>
             ))}
           </ul>
@@ -573,12 +671,6 @@ const CalendarWidget = ({ compact = false }) => {
     );
   };
 
-  const monthlyTotal = bills.reduce((acc, bill) => acc + Number(bill.amount || 0), 0);
-  const monthlyPaid = bills
-    .filter((bill) => bill.paidForMonths?.includes(currentMonthKey))
-    .reduce((acc, bill) => acc + Number(bill.amount || 0), 0);
-  const monthlyRemaining = monthlyTotal - monthlyPaid;
-
   return (
     <Widget title="Monthly Schedule" className="flex flex-col h-auto" padding={compact ? "p-3" : "p-6"}>
       <div className="flex-grow relative overflow-visible">
@@ -586,15 +678,25 @@ const CalendarWidget = ({ compact = false }) => {
         {renderDays()}
         {renderCells()}
       </div>
-      <div className="mt-2 rounded-lg border border-gray-700/50 bg-gray-900/60 px-3 py-2">
+      <div
+        className={`mt-2 rounded-lg border px-3 py-2 ${
+          monthlyRemaining > 0
+            ? "border-rose-400/45 bg-gradient-to-r from-rose-900/25 to-gray-900/80"
+            : "border-emerald-700/45 bg-gradient-to-r from-emerald-900/25 to-gray-900/80"
+        }`}
+      >
         <div className="flex items-center justify-between text-xs">
           <span className="text-text-secondary">Monthly Bills Remaining</span>
-          <span className="font-mono text-white">${monthlyRemaining.toFixed(2)}</span>
+          <span className="font-mono text-white">{formatCurrency(monthlyRemaining)}</span>
+        </div>
+        <div className="mt-1 flex items-center justify-between text-[10px]">
+          <span className="text-rose-100/90">{remainingBillCount} bill(s) pending</span>
+          <span className="text-emerald-100/90">{paidBillCount} paid</span>
         </div>
         <div className="mt-1.5 h-1.5 w-full rounded-full bg-gray-700/60 overflow-hidden">
           <div
-            className="h-full bg-green-500 transition-all duration-300"
-            style={{ width: `${monthlyTotal ? (monthlyPaid / monthlyTotal) * 100 : 0}%` }}
+            className="h-full bg-gradient-to-r from-rose-400 via-yellow-400 to-emerald-400 transition-all duration-300"
+            style={{ width: `${paidProgress}%` }}
           />
         </div>
       </div>
