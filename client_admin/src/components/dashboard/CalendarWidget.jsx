@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "../../services/api";
 import Widget from "../ui/Widget";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -8,6 +8,20 @@ const CalendarWidget = ({ compact = false }) => {
   const [bills, setBills] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [pendingToggles, setPendingToggles] = useState({});
+  const [openClickPopoverKey, setOpenClickPopoverKey] = useState(null);
+  const [editingBillId, setEditingBillId] = useState(null);
+  const [savingBillId, setSavingBillId] = useState(null);
+  const [clickPopoverError, setClickPopoverError] = useState("");
+  const [editDraft, setEditDraft] = useState({
+    name: "",
+    amount: "",
+    dueDay: "",
+    category: "general",
+    notes: "",
+    autoPay: false,
+    isActive: true,
+  });
+  const clickPopoverRef = useRef(null);
 
   const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
 
@@ -24,18 +38,163 @@ const CalendarWidget = ({ compact = false }) => {
     fetchBills();
   }, []);
 
+  useEffect(() => {
+    if (!openClickPopoverKey) return;
+
+    const handleOutsideClick = (event) => {
+      if (clickPopoverRef.current && !clickPopoverRef.current.contains(event.target)) {
+        setOpenClickPopoverKey(null);
+        setEditingBillId(null);
+        setClickPopoverError("");
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpenClickPopoverKey(null);
+        setEditingBillId(null);
+        setClickPopoverError("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [openClickPopoverKey]);
+
   const getBillColor = (amount) => {
     if (amount < 20) return "bg-green-500";
     if (amount <= 100) return "bg-yellow-500";
     return "bg-red-500";
   };
 
+  const getDayKey = (date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  };
+
+  const handleDayClick = (date, hasBills) => {
+    setSelectedDate(date);
+    if (!hasBills) {
+      setOpenClickPopoverKey(null);
+      setEditingBillId(null);
+      setClickPopoverError("");
+      return;
+    }
+
+    const key = getDayKey(date);
+    setOpenClickPopoverKey((prev) => (prev === key ? null : key));
+    setEditingBillId(null);
+    setClickPopoverError("");
+  };
+
+  const startEditBill = (bill) => {
+    setEditingBillId(bill._id);
+    setEditDraft({
+      name: bill.name || "",
+      amount: String(bill.amount ?? ""),
+      dueDay: String(bill.dueDay ?? ""),
+      category: bill.category || "general",
+      notes: bill.notes || "",
+      autoPay: !!bill.autoPay,
+      isActive: bill.isActive !== false,
+    });
+    setClickPopoverError("");
+  };
+
+  const handleTogglePaid = async (bill, nextPaid) => {
+    setPendingToggles((prev) => ({ ...prev, [bill._id]: true }));
+    const previousBills = bills;
+
+    setBills((prev) =>
+      prev.map((item) => {
+        if (item._id !== bill._id) return item;
+        const monthSet = new Set(item.paidForMonths || []);
+        if (nextPaid) monthSet.add(currentMonthKey);
+        else monthSet.delete(currentMonthKey);
+        return { ...item, paidForMonths: [...monthSet] };
+      }),
+    );
+
+    try {
+      await api.put(`/calendar/bills/${bill._id}/toggle-paid`, {
+        monthKey: currentMonthKey,
+        isPaid: nextPaid,
+      });
+    } catch (error) {
+      setBills(previousBills);
+    } finally {
+      setPendingToggles((prev) => {
+        const copy = { ...prev };
+        delete copy[bill._id];
+        return copy;
+      });
+    }
+  };
+
+  const handleSaveEdit = async (billId) => {
+    const parsedAmount = Number(editDraft.amount);
+    const parsedDueDay = Number(editDraft.dueDay);
+
+    if (!editDraft.name.trim()) {
+      setClickPopoverError("Name is required.");
+      return;
+    }
+    if (Number.isNaN(parsedAmount) || parsedAmount < 0) {
+      setClickPopoverError("Amount must be a valid number.");
+      return;
+    }
+    if (Number.isNaN(parsedDueDay) || parsedDueDay < 1 || parsedDueDay > 31) {
+      setClickPopoverError("Due day must be between 1 and 31.");
+      return;
+    }
+
+    const payload = {
+      name: editDraft.name.trim(),
+      amount: parsedAmount,
+      dueDay: parsedDueDay,
+      category: editDraft.category || "general",
+      notes: editDraft.notes || "",
+      autoPay: !!editDraft.autoPay,
+      isActive: !!editDraft.isActive,
+    };
+
+    setSavingBillId(billId);
+    setClickPopoverError("");
+    const previousBills = bills;
+
+    setBills((prev) => prev.map((item) => (item._id === billId ? { ...item, ...payload } : item)));
+
+    try {
+      const response = await api.put(`/calendar/bills/${billId}`, payload);
+      const updated = response?.data?.item;
+      if (updated) {
+        setBills((prev) => prev.map((item) => (item._id === billId ? updated : item)));
+      }
+      setEditingBillId(null);
+    } catch (error) {
+      setBills(previousBills);
+      setClickPopoverError(error?.response?.data?.message || "Failed to update item.");
+    } finally {
+      setSavingBillId(null);
+    }
+  };
+
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    setOpenClickPopoverKey(null);
+    setEditingBillId(null);
+    setClickPopoverError("");
   };
 
   const handleNextMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    setOpenClickPopoverKey(null);
+    setEditingBillId(null);
+    setClickPopoverError("");
   };
 
   const renderHeader = () => {
@@ -88,12 +247,14 @@ const CalendarWidget = ({ compact = false }) => {
       const rowIndex = rows.length;
       for (let i = 0; i < 7; i++) {
         const cloneDay = new Date(day);
+        const dayKey = getDayKey(cloneDay);
         const isCurrentMonth = day.getMonth() === currentDate.getMonth();
         const isToday = day.getTime() === today.getTime();
         const isSelected =
           selectedDate &&
           day.getTime() ===
             new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
+        const isDetailedPopoverOpen = openClickPopoverKey === dayKey;
 
         const billsForDay = bills.filter((b) => b.dueDay === day.getDate());
         const openUpward = rowIndex >= totalRows - 2;
@@ -107,11 +268,19 @@ const CalendarWidget = ({ compact = false }) => {
               ${isToday ? "bg-primary/30 ring-2 ring-primary/70" : ""}
               ${isSelected ? "border-primary" : ""}
               hover:bg-gray-700/50 relative`}
-            key={day}
+            key={dayKey}
             onClick={() => setSelectedDate(cloneDay)}
           >
             <div className="relative inline-flex">
-              <span className={`peer text-xs ${isToday ? "font-bold text-white" : ""}`}>{day.getDate()}</span>
+              <span
+                className={`peer cursor-pointer text-xs ${isToday ? "font-bold text-white" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDayClick(cloneDay, isCurrentMonth && billsForDay.length > 0);
+                }}
+              >
+                {day.getDate()}
+              </span>
 
               {isCurrentMonth && billsForDay.length > 0 && (
                 <div
@@ -141,33 +310,7 @@ const CalendarWidget = ({ compact = false }) => {
                             onClick={(e) => e.stopPropagation()}
                             onChange={async (e) => {
                               e.stopPropagation();
-                              const nextPaid = e.target.checked;
-                              setPendingToggles((prev) => ({ ...prev, [bill._id]: true }));
-                              const previousBills = bills;
-                              setBills((prev) =>
-                                prev.map((item) => {
-                                  if (item._id !== bill._id) return item;
-                                  const monthSet = new Set(item.paidForMonths || []);
-                                  if (nextPaid) monthSet.add(currentMonthKey);
-                                  else monthSet.delete(currentMonthKey);
-                                  return { ...item, paidForMonths: [...monthSet] };
-                                }),
-                              );
-
-                              try {
-                                await api.put(`/calendar/bills/${bill._id}/toggle-paid`, {
-                                  monthKey: currentMonthKey,
-                                  isPaid: nextPaid,
-                                });
-                              } catch (error) {
-                                setBills(previousBills);
-                              } finally {
-                                setPendingToggles((prev) => {
-                                  const copy = { ...prev };
-                                  delete copy[bill._id];
-                                  return copy;
-                                });
-                              }
+                              await handleTogglePaid(bill, e.target.checked);
                             }}
                             className="h-4 w-4 accent-green-500"
                           />
@@ -198,6 +341,196 @@ const CalendarWidget = ({ compact = false }) => {
                   ></div>
                 ))}
             </div>
+
+            {isCurrentMonth && billsForDay.length > 0 && isDetailedPopoverOpen && (
+              <div
+                ref={isDetailedPopoverOpen ? clickPopoverRef : null}
+                className={`absolute ${horizontalPosition} ${verticalPosition} z-30 w-[24rem] max-w-[min(24rem,calc(100vw-1.5rem))] rounded-xl border border-primary/50 bg-gradient-to-b from-[#101b18] to-[#0b110f] shadow-2xl ring-1 ring-black/50 p-3 text-left`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-2 flex items-center justify-between border-b border-gray-700/70 pb-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary">
+                      {cloneDay.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
+                    </p>
+                    <p className="text-[11px] text-text-tertiary">Detailed items and editing</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenClickPopoverKey(null);
+                      setEditingBillId(null);
+                      setClickPopoverError("");
+                    }}
+                    className="rounded-md border border-gray-600/60 px-2 py-1 text-[11px] text-text-secondary hover:bg-black/30"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                {clickPopoverError && <p className="mb-2 text-xs text-red-300">{clickPopoverError}</p>}
+
+                <ul className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                  {billsForDay.map((bill) => {
+                    const isPaid = bill.paidForMonths?.includes(currentMonthKey);
+                    const pending = !!pendingToggles[bill._id];
+                    const isEditing = editingBillId === bill._id;
+
+                    return (
+                      <li key={`detailed-${bill._id}`} className="rounded-lg border border-gray-700/80 bg-black/25 p-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-white">{bill.name}</p>
+                            <p className="text-[11px] text-text-secondary">
+                              ${Number(bill.amount || 0).toFixed(2)} | due day {bill.dueDay} |{" "}
+                              {bill.category || "general"}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isEditing) {
+                                setEditingBillId(null);
+                                setClickPopoverError("");
+                              } else {
+                                startEditBill(bill);
+                              }
+                            }}
+                            className="rounded-md border border-primary/40 px-2 py-1 text-[11px] text-primary hover:bg-primary/10"
+                          >
+                            {isEditing ? "Cancel" : "Edit"}
+                          </button>
+                        </div>
+
+                        <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] text-text-secondary">
+                          <input
+                            type="checkbox"
+                            checked={isPaid}
+                            disabled={pending}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={async (e) => {
+                              e.stopPropagation();
+                              await handleTogglePaid(bill, e.target.checked);
+                            }}
+                            className="h-3.5 w-3.5 accent-green-500"
+                          />
+                          {isPaid ? "Marked as paid this month" : "Not paid this month"}
+                        </label>
+
+                        {isEditing && (
+                          <div className="mt-2 grid grid-cols-2 gap-2 border-t border-gray-700/70 pt-2">
+                            <label className="col-span-2 text-[11px] text-text-secondary">
+                              Name
+                              <input
+                                type="text"
+                                value={editDraft.name}
+                                onChange={(e) => setEditDraft((prev) => ({ ...prev, name: e.target.value }))}
+                                className="mt-1 w-full rounded-md border border-gray-600/70 bg-black/30 px-2 py-1 text-xs text-white outline-none focus:border-primary"
+                              />
+                            </label>
+
+                            <label className="text-[11px] text-text-secondary">
+                              Amount
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editDraft.amount}
+                                onChange={(e) => setEditDraft((prev) => ({ ...prev, amount: e.target.value }))}
+                                className="mt-1 w-full rounded-md border border-gray-600/70 bg-black/30 px-2 py-1 text-xs text-white outline-none focus:border-primary"
+                              />
+                            </label>
+
+                            <label className="text-[11px] text-text-secondary">
+                              Due Day
+                              <input
+                                type="number"
+                                min="1"
+                                max="31"
+                                value={editDraft.dueDay}
+                                onChange={(e) => setEditDraft((prev) => ({ ...prev, dueDay: e.target.value }))}
+                                className="mt-1 w-full rounded-md border border-gray-600/70 bg-black/30 px-2 py-1 text-xs text-white outline-none focus:border-primary"
+                              />
+                            </label>
+
+                            <label className="col-span-2 text-[11px] text-text-secondary">
+                              Category
+                              <select
+                                value={editDraft.category}
+                                onChange={(e) => setEditDraft((prev) => ({ ...prev, category: e.target.value }))}
+                                className="mt-1 w-full rounded-md border border-gray-600/70 bg-black/30 px-2 py-1 text-xs text-white outline-none focus:border-primary"
+                              >
+                                <option value="bill">Bill</option>
+                                <option value="debt">Debt</option>
+                                <option value="subscription">Subscription</option>
+                                <option value="general">General</option>
+                              </select>
+                            </label>
+
+                            <label className="col-span-2 text-[11px] text-text-secondary">
+                              Notes
+                              <textarea
+                                rows={2}
+                                value={editDraft.notes}
+                                onChange={(e) => setEditDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                                className="mt-1 w-full resize-none rounded-md border border-gray-600/70 bg-black/30 px-2 py-1 text-xs text-white outline-none focus:border-primary"
+                              />
+                            </label>
+
+                            <label className="flex items-center gap-2 text-[11px] text-text-secondary">
+                              <input
+                                type="checkbox"
+                                checked={editDraft.autoPay}
+                                onChange={(e) => setEditDraft((prev) => ({ ...prev, autoPay: e.target.checked }))}
+                                className="h-3.5 w-3.5 accent-green-500"
+                              />
+                              Auto Pay
+                            </label>
+
+                            <label className="flex items-center gap-2 text-[11px] text-text-secondary">
+                              <input
+                                type="checkbox"
+                                checked={editDraft.isActive}
+                                onChange={(e) => setEditDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
+                                className="h-3.5 w-3.5 accent-green-500"
+                              />
+                              Active
+                            </label>
+
+                            <div className="col-span-2 mt-1 flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingBillId(null);
+                                  setClickPopoverError("");
+                                }}
+                                className="rounded-md border border-gray-600/70 px-2 py-1 text-[11px] text-text-secondary hover:bg-black/30"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                disabled={savingBillId === bill._id}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await handleSaveEdit(bill._id);
+                                }}
+                                className="rounded-md border border-primary/50 bg-primary/20 px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/30 disabled:opacity-60"
+                              >
+                                {savingBillId === bill._id ? "Saving..." : "Save"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </div>,
         );
         day.setDate(day.getDate() + 1);
@@ -215,7 +548,7 @@ const CalendarWidget = ({ compact = false }) => {
   const renderSelectedDayInfo = () => {
     if (!selectedDate) return null;
 
-    const billsForSelectedDay = bills.filter((b) => b.dueDay === selectedDate.getDate());
+    const billsForSelectedDay = bills.filter((b) => Number(b.dueDay) === selectedDate.getDate());
 
     return (
       <div className={`${compact ? "mt-2 pt-2" : "mt-3 pt-3"} border-t border-gray-700/50`}>
@@ -240,10 +573,10 @@ const CalendarWidget = ({ compact = false }) => {
     );
   };
 
-  const monthlyTotal = bills.reduce((acc, bill) => acc + bill.amount, 0);
+  const monthlyTotal = bills.reduce((acc, bill) => acc + Number(bill.amount || 0), 0);
   const monthlyPaid = bills
     .filter((bill) => bill.paidForMonths?.includes(currentMonthKey))
-    .reduce((acc, bill) => acc + bill.amount, 0);
+    .reduce((acc, bill) => acc + Number(bill.amount || 0), 0);
   const monthlyRemaining = monthlyTotal - monthlyPaid;
 
   return (

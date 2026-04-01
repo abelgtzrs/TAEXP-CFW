@@ -88,9 +88,12 @@ const SpotifyStatsPage = () => {
   useEffect(() => {
     if (!autoSync) return;
 
-    const autoSyncInterval = setInterval(() => {
-      handleSync(true); // true indicates this is an auto-sync
-    }, 5 * 60 * 1000); // 5 minutes
+    const autoSyncInterval = setInterval(
+      () => {
+        handleSync(true); // true indicates this is an auto-sync
+      },
+      5 * 60 * 1000,
+    ); // 5 minutes
 
     return () => clearInterval(autoSyncInterval);
   }, [autoSync, pagination.currentPage]);

@@ -3,6 +3,7 @@
 # dependencies
 # Ignore node_modules in any subdirectory
 node_modules/
+devnotes/
 /.pnp
 .pnp.js
 
