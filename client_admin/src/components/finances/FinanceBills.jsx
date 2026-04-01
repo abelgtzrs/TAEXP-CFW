@@ -1,20 +1,32 @@
 import React, { useState } from "react";
 import Widget from "../ui/Widget";
 import StyledButton from "../ui/StyledButton";
-import { Plus, CheckSquare, Square, Trash2, Calendar } from "lucide-react";
+import { Plus, CheckSquare, Square, Trash2, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../../services/api";
 
-const FinanceBills = ({ bills, selectedMonth, onUpdate, categories }) => {
+const BILL_CATEGORY_OPTIONS = ["debt", "bill", "subscription"];
+
+const FinanceBills = ({ bills, selectedMonth, onUpdate, onMonthChange }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [newBill, setNewBill] = useState({ name: "", amount: "", dueDay: "1", category: "" });
+  const [newBill, setNewBill] = useState({ name: "", amount: "", dueDay: "1", category: "bill" });
 
   const currentMonthKey = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}`;
+  const checklistMonthLabel = selectedMonth.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const shiftChecklistMonth = (delta) => {
+    if (!onMonthChange) return;
+    const next = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + delta, 1);
+    onMonthChange(next);
+  };
 
   const handleTogglePaid = async (billId, isPaid) => {
     try {
-      await api.put(`/finance/bills/${billId}/toggle-paid`, { monthKey: currentMonthKey, isPaid });
+      await api.put(`/calendar/bills/${billId}/toggle-paid`, { monthKey: currentMonthKey, isPaid });
       onUpdate();
     } catch (err) {
       alert("Failed to update bill");
@@ -24,9 +36,13 @@ const FinanceBills = ({ bills, selectedMonth, onUpdate, categories }) => {
   const handleAddBill = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/finance/bills", { ...newBill, amount: Number(newBill.amount), dueDay: Number(newBill.dueDay) });
+      await api.post("/calendar/bills", {
+        ...newBill,
+        amount: Number(newBill.amount),
+        dueDay: Number(newBill.dueDay),
+      });
       setIsAdding(false);
-      setNewBill({ name: "", amount: "", dueDay: "1", category: "" });
+      setNewBill({ name: "", amount: "", dueDay: "1", category: "bill" });
       onUpdate();
     } catch (err) {
       alert("Failed to add bill");
@@ -36,7 +52,7 @@ const FinanceBills = ({ bills, selectedMonth, onUpdate, categories }) => {
   const deleteBill = async (id) => {
     if (!window.confirm("Stop tracking this recurring bill?")) return;
     try {
-      await api.delete(`/finance/bills/${id}`);
+      await api.delete(`/calendar/bills/${id}`);
       onUpdate();
     } catch (err) {}
   };
@@ -46,7 +62,7 @@ const FinanceBills = ({ bills, selectedMonth, onUpdate, categories }) => {
     setBulkLoading(true);
     try {
       await Promise.all(
-        bills.map((bill) => api.put(`/finance/bills/${bill._id}/toggle-paid`, { monthKey: currentMonthKey, isPaid })),
+        bills.map((bill) => api.put(`/calendar/bills/${bill._id}/toggle-paid`, { monthKey: currentMonthKey, isPaid })),
       );
       onUpdate();
     } catch (err) {
@@ -78,9 +94,35 @@ const FinanceBills = ({ bills, selectedMonth, onUpdate, categories }) => {
       {/* Bill List */}
       <div className="md:col-span-2 space-y-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Calendar size={20} className="text-primary" /> Monthly Checklist
-          </h2>
+          <div>
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Calendar size={20} className="text-primary" /> Monthly Checklist
+            </h2>
+            <div className="mt-1 flex items-center gap-2 text-xs text-text-secondary">
+              <span>Checking off:</span>
+              <button
+                type="button"
+                onClick={() => shiftChecklistMonth(-1)}
+                className="p-1 rounded hover:bg-gray-700/60 text-text-secondary hover:text-white transition-colors"
+                aria-label="Previous checklist month"
+                title="Previous month"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="px-2 py-0.5 rounded bg-gray-800/70 border border-gray-700 text-white font-semibold">
+                {checklistMonthLabel}
+              </span>
+              <button
+                type="button"
+                onClick={() => shiftChecklistMonth(1)}
+                className="p-1 rounded hover:bg-gray-700/60 text-text-secondary hover:text-white transition-colors"
+                aria-label="Next checklist month"
+                title="Next month"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={statusFilter}
@@ -146,10 +188,9 @@ const FinanceBills = ({ bills, selectedMonth, onUpdate, categories }) => {
                 className="bg-gray-900 border border-gray-700 rounded p-2 text-sm col-span-2 md:col-span-1"
                 required
               >
-                <option value="">Category</option>
-                {categories.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
+                {BILL_CATEGORY_OPTIONS.map((category) => (
+                  <option key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
                   </option>
                 ))}
               </select>

@@ -20,7 +20,8 @@ function DropZone({ columnId, index, onDropHere, isActive }) {
 }
 
 function Column({ id: columnId, items, extraProps }) {
-  const { editMode, moveWidget } = useLayout();
+  const { editMode, moveWidget, widgetVisibility } = useLayout();
+  const visibleItems = items.filter((item) => widgetVisibility[item.id] !== false);
 
   const onDragStartItem = (e, itemId) => {
     e.dataTransfer.setData("application/json", JSON.stringify({ id: itemId, fromColumn: columnId }));
@@ -33,7 +34,7 @@ function Column({ id: columnId, items, extraProps }) {
 
   return (
     <div className="min-w-0 space-y-2" onDragOver={(e) => e.preventDefault()}>
-      {items.map((item, i) => {
+      {visibleItems.map((item, i) => {
         const Comp = registry[item.key];
         if (!Comp) return null;
         return (
@@ -51,17 +52,27 @@ function Column({ id: columnId, items, extraProps }) {
           </React.Fragment>
         );
       })}
-      {editMode && <DropZone columnId={columnId} index={items.length} onDropHere={handleDropAt} />}
+      {editMode && <DropZone columnId={columnId} index={visibleItems.length} onDropHere={handleDropAt} />}
     </div>
   );
 }
 
 export default function LeftColumns({ extraProps }) {
-  const { columns } = useLayout();
-  const columnIds = ["col1", "col2", "col3", "col4"];
+  const { columns, activeColumnCount } = useLayout();
+  const allColumnIds = ["col1", "col2", "col3", "col4"];
+  const columnIds = allColumnIds.slice(0, activeColumnCount || 4);
+
+  const gridClass =
+    activeColumnCount === 1
+      ? "grid grid-cols-1 gap-3 items-start"
+      : activeColumnCount === 2
+        ? "grid grid-cols-1 md:grid-cols-2 gap-3 items-start"
+        : activeColumnCount === 3
+          ? "grid grid-cols-1 md:grid-cols-3 gap-3 items-start"
+          : "grid grid-cols-1 md:grid-cols-3 min-[1600px]:grid-cols-4 gap-3 items-start";
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 min-[1600px]:grid-cols-4 gap-3 items-start">
+    <div className={gridClass}>
       {columnIds.map((id) => (
         <Column key={id} id={id} items={columns[id] || []} extraProps={extraProps} />
       ))}

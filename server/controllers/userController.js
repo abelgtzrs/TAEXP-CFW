@@ -40,7 +40,7 @@ const getStreakStatus = async (req, res) => {
 const tickLoginStreak = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      "+password lastLoginDate currentLoginStreak longestLoginStreak email activeBadgeCollectionKey lastBadgeUnlockedStreak"
+      "+password lastLoginDate currentLoginStreak longestLoginStreak email activeBadgeCollectionKey lastBadgeUnlockedStreak",
     );
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
@@ -157,7 +157,7 @@ const updateProfilePicture = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { profilePicture: profilePictureUrl },
-      { new: true, runValidators: true } // Return the updated document
+      { new: true, runValidators: true }, // Return the updated document
     )
       .select("-password")
       .populate({
@@ -214,7 +214,7 @@ const updateProfileBanner = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { bannerImage: bannerUrl },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     )
       .select("-password")
       .populate({ path: "activeAbelPersona", model: "AbelPersonaBase" })
@@ -272,7 +272,7 @@ const setActiveBadgeCollection = async (req, res) => {
       const cleared = await User.findByIdAndUpdate(
         req.user.id,
         { activeBadgeCollectionKey: null },
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       )
         .select("-password")
         .populate({ path: "activeAbelPersona", model: "AbelPersonaBase" })
@@ -299,7 +299,7 @@ const setActiveBadgeCollection = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { activeBadgeCollectionKey: collectionKey },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     )
       .select("-password")
       .populate({ path: "activeAbelPersona", model: "AbelPersonaBase" })
@@ -341,7 +341,7 @@ const setDashboardLayout = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { dashboardLayout: layout },
-      { new: true, runValidators: false }
+      { new: true, runValidators: false },
     ).select("dashboardLayout");
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     return res.status(200).json({ success: true, data: user.dashboardLayout || null });
@@ -381,7 +381,7 @@ const updateYearlyGoals = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { yearlyGoals: validGoals },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("yearlyGoals");
 
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
@@ -558,25 +558,27 @@ const getDashboardStats = async (req, res) => {
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
       User.findById(userId)
-        .select("currentLoginStreak longestLoginStreak pokemonCollection snoopyArtCollection habboRares yugiohCards yearlyGoals")
+        .select(
+          "currentLoginStreak longestLoginStreak pokemonCollection snoopyArtCollection habboRares yugiohCards yearlyGoals",
+        )
         .populate({
           path: "pokemonCollection",
-          options: { sort: { createdAt: -1 }, limit: 5 },
+          options: { sort: { createdAt: -1 } },
           populate: { path: "basePokemon" },
         })
         .populate({
           path: "snoopyArtCollection",
-          options: { sort: { createdAt: -1 }, limit: 5 },
+          options: { sort: { createdAt: -1 } },
           populate: { path: "snoopyArtBase" },
         })
         .populate({
           path: "habboRares",
-          options: { sort: { createdAt: -1 }, limit: 5 },
+          options: { sort: { createdAt: -1 } },
           populate: { path: "habboRareBase" },
         })
         .populate({
           path: "yugiohCards",
-          options: { sort: { createdAt: -1 }, limit: 5 },
+          options: { sort: { createdAt: -1 } },
           populate: { path: "yugiohCardBase" },
         }),
     ]);
@@ -589,18 +591,57 @@ const getDashboardStats = async (req, res) => {
       ...user.yugiohCards.map((y) => ({ ...y.toObject(), type: "Yu-Gi-Oh! Card" })),
     ];
 
-    // Sort all collected items by date and get the 5 most recent
+    // Sort all collected items by date (newest first)
+    const getCollectibleImage = (base) => {
+      if (!base) return null;
+      if (base.imageUrl) return base.imageUrl;
+      if (base.spriteSmallUrl) return base.spriteSmallUrl;
+
+      if (Array.isArray(base.forms) && base.forms.length > 0) {
+        const withGen5 = base.forms.find((form) => form?.spriteGen5Animated);
+        if (withGen5?.spriteGen5Animated) return withGen5.spriteGen5Animated;
+
+        const withGen6 = base.forms.find((form) => form?.spriteGen6Animated);
+        if (withGen6?.spriteGen6Animated) return withGen6.spriteGen6Animated;
+      }
+
+      return null;
+    };
+
+    const toAbsoluteAssetUrl = (assetPath) => {
+      if (!assetPath) return null;
+      if (/^https?:\/\//i.test(assetPath)) return assetPath;
+
+      const normalizedPath = assetPath.startsWith("/") ? assetPath : `/${assetPath}`;
+      const forwardedProto = req.headers["x-forwarded-proto"];
+      const protocol =
+        (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(",")[0] || req.protocol;
+      const host = req.get("host");
+
+      if (!host) return normalizedPath;
+      return `${protocol}://${host}${normalizedPath}`;
+    };
+
     const recentAcquisitions = allCollections
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5)
+      .sort((a, b) => {
+        const aTime = new Date(a.obtainedAt || a.createdAt || 0).getTime();
+        const bTime = new Date(b.obtainedAt || b.createdAt || 0).getTime();
+        return bTime - aTime;
+      })
       .map((item) => {
-        const base = item.basePokemon || item.snoopyArtBase || item.habboRareBase || item.yugiohCardBase;
+        const base = item.basePokemon || item.snoopyArtBase || item.habboRareBase || item.yugiohCardBase || {};
+        const name = base.name || item.nickname || "Unknown Collectible";
+        const rarity = base.rarity || base.systemRarity || base.rarityCategory || "common";
+        const imageUrl = toAbsoluteAssetUrl(getCollectibleImage(base));
         return {
-          name: base.name,
-          rarity: base.rarity || base.systemRarity || "common",
+          name,
+          rarity,
           type: item.type,
+          imageUrl,
+          obtainedAt: item.obtainedAt || item.createdAt || null,
         };
-      });
+      })
+      .filter((item) => item && item.name);
 
     // --- Admin-specific Stats ---
     let volumesPublished = 0;
@@ -638,18 +679,21 @@ const getDashboardStats = async (req, res) => {
         { name: "Pokémon: Eevee", units: 188 },
         { name: "Habbo Rare: Throne", units: 130 },
       ],
-      goals: user.yearlyGoals?.reduce((acc, g) => {
-        // Calculate percentage for recognized keys or pass raw data if needed
-        // For backward compatibility with GoalsWidget, we map to simple percentages if names match,
-        // or we can send the whole array if the frontend is updated to handle it.
-        // For now, let's map 'Reading' and 'Workouts' if they exist, else send them all in a new property.
-        // But dashboard expects { reading: %, workouts: % }
-        const key = g.name.toLowerCase();
-        const pct = Math.min(100, Math.round((g.current / g.target) * 100));
-        if (key.includes("reading") || key.includes("book")) acc.reading = pct;
-        if (key.includes("workout") || key.includes("exercise")) acc.workouts = pct;
-        return acc;
-      }, { reading: 0, workouts: 0 }),
+      goals: user.yearlyGoals?.reduce(
+        (acc, g) => {
+          // Calculate percentage for recognized keys or pass raw data if needed
+          // For backward compatibility with GoalsWidget, we map to simple percentages if names match,
+          // or we can send the whole array if the frontend is updated to handle it.
+          // For now, let's map 'Reading' and 'Workouts' if they exist, else send them all in a new property.
+          // But dashboard expects { reading: %, workouts: % }
+          const key = g.name.toLowerCase();
+          const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+          if (key.includes("reading") || key.includes("book")) acc.reading = pct;
+          if (key.includes("workout") || key.includes("exercise")) acc.workouts = pct;
+          return acc;
+        },
+        { reading: 0, workouts: 0 },
+      ),
       allGoals: user.yearlyGoals || [],
     };
 
@@ -699,7 +743,7 @@ const getAllUsersAdmin = async (req, res) => {
   try {
     const users = await User.find({})
       .select(
-        "email username role level experience temuTokens gatillaGold wendyHearts currentLoginStreak longestLoginStreak createdAt profilePicture lastLoginDate bio location website motto bannerImage"
+        "email username role level experience temuTokens gatillaGold wendyHearts currentLoginStreak longestLoginStreak createdAt profilePicture lastLoginDate bio location website motto bannerImage",
       )
       .sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: users });
@@ -751,7 +795,7 @@ const updateUserAdmin = async (req, res) => {
       return res.status(400).json({ success: false, message: "No valid fields supplied" });
     }
     const user = await User.findByIdAndUpdate(id, updates, { new: true, runValidators: true }).select(
-      "email username role level experience temuTokens gatillaGold wendyHearts currentLoginStreak longestLoginStreak createdAt profilePicture lastLoginDate bio location website motto bannerImage"
+      "email username role level experience temuTokens gatillaGold wendyHearts currentLoginStreak longestLoginStreak createdAt profilePicture lastLoginDate bio location website motto bannerImage",
     );
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     res.status(200).json({ success: true, data: user });

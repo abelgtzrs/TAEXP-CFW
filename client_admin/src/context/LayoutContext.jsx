@@ -3,6 +3,9 @@ import { useAuth } from "./AuthContext";
 import layoutService from "../services/layoutService";
 
 const LS_KEY = "dashboardLayoutV1";
+const LAYOUT_PROFILES_KEY = "dashboardLayoutProfilesV1";
+const ACTIVE_COLS_KEY = "dashboardActiveColumnsV1";
+const WIDGET_VISIBILITY_KEY = "dashboardWidgetVisibilityV1";
 const COLUMN_IDS = ["col1", "col2", "col3", "col4"];
 
 const defaultLayout = {
@@ -63,6 +66,19 @@ export function LayoutProvider({ children }) {
     return copy;
   };
 
+  const getOrderedUniqueItems = (layout) => {
+    const ordered = [];
+    const seen = new Set();
+    for (const c of COLUMN_IDS) {
+      for (const item of layout[c] || []) {
+        if (seen.has(item.id)) continue;
+        seen.add(item.id);
+        ordered.push(item);
+      }
+    }
+    return ordered;
+  };
+
   const withHeights = (layout) => {
     const copy = cloneColumns({});
     for (const c of COLUMN_IDS) {
@@ -98,6 +114,18 @@ export function LayoutProvider({ children }) {
     return normalized;
   };
 
+  const normalizeToColumnCount = (layout, columnCount) => {
+    const safe = Math.max(1, Math.min(4, Number(columnCount) || 4));
+    const normalized = cloneColumns({});
+    const activeCols = COLUMN_IDS.slice(0, safe);
+    const orderedItems = getOrderedUniqueItems(ensureNewItems(layout || {}));
+    orderedItems.forEach((item, idx) => {
+      const targetCol = activeCols[idx % activeCols.length];
+      normalized[targetCol].push(item);
+    });
+    return normalized;
+  };
+
   const [columns, setColumns] = React.useState(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -106,11 +134,65 @@ export function LayoutProvider({ children }) {
     return withHeights(defaultLayout);
   });
 
-  React.useEffect(() => {
+  const [activeColumnCount, setActiveColumnCount] = React.useState(() => {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(columns));
+      const raw = Number(localStorage.getItem(ACTIVE_COLS_KEY) || 4);
+      const safe = Math.max(1, Math.min(4, raw));
+      return Number.isFinite(safe) ? safe : 4;
+    } catch {
+      return 4;
+    }
+  });
+
+  const [layoutProfiles, setLayoutProfiles] = React.useState(() => {
+    try {
+      const raw = localStorage.getItem(LAYOUT_PROFILES_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed || typeof parsed !== "object") return {};
+      const out = {};
+      for (const k of [1, 2, 3, 4]) {
+        if (parsed[k]) out[k] = withHeights(ensureNewItems(parsed[k]));
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  });
+
+  const [widgetVisibility, setWidgetVisibility] = React.useState(() => {
+    try {
+      const raw = localStorage.getItem(WIDGET_VISIBILITY_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed === "object") return parsed;
     } catch {}
-  }, [columns]);
+
+    const all = {};
+    getOrderedUniqueItems(withHeights(ensureNewItems(defaultLayout))).forEach((item) => {
+      all[item.id] = true;
+    });
+    return all;
+  });
+
+  const persistLocalConfigurations = React.useCallback(
+    (
+      nextColumns = columns,
+      nextActiveColumnCount = activeColumnCount,
+      nextProfiles = layoutProfiles,
+      nextVisibility = widgetVisibility,
+    ) => {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(nextColumns));
+        localStorage.setItem(ACTIVE_COLS_KEY, String(nextActiveColumnCount));
+        const serializable = {};
+        for (const k of [1, 2, 3, 4]) {
+          if (nextProfiles[k]) serializable[k] = nextProfiles[k];
+        }
+        localStorage.setItem(LAYOUT_PROFILES_KEY, JSON.stringify(serializable));
+        localStorage.setItem(WIDGET_VISIBILITY_KEY, JSON.stringify(nextVisibility));
+      } catch {}
+    },
+    [columns, activeColumnCount, layoutProfiles, widgetVisibility],
+  );
 
   // Load per-user layout on login (if available)
   React.useEffect(() => {
@@ -134,20 +216,9 @@ export function LayoutProvider({ children }) {
     };
   }, [user]);
 
-  // Save layout to server on changes (debounced)
-  const saveTimerRef = React.useRef(null);
-  React.useEffect(() => {
-    if (!user) return; // only save when authenticated
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      layoutService.saveLayout(columns).catch((e) => console.warn("Layout: save failed", e?.message || e));
-    }, 500);
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, [columns, user]);
-
   const toggleEditMode = () => setEditMode((v) => !v);
+  const enableEditMode = () => setEditMode(true);
+  const disableEditMode = () => setEditMode(false);
 
   const findItem = (id) => {
     for (const colId of Object.keys(columns)) {
@@ -247,7 +318,7 @@ export function LayoutProvider({ children }) {
 
   const moveWidgetToAdjacentColumn = (id, direction) => {
     setColumns((prev) => {
-      const order = COLUMN_IDS;
+      const order = COLUMN_IDS.slice(0, activeColumnCount);
       // locate
       let fromCol = null;
       let fromIdx = -1;
@@ -271,10 +342,60 @@ export function LayoutProvider({ children }) {
     });
   };
 
+  const saveLayoutProfile = (columnCount) => {
+    const safe = Math.max(1, Math.min(4, Number(columnCount) || 4));
+    const normalized = withHeights(normalizeToColumnCount(columns, safe));
+    setColumns(normalized);
+    setLayoutProfiles((prev) => ({
+      ...prev,
+      [safe]: normalized,
+    }));
+    setActiveColumnCount(safe);
+  };
+
+  const applyLayoutProfile = (columnCount) => {
+    const safe = Math.max(1, Math.min(4, Number(columnCount) || 4));
+    const profile = layoutProfiles[safe];
+    if (profile) {
+      setColumns(withHeights(ensureNewItems(profile)));
+    } else {
+      setColumns((prev) => withHeights(normalizeToColumnCount(prev, safe)));
+    }
+    setActiveColumnCount(safe);
+  };
+
+  const setWidgetVisible = (widgetId, visible) => {
+    setWidgetVisibility((prev) => ({
+      ...prev,
+      [widgetId]: !!visible,
+    }));
+  };
+
+  const toggleWidgetVisible = (widgetId) => {
+    setWidgetVisibility((prev) => ({
+      ...prev,
+      [widgetId]: !prev[widgetId],
+    }));
+  };
+
+  const widgetCatalog = React.useMemo(() => {
+    return getOrderedUniqueItems(ensureNewItems(columns)).map((it) => ({ id: it.id, key: it.key }));
+  }, [columns]);
+
+  const saveConfigurations = async () => {
+    persistLocalConfigurations(columns, activeColumnCount, layoutProfiles, widgetVisibility);
+    if (user) {
+      await layoutService.saveLayout(columns);
+    }
+    return true;
+  };
+
   const resetLayout = () => setColumns(withHeights(defaultLayout));
 
   const value = {
     editMode,
+    enableEditMode,
+    disableEditMode,
     toggleEditMode,
     columns,
     moveWidget,
@@ -286,6 +407,17 @@ export function LayoutProvider({ children }) {
     adjustMaxWidth,
     resetLayout,
     findItem,
+    activeColumnCount,
+    setActiveColumnCount,
+    layoutProfiles,
+    saveLayoutProfile,
+    applyLayoutProfile,
+    widgetVisibility,
+    setWidgetVisible,
+    toggleWidgetVisible,
+    widgetCatalog,
+    saveConfigurations,
+    persistLocalConfigurations,
   };
 
   return <LayoutContext.Provider value={value}>{children}</LayoutContext.Provider>;

@@ -6,7 +6,15 @@ import SpotifyWidget from "../dashboard/SpotifyWidget";
 import api from "../../services/api";
 
 // Small in-file popover to house gap & padding controls while in Edit Layout & Size mode
-function RightSidebarControlsPopover({ gapPx, setGapPx, paddingPx, setPaddingPx }) {
+function RightSidebarControlsPopover({
+  gapPx,
+  setGapPx,
+  paddingPx,
+  setPaddingPx,
+  activeColumnCount,
+  onApplyColumns,
+  onSaveColumns,
+}) {
   const [open, setOpen] = useState(false);
   const popRef = useRef(null);
 
@@ -40,7 +48,39 @@ function RightSidebarControlsPopover({ gapPx, setGapPx, paddingPx, setPaddingPx 
         Layout
       </button>
       {open && (
-        <div className="mt-1 bg-black/80 border border-white/10 p-2 w-[240px] shadow-xl">
+        <div className="mt-1 bg-black/80 border border-white/10 p-2 w-[280px] shadow-xl space-y-2">
+          <div className="border border-white/10 p-2">
+            <div className="text-[10px] text-text-secondary mb-1">Column Layout States</div>
+            <div className="grid grid-cols-4 gap-1 mb-1.5">
+              {[1, 2, 3, 4].map((count) => (
+                <button
+                  key={`apply-${count}`}
+                  className={`px-1.5 py-1 text-[10px] border transition-colors ${
+                    activeColumnCount === count
+                      ? "bg-emerald-700/70 border-emerald-500 text-white"
+                      : "bg-slate-800/80 border-slate-600 hover:bg-slate-700 text-white"
+                  }`}
+                  title={`Apply ${count}-column layout`}
+                  onClick={() => onApplyColumns(count)}
+                >
+                  {count} Col
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {[1, 2, 3, 4].map((count) => (
+                <button
+                  key={`save-${count}`}
+                  className="px-1.5 py-1 text-[10px] border bg-black/40 border-slate-600 hover:bg-slate-700 text-white transition-colors"
+                  title={`Save current widget arrangement to ${count}-column state`}
+                  onClick={() => onSaveColumns(count)}
+                >
+                  Save {count}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Gap control */}
           <div className="flex items-center gap-1 mb-2">
             <span className="text-[10px] text-text-secondary w-[56px]">Gap</span>
@@ -125,7 +165,7 @@ function RightSidebarControlsPopover({ gapPx, setGapPx, paddingPx, setPaddingPx 
 
 // Persistent right sidebar content. Assumes its parent positions and sizes the aside area.
 export default function RightSidebar({ condensed = false, disableEditControls = false, className = "" }) {
-  const { editMode } = useLayout();
+  const { editMode, activeColumnCount, saveLayoutProfile, applyLayoutProfile } = useLayout();
   const draggingRef = useRef(false);
   // Adjustable vertical gap between widgets (in px)
   const [gapPx, setGapPx] = useState(() => {
@@ -470,6 +510,9 @@ export default function RightSidebar({ condensed = false, disableEditControls = 
           setGapPx={setGapPx}
           paddingPx={paddingPx}
           setPaddingPx={setPaddingPx}
+          activeColumnCount={activeColumnCount}
+          onApplyColumns={applyLayoutProfile}
+          onSaveColumns={saveLayoutProfile}
         />
       )}
       <div

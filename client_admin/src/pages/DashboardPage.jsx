@@ -45,7 +45,7 @@ const DashboardPage = () => {
   const getPokemonSprite = (basePokemon) => {
     if (!basePokemon) return null;
     const firstForm = basePokemon.forms?.[0];
-    const sprite = firstForm?.spriteGen6Animated || firstForm?.spriteGen5Animated || null;
+    const sprite = firstForm?.spriteGen5Animated || firstForm?.spriteGen6Animated || null;
     return sprite ? `${serverBaseUrl}${sprite}` : null;
   };
 

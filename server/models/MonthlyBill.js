@@ -8,10 +8,11 @@ const MonthlyBillSchema = new mongoose.Schema(
     dueDay: { type: Number, required: true, min: 1, max: 31 },
     category: { type: String, default: "general" },
     notes: { type: String, default: "" },
+    paidForMonths: { type: [String], default: [] },
     autoPay: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("MonthlyBill", MonthlyBillSchema);

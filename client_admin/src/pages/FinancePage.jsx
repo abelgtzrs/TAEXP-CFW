@@ -13,7 +13,7 @@ const FinancePage = () => {
     return localStorage.getItem("finance.activeTab") || "dashboard";
   });
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({ transactions: [], categories: [], bills: [] });
+  const [data, setData] = useState({ transactions: [], categories: [], bills: [], budgetBills: [] });
   const [selectedMonth, setSelectedMonth] = useState(() => {
     if (typeof window === "undefined") return new Date();
     const stored = localStorage.getItem("finance.selectedMonth");
@@ -24,15 +24,17 @@ const FinancePage = () => {
   const refreshData = async () => {
     setLoading(true);
     try {
-      const [tr, ca, bi] = await Promise.all([
+      const [tr, ca, bi, fb] = await Promise.all([
         api.get("/finance/transactions"),
         api.get("/finance/categories"),
+        api.get("/calendar/bills"),
         api.get("/finance/bills"),
       ]);
       setData({
         transactions: tr.data.data,
         categories: ca.data.data,
-        bills: bi.data.data,
+        bills: bi.data.items,
+        budgetBills: fb.data.data,
       });
       setLastSyncedAt(new Date());
     } catch (error) {
@@ -158,7 +160,7 @@ const FinancePage = () => {
           <FinanceBills
             bills={data.bills}
             selectedMonth={selectedMonth}
-            categories={data.categories}
+            onMonthChange={setSelectedMonth}
             onUpdate={refreshData}
           />
         )}
@@ -167,7 +169,7 @@ const FinancePage = () => {
             categories={data.categories}
             transactions={data.transactions}
             selectedMonth={selectedMonth}
-            budgets={data.bills.filter((b) => b.isBudget)} // Adjust based on how budgets are actually stored
+            budgets={(data.budgetBills || []).filter((b) => b.isBudget)} // Adjust based on how budgets are actually stored
             onUpdateBudgets={async (newBudgets) => {
               try {
                 // Assuming endpoint exists or adapting to previous structure

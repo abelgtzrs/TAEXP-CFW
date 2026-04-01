@@ -44,6 +44,7 @@ import DailyDraftsPage from "./pages/DailyDraftsPage";
 import TerminalPage from "./pages/TerminalPage";
 import BottomNavOrderPage from "./pages/BottomNavOrderPage";
 import YearlyGoalsPage from "./pages/YearlyGoalsPage"; // Import goal page
+import DashboardLayoutEditorPage from "./pages/DashboardLayoutEditorPage";
 
 function App() {
   useTheme();
@@ -74,6 +75,7 @@ function App() {
           <Route path="/football-tracker" element={<FootballTrackerPage />} />
           <Route path="/daily-drafts" element={<DailyDraftsPage />} />
           <Route path="/terminal" element={<TerminalPage />} />
+          <Route path="/dashboard/layout-editor" element={<DashboardLayoutEditorPage />} />
           <Route path="/settings/bottom-nav-order" element={<BottomNavOrderPage />} />
         </Route>
       </Route>

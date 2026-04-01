@@ -5,7 +5,7 @@ import Header from "./Header";
 import BottomNav from "./BottomNav";
 import UiCustomizerModal from "../settings/UiCustomizerModal";
 import GlobalToastHost from "../ui/GlobalToastHost";
-import { LayoutProvider, useLayout } from "../../context/LayoutContext";
+import { LayoutProvider } from "../../context/LayoutContext";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -35,6 +35,8 @@ import {
   Terminal as TerminalIcon,
 } from "lucide-react";
 
+const STANDARD_THEME_STORAGE_KEY = "tae.standardTheme.v1";
+
 const NavItem = ({ to, icon: Icon, children, isCollapsed }) => {
   return (
     <li>
@@ -63,16 +65,11 @@ const NavItem = ({ to, icon: Icon, children, isCollapsed }) => {
 
 // Layout edit mode toggle button shown in the sidebar footer
 const LayoutToggleButton = ({ isSidebarCollapsed }) => {
-  const { editMode, toggleEditMode } = useLayout();
   return (
-    <button
-      onClick={toggleEditMode}
-      className={`w-full flex items-center p-2 rounded-lg text-xs transition-all duration-300 ${
-        editMode
-          ? "bg-emerald-600 text-white hover:bg-emerald-500"
-          : "text-text-secondary hover:bg-primary/30 hover:text-white"
-      } ${isSidebarCollapsed ? "justify-center" : ""}`}
-      title={editMode ? "Exit Layout & Size Mode" : "Edit Layout & Size (drag/resize widgets & sidebar)"}
+    <Link
+      to="/dashboard/layout-editor"
+      className={`w-full flex items-center p-2 rounded-lg text-xs transition-all duration-300 text-text-secondary hover:bg-primary/30 hover:text-white ${isSidebarCollapsed ? "justify-center" : ""}`}
+      title="Open Dashboard Layout Editor"
     >
       <LayoutDashboard size={14} className={isSidebarCollapsed ? "" : "mr-2"} />
       <span
@@ -80,9 +77,9 @@ const LayoutToggleButton = ({ isSidebarCollapsed }) => {
           isSidebarCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
         }`}
       >
-        {editMode ? "Exit Layout & Size" : "Edit Layout & Size"}
+        Edit Layout & Size
       </span>
-    </button>
+    </Link>
   );
 };
 
@@ -279,16 +276,27 @@ const AdminLayout = () => {
     if (!user?.activeAbelPersona) {
       const root = document.documentElement;
       if (!root) return;
-      root.style.setProperty("--color-background", "#0D1117");
-      root.style.setProperty("--color-bg", "#0D1117");
-      root.style.setProperty("--color-surface", "#161B22");
-      root.style.setProperty("--color-primary", "#1a6359ff");
-      root.style.setProperty("--color-secondary", "#0099c399");
-      root.style.setProperty("--color-tertiary", "#A5F3FC");
-      root.style.setProperty("--color-text-main", "#E5E7EB");
-      root.style.setProperty("--color-text-secondary", "#9CA3AF");
-      root.style.setProperty("--color-text-tertiary", "#4B5563");
-      root.style.setProperty("--font-main", "Inter, sans-serif");
+
+      let standardTheme = null;
+      try {
+        const raw = localStorage.getItem(STANDARD_THEME_STORAGE_KEY);
+        standardTheme = raw ? JSON.parse(raw) : null;
+      } catch {
+        standardTheme = null;
+      }
+
+      const colors = standardTheme?.colors || {};
+      const text = standardTheme?.text || {};
+      root.style.setProperty("--color-background", colors.bg || "#0D1117");
+      root.style.setProperty("--color-bg", colors.bg || "#0D1117");
+      root.style.setProperty("--color-surface", colors.surface || "#161B22");
+      root.style.setProperty("--color-primary", colors.primary || "#1a6359ff");
+      root.style.setProperty("--color-secondary", colors.secondary || "#0099c399");
+      root.style.setProperty("--color-tertiary", colors.tertiary || "#A5F3FC");
+      root.style.setProperty("--color-text-main", text.main || "#E5E7EB");
+      root.style.setProperty("--color-text-secondary", text.secondary || "#9CA3AF");
+      root.style.setProperty("--color-text-tertiary", text.tertiary || "#4B5563");
+      root.style.setProperty("--font-main", standardTheme?.font || "Inter, sans-serif");
     }
   }, [user?.activeAbelPersona]);
 

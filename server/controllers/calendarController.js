@@ -86,6 +86,26 @@ exports.deleteBill = async (req, res) => {
   }
 };
 
+exports.toggleBillPaid = async (req, res) => {
+  try {
+    const { monthKey, isPaid } = req.body;
+    if (!monthKey || typeof isPaid !== "boolean") {
+      return res.status(400).json({ success: false, message: "monthKey and isPaid are required" });
+    }
+
+    const doc = await MonthlyBill.findOne({ _id: req.params.id, user: req.user._id });
+    if (!doc) return res.status(404).json({ success: false, message: "Bill not found" });
+
+    if (isPaid) doc.paidForMonths.addToSet(monthKey);
+    else doc.paidForMonths.pull(monthKey);
+
+    await doc.save();
+    res.json({ success: true, item: doc });
+  } catch (e) {
+    res.status(400).json({ success: false, message: e.message || "Failed to toggle bill paid status" });
+  }
+};
+
 // Combined feed for calendar widget
 exports.getMonthlySchedule = async (req, res) => {
   try {

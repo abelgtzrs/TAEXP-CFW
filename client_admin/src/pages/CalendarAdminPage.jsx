@@ -38,6 +38,14 @@ const MOBILE_TABS = [
   { id: "yearly", label: "Yearly" },
 ];
 
+const BILL_CATEGORY_OPTIONS = ["debt", "bill", "subscription"];
+const BILL_CATEGORY_COLOR_STORAGE_KEY = "calendar.billCategoryColors.v1";
+const DEFAULT_BILL_CATEGORY_COLORS = {
+  debt: "#ef4444",
+  bill: "#f59e0b",
+  subscription: "#22c55e",
+};
+
 export default function CalendarAdminPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -58,6 +66,16 @@ export default function CalendarAdminPage() {
 
   const [showBillList, setShowBillList] = useState(true);
   const [editingBillId, setEditingBillId] = useState(null);
+  const [billCategoryColors, setBillCategoryColors] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_BILL_CATEGORY_COLORS;
+    try {
+      const raw = window.localStorage.getItem(BILL_CATEGORY_COLOR_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return { ...DEFAULT_BILL_CATEGORY_COLORS, ...(parsed || {}) };
+    } catch {
+      return DEFAULT_BILL_CATEGORY_COLORS;
+    }
+  });
 
   const [eventForm, setEventForm] = useState({
     title: "",
@@ -72,7 +90,7 @@ export default function CalendarAdminPage() {
     name: "",
     amount: 0,
     dueDay: 1,
-    category: "general",
+    category: "bill",
     notes: "",
     autoPay: false,
     isActive: true,
@@ -122,18 +140,34 @@ export default function CalendarAdminPage() {
 
   const monthlyItems = useMemo(() => ({ year, month }), [year, month]);
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(BILL_CATEGORY_COLOR_STORAGE_KEY, JSON.stringify(billCategoryColors));
+  }, [billCategoryColors]);
+
+  useEffect(() => {
     calendarService
       .getMonthlySchedule(monthlyItems)
-      .then(setMonthlyFeed)
+      .then((items) => {
+        const withCategoryColors = (items || []).map((it) => {
+          if (it.type !== "bill") return it;
+          const categoryKey = BILL_CATEGORY_OPTIONS.includes(it.category) ? it.category : "bill";
+          return {
+            ...it,
+            category: categoryKey,
+            color: billCategoryColors[categoryKey] || DEFAULT_BILL_CATEGORY_COLORS.bill,
+          };
+        });
+        setMonthlyFeed(withCategoryColors);
+      })
       .catch(() => setMonthlyFeed([]));
-  }, [monthlyItems, events, bills]);
+  }, [monthlyItems, events, bills, billCategoryColors]);
 
   const resetBillForm = () => {
     setBillForm({
       name: "",
       amount: 0,
       dueDay: 1,
-      category: "general",
+      category: "bill",
       notes: "",
       autoPay: false,
       isActive: true,
@@ -170,7 +204,8 @@ export default function CalendarAdminPage() {
   };
 
   const handleEditBill = (bill) => {
-    setBillForm({ ...bill });
+    const category = BILL_CATEGORY_OPTIONS.includes(bill.category) ? bill.category : "bill";
+    setBillForm({ ...bill, category });
     setEditingBillId(bill._id);
     setActiveMobileTab("bills");
   };
@@ -541,6 +576,15 @@ export default function CalendarAdminPage() {
                               <span className="text-emerald-400 font-semibold">${bill.amount}</span>
                               <span>•</span>
                               <span>Day {bill.dueDay}</span>
+                              <span>•</span>
+                              <span
+                                className="font-semibold"
+                                style={{
+                                  color: billCategoryColors[bill.category] || DEFAULT_BILL_CATEGORY_COLORS.bill,
+                                }}
+                              >
+                                {(bill.category || "bill").toUpperCase()}
+                              </span>
                               {bill.autoPay && (
                                 <>
                                   <span>•</span>
@@ -572,6 +616,30 @@ export default function CalendarAdminPage() {
 
                   {/* Add/Edit Bill Form */}
                   <div className="p-4 sm:p-5 border-t border-emerald-400/10 space-y-4">
+                    <div className="rounded-xl bg-[color-mix(in_srgb,var(--color-bg),black_2%)] p-3 ring-1 ring-emerald-400/10">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary font-semibold mb-2">
+                        Bill Category Colors
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {BILL_CATEGORY_OPTIONS.map((category) => (
+                          <label key={category} className="text-xs text-text-secondary">
+                            <span className="block mb-1 font-semibold uppercase tracking-[0.08em]">{category}</span>
+                            <input
+                              type="color"
+                              value={billCategoryColors[category] || DEFAULT_BILL_CATEGORY_COLORS[category]}
+                              onChange={(e) =>
+                                setBillCategoryColors((prev) => ({
+                                  ...prev,
+                                  [category]: e.target.value,
+                                }))
+                              }
+                              className="h-9 w-full rounded-lg bg-[color-mix(in_srgb,var(--color-bg),black_3%)] px-1 cursor-pointer ring-1 ring-emerald-400/14"
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <label className={labelClass}>{editingBillId ? "Edit Bill" : "Add New Bill"}</label>
@@ -621,12 +689,17 @@ export default function CalendarAdminPage() {
                           className={inputClass}
                           required
                         />
-                        <input
-                          placeholder="Category"
+                        <select
                           value={billForm.category}
                           onChange={(e) => setBillForm({ ...billForm, category: e.target.value })}
                           className={inputClass}
-                        />
+                        >
+                          {BILL_CATEGORY_OPTIONS.map((category) => (
+                            <option key={category} value={category}>
+                              {category.charAt(0).toUpperCase() + category.slice(1)}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       <div className="flex flex-wrap gap-3">

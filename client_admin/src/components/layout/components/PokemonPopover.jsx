@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const PokemonPopover = ({ displayedPokemon = [], serverBaseUrl }) => {
   const [pokemonOpen, setPokemonOpen] = useState(false);
+  const [useGen6Sprites, setUseGen6Sprites] = useState(false);
   const teamHoverTimer = useRef(null);
   const spriteSize = 72;
   const containerRef = useRef(null);
@@ -13,7 +14,9 @@ const PokemonPopover = ({ displayedPokemon = [], serverBaseUrl }) => {
   const getPokemonSprite = (basePokemon) => {
     if (!basePokemon) return null;
     const firstForm = basePokemon.forms?.[0];
-    const sprite = firstForm?.spriteGen5Animated || null;
+    const sprite = useGen6Sprites
+      ? firstForm?.spriteGen6Animated || firstForm?.spriteGen5Animated || null
+      : firstForm?.spriteGen5Animated || firstForm?.spriteGen6Animated || null;
     return sprite ? `${serverBaseUrl}${sprite}` : null;
   };
 
@@ -162,6 +165,28 @@ const PokemonPopover = ({ displayedPokemon = [], serverBaseUrl }) => {
             }}
           >
             <div className="mx-auto w-[min(94vw,420px)] rounded-l bg-black/85 backdrop-blur-xl border border-white/15 shadow-2xl p-2">
+              <div className="mb-1 flex items-center justify-between px-1">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/65">
+                  {useGen6Sprites ? "Gen 6 sprites" : "Gen 5 sprites"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setUseGen6Sprites((v) => !v)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/20 bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                  title={useGen6Sprites ? "Switch to Gen 5 sprites" : "Switch to Gen 6 sprites"}
+                  aria-label={useGen6Sprites ? "Switch to Gen 5 sprites" : "Switch to Gen 6 sprites"}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M16 3l4 4-4 4M20 7H9a5 5 0 0 0-5 5m0 9l-4-4 4-4m-4 4h11a5 5 0 0 0 5-5"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
               <div className="relative w-full h-[300px] overflow-hidden" ref={containerRef}>
                 {displayedTeam.map((p, idx) => {
                   const base = p?.basePokemon;

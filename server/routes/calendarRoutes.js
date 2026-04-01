@@ -16,6 +16,7 @@ router.get("/bills", ctrl.listBills);
 router.post("/bills", ctrl.createBill);
 router.put("/bills/:id", ctrl.updateBill);
 router.delete("/bills/:id", ctrl.deleteBill);
+router.put("/bills/:id/toggle-paid", ctrl.toggleBillPaid);
 
 // Yearly (birthday/anniversary)
 router.get("/yearly", ctrl.listYearly);

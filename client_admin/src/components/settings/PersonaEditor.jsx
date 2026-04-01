@@ -4,6 +4,8 @@ import api from "../../services/api";
 import { listPersonas, updatePersona } from "../../services/personaService";
 import Widget from "../ui/Widget";
 
+const STANDARD_THEME_STORAGE_KEY = "tae.standardTheme.v1";
+
 const ColorInput = ({ label, hint, value, onChange }) => (
   <label className="flex items-center gap-2 text-xs">
     <span className="w-48 text-text-secondary">
@@ -86,6 +88,33 @@ const PersonaEditor = ({ className = "" }) => {
     font: "Inter, sans-serif",
   };
 
+  const getStoredStandardTheme = () => {
+    if (typeof window === "undefined") return DEFAULT_THEME;
+    try {
+      const raw = window.localStorage.getItem(STANDARD_THEME_STORAGE_KEY);
+      if (!raw) return DEFAULT_THEME;
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEFAULT_THEME,
+        ...parsed,
+        _id: "__standard__",
+        name: "Standard Issue",
+        colors: {
+          ...DEFAULT_THEME.colors,
+          ...(parsed?.colors || {}),
+        },
+        text: {
+          ...DEFAULT_THEME.text,
+          ...(parsed?.text || {}),
+        },
+      };
+    } catch {
+      return DEFAULT_THEME;
+    }
+  };
+
+  const [standardTheme, setStandardTheme] = useState(getStoredStandardTheme);
+
   const FONT_OPTIONS = [
     { label: "Inter (default)", value: "Inter, sans-serif" },
     {
@@ -133,12 +162,12 @@ const PersonaEditor = ({ className = "" }) => {
   }, []);
 
   const selected = useMemo(() => {
-    if (selectedId === "__standard__") return DEFAULT_THEME;
+    if (selectedId === "__standard__") return standardTheme;
     return personas.find((p) => p._id === selectedId) || null;
-  }, [personas, selectedId]);
+  }, [personas, selectedId, standardTheme]);
   const filteredPersonas = useMemo(
     () => (showOwnedOnly ? personas.filter((p) => unlockedIds.has(p._id)) : personas),
-    [showOwnedOnly, personas, unlockedIds]
+    [showOwnedOnly, personas, unlockedIds],
   );
   const totalPages = Math.max(1, Math.ceil(filteredPersonas.length / ITEMS_PER_PAGE));
   const pageStart = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -206,6 +235,42 @@ const PersonaEditor = ({ className = "" }) => {
 
   const handleSave = async () => {
     if (!editing?._id) return;
+    if (editing._id === "__standard__") {
+      try {
+        const normalized = {
+          ...DEFAULT_THEME,
+          ...editing,
+          _id: "__standard__",
+          name: "Standard Issue",
+          colors: {
+            ...DEFAULT_THEME.colors,
+            ...(editing.colors || {}),
+          },
+          text: {
+            ...DEFAULT_THEME.text,
+            ...(editing.text || {}),
+          },
+        };
+
+        window.localStorage.setItem(STANDARD_THEME_STORAGE_KEY, JSON.stringify(normalized));
+        window.localStorage.setItem("tae.theme.background", normalized.colors.bg);
+        window.localStorage.setItem("tae.theme.surface", normalized.colors.surface);
+        window.localStorage.setItem("tae.theme.primary", normalized.colors.primary);
+        window.localStorage.setItem("tae.theme.secondary", normalized.colors.secondary);
+        window.localStorage.setItem("tae.theme.textMain", normalized.text.main);
+        window.localStorage.setItem("tae.theme.textSecondary", normalized.text.secondary);
+        window.localStorage.setItem("tae.theme.textTertiary", normalized.text.tertiary);
+
+        setStandardTheme(normalized);
+        setEditing(JSON.parse(JSON.stringify(normalized)));
+        window.dispatchEvent(new Event("tae:settings-changed"));
+      } catch (e) {
+        console.error("Failed to save Standard Issue theme", e);
+        alert("Failed to save Standard Issue theme");
+      }
+      return;
+    }
+
     try {
       const payload = {
         name: editing.name,
@@ -252,18 +317,18 @@ const PersonaEditor = ({ className = "" }) => {
                 className={`flex-1 p-2 rounded border overflow-hidden cursor-pointer ${
                   selectedId === "__standard__" ? "border-primary" : "border-gray-700 hover:border-gray-500"
                 }`}
-                style={{ borderColor: selectedId === "__standard__" ? DEFAULT_THEME.colors.primary : undefined }}
+                style={{ borderColor: selectedId === "__standard__" ? standardTheme.colors.primary : undefined }}
               >
                 {/* Name first line */}
                 <div className="font-semibold text-white text-sm truncate">Standard Issue</div>
                 {/* Colors underneath */}
                 <div className="mt-1 flex items-center gap-1">
                   {[
-                    DEFAULT_THEME.colors.bg,
-                    DEFAULT_THEME.colors.surface,
-                    DEFAULT_THEME.colors.primary,
-                    DEFAULT_THEME.colors.secondary,
-                    DEFAULT_THEME.colors.tertiary,
+                    standardTheme.colors.bg,
+                    standardTheme.colors.surface,
+                    standardTheme.colors.primary,
+                    standardTheme.colors.secondary,
+                    standardTheme.colors.tertiary,
                   ].map((c, i) => (
                     <span key={i} className="w-3.5 h-3.5 rounded border border-gray-600" style={{ background: c }} />
                   ))}
@@ -312,7 +377,7 @@ const PersonaEditor = ({ className = "" }) => {
                           className="w-3.5 h-3.5 rounded border border-gray-600"
                           style={{ background: c }}
                         />
-                      )
+                      ),
                     )}
                   </div>
                   {/* Footer row: status left, Set Active right */}
@@ -334,8 +399,8 @@ const PersonaEditor = ({ className = "" }) => {
                         !unlockedIds.has(p._id)
                           ? "border-gray-700 text-gray-500 cursor-not-allowed"
                           : activePersonaId === p._id
-                          ? "border-primary text-primary"
-                          : "border-gray-600 text-gray-300"
+                            ? "border-primary text-primary"
+                            : "border-gray-600 text-gray-300"
                       }`}
                       title="Set active"
                     >
@@ -539,15 +604,13 @@ const PersonaEditor = ({ className = "" }) => {
               <div className="flex justify-end">
                 <button
                   onClick={handleSave}
-                  disabled={editing?._id === "__standard__"}
+                  disabled={!editing?._id}
                   className={`px-3 py-1.5 rounded border text-sm ${
-                    editing?._id === "__standard__"
+                    !editing?._id
                       ? "bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed"
                       : "bg-primary/20 hover:bg-primary/30 border-primary/40 text-primary"
                   }`}
-                  title={
-                    editing?._id === "__standard__" ? "Standard Issue applies live; no save needed" : "Save to database"
-                  }
+                  title={editing?._id === "__standard__" ? "Save Standard Issue defaults" : "Save to database"}
                 >
                   Save Changes
                 </button>
