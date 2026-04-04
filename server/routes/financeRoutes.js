@@ -27,6 +27,8 @@ const {
   deleteFinancialGoal,
   clearFinances,
   getFinancialActionLog,
+  createPlaidLinkToken,
+  exchangePlaidPublicToken,
 } = require("../controllers/financeController");
 
 // Clear all finances for the current user (protected)
@@ -36,6 +38,10 @@ router.post("/clear", protect, clearFinances);
 router.get("/log", protect, getFinancialActionLog);
 
 router.use(protect);
+
+// Plaid Routes
+router.post("/plaid/create-link-token", createPlaidLinkToken);
+router.post("/plaid/exchange-public-token", exchangePlaidPublicToken);
 
 // Category Routes
 router.route("/categories").get(getCategories).post(createCategory);

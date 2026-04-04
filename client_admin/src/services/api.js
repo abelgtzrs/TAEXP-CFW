@@ -44,7 +44,17 @@ api.interceptors.request.use(
   (error) => {
     // Handle request errors.
     return Promise.reject(error);
-  }
+  },
 );
+
+export const createPlaidLinkToken = async () => {
+  const response = await api.post("/finance/plaid/create-link-token");
+  return response.data;
+};
+
+export const exchangePlaidPublicToken = async (publicToken) => {
+  const response = await api.post("/finance/plaid/exchange-public-token", { publicToken });
+  return response.data;
+};
 
 export default api;

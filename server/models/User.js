@@ -127,6 +127,19 @@ const UserSchema = new mongoose.Schema({
   spotifyTokenExpiresAt: {
     type: Date,
   },
+  plaidConnected: {
+    type: Boolean,
+    default: false,
+  },
+  plaidItemId: {
+    type: String,
+  },
+  plaidAccessToken: {
+    type: String,
+  },
+  plaidLastLinkedAt: {
+    type: Date,
+  },
   lastLoginDate: {
     type: Date,
     default: Date.now,

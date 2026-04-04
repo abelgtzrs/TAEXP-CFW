@@ -267,8 +267,8 @@ const CalendarWidget = ({ compact = false }) => {
             key={dayKey}
             onClick={() => handleDayClick(cloneDay)}
             className={`min-h-[4rem] rounded border px-2 py-1 text-left transition-colors
-              ${!isCurrentMonth ? "border-transparent text-text-tertiary/50" : "border-gray-700/50 bg-black/10 text-text-main"}
-              ${hasBillsInCurrentMonth ? "hover:border-gray-500/60" : "hover:border-gray-700/70"}
+              ${!isCurrentMonth ? "border-transparent text-text-tertiary/50" : "border-transparent bg-black/10 text-text-main"}
+              ${isCurrentMonth ? "hover:border-primary/40" : ""}
               ${isToday ? "border-primary/50" : ""}
               ${isSelected ? "ring-1 ring-primary/60 border-primary/50" : ""}`}
           >
@@ -550,11 +550,7 @@ const CalendarWidget = ({ compact = false }) => {
         {renderCells()}
       </div>
 
-      <div
-        className={`mt-2 rounded border px-2 py-2 ${
-          monthlyRemaining > 0 ? "border-rose-400/30 bg-rose-900/8" : "border-emerald-700/30 bg-emerald-900/8"
-        }`}
-      >
+      <div className={`mt-2 rounded px-2 py-2 ${monthlyRemaining > 0 ? "bg-rose-900/8" : "bg-emerald-900/8"}`}>
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-[9px] uppercase tracking-widest text-text-secondary">Remaining</p>
           <p className="text-base font-mono font-semibold text-white">{formatCurrency(monthlyRemaining)}</p>
@@ -566,7 +562,7 @@ const CalendarWidget = ({ compact = false }) => {
         </div>
         <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-gray-700/30">
           <div
-            className="h-full bg-gradient-to-r from-rose-400 via-yellow-400 to-emerald-400 transition-all duration-300"
+            className="h-full bg-emerald-400 transition-all duration-300"
             style={{ width: `${paidProgress}%` }}
           />
         </div>

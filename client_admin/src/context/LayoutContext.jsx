@@ -6,7 +6,31 @@ const LS_KEY = "dashboardLayoutV1";
 const LAYOUT_PROFILES_KEY = "dashboardLayoutProfilesV1";
 const ACTIVE_COLS_KEY = "dashboardActiveColumnsV1";
 const WIDGET_VISIBILITY_KEY = "dashboardWidgetVisibilityV1";
+const AUTO_COLUMN_BREAKPOINTS_KEY = "dashboardAutoColumnBreakpointsV1";
 const COLUMN_IDS = ["col1", "col2", "col3", "col4"];
+
+const DEFAULT_AUTO_COLUMN_BREAKPOINTS = Object.freeze({
+  twoColsMin: 768,
+  threeColsMin: 1200,
+  fourColsMin: 1600,
+});
+
+const toFiniteInt = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeAutoColumnBreakpoints = (value) => {
+  const rawTwo = toFiniteInt(value?.twoColsMin, DEFAULT_AUTO_COLUMN_BREAKPOINTS.twoColsMin);
+  const rawThree = toFiniteInt(value?.threeColsMin, DEFAULT_AUTO_COLUMN_BREAKPOINTS.threeColsMin);
+  const rawFour = toFiniteInt(value?.fourColsMin, DEFAULT_AUTO_COLUMN_BREAKPOINTS.fourColsMin);
+
+  const twoColsMin = Math.max(1, rawTwo);
+  const threeColsMin = Math.max(twoColsMin + 1, rawThree);
+  const fourColsMin = Math.max(threeColsMin + 1, rawFour);
+
+  return { twoColsMin, threeColsMin, fourColsMin };
+};
 
 const defaultLayout = {
   col1: [
@@ -144,6 +168,16 @@ export function LayoutProvider({ children }) {
     }
   });
 
+  const [autoColumnBreakpoints, setAutoColumnBreakpointsState] = React.useState(() => {
+    try {
+      const raw = localStorage.getItem(AUTO_COLUMN_BREAKPOINTS_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return normalizeAutoColumnBreakpoints(parsed || DEFAULT_AUTO_COLUMN_BREAKPOINTS);
+    } catch {
+      return DEFAULT_AUTO_COLUMN_BREAKPOINTS;
+    }
+  });
+
   const [layoutProfiles, setLayoutProfiles] = React.useState(() => {
     try {
       const raw = localStorage.getItem(LAYOUT_PROFILES_KEY);
@@ -179,6 +213,7 @@ export function LayoutProvider({ children }) {
       nextActiveColumnCount = activeColumnCount,
       nextProfiles = layoutProfiles,
       nextVisibility = widgetVisibility,
+      nextAutoColumnBreakpoints = autoColumnBreakpoints,
     ) => {
       try {
         localStorage.setItem(LS_KEY, JSON.stringify(nextColumns));
@@ -189,9 +224,10 @@ export function LayoutProvider({ children }) {
         }
         localStorage.setItem(LAYOUT_PROFILES_KEY, JSON.stringify(serializable));
         localStorage.setItem(WIDGET_VISIBILITY_KEY, JSON.stringify(nextVisibility));
+        localStorage.setItem(AUTO_COLUMN_BREAKPOINTS_KEY, JSON.stringify(nextAutoColumnBreakpoints));
       } catch {}
     },
-    [columns, activeColumnCount, layoutProfiles, widgetVisibility],
+    [columns, activeColumnCount, layoutProfiles, widgetVisibility, autoColumnBreakpoints],
   );
 
   // Load per-user layout on login (if available)
@@ -364,6 +400,38 @@ export function LayoutProvider({ children }) {
     setActiveColumnCount(safe);
   };
 
+  const setAutoColumnBreakpoints = React.useCallback((nextValue) => {
+    setAutoColumnBreakpointsState((prev) => {
+      const candidate = typeof nextValue === "function" ? nextValue(prev) : nextValue;
+      return normalizeAutoColumnBreakpoints(candidate);
+    });
+  }, []);
+
+  const resetAutoColumnBreakpoints = React.useCallback(() => {
+    setAutoColumnBreakpointsState(DEFAULT_AUTO_COLUMN_BREAKPOINTS);
+  }, []);
+
+  const autoColumnRanges = React.useMemo(() => {
+    const { twoColsMin, threeColsMin, fourColsMin } = autoColumnBreakpoints;
+    return {
+      1: { min: 0, max: twoColsMin - 1 },
+      2: { min: twoColsMin, max: threeColsMin - 1 },
+      3: { min: threeColsMin, max: fourColsMin - 1 },
+      4: { min: fourColsMin, max: null },
+    };
+  }, [autoColumnBreakpoints]);
+
+  const getAutoColumnCountForWidth = React.useCallback(
+    (width) => {
+      const safeWidth = Math.max(0, Number(width) || 0);
+      if (safeWidth >= autoColumnBreakpoints.fourColsMin) return 4;
+      if (safeWidth >= autoColumnBreakpoints.threeColsMin) return 3;
+      if (safeWidth >= autoColumnBreakpoints.twoColsMin) return 2;
+      return 1;
+    },
+    [autoColumnBreakpoints],
+  );
+
   const setWidgetVisible = (widgetId, visible) => {
     setWidgetVisibility((prev) => ({
       ...prev,
@@ -409,6 +477,11 @@ export function LayoutProvider({ children }) {
     findItem,
     activeColumnCount,
     setActiveColumnCount,
+    autoColumnBreakpoints,
+    setAutoColumnBreakpoints,
+    resetAutoColumnBreakpoints,
+    autoColumnRanges,
+    getAutoColumnCountForWidth,
     layoutProfiles,
     saveLayoutProfile,
     applyLayoutProfile,

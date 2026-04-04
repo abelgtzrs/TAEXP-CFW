@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { usePlaidLink } from "react-plaid-link";
 import PageHeader from "../components/ui/PageHeader";
-import api from "../services/api";
+import api, { createPlaidLinkToken, exchangePlaidPublicToken } from "../services/api";
 import FinanceDashboard from "../components/finances/FinanceDashboard";
 import FinanceTransactions from "../components/finances/FinanceTransactions";
 import FinanceBills from "../components/finances/FinanceBills";
@@ -20,6 +21,11 @@ const FinancePage = () => {
     return stored ? new Date(stored) : new Date();
   });
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const [plaidLoading, setPlaidLoading] = useState(false);
+  const [plaidError, setPlaidError] = useState("");
+  const [plaidLinkToken, setPlaidLinkToken] = useState(null);
+  const [pendingPlaidOpen, setPendingPlaidOpen] = useState(false);
+  const [plaidConnectedInfo, setPlaidConnectedInfo] = useState(null);
 
   const refreshData = async () => {
     setLoading(true);
@@ -85,6 +91,73 @@ const FinancePage = () => {
     { id: "planning", label: "Budget", icon: PieChart },
   ];
 
+  const {
+    open: openPlaid,
+    ready: plaidReady,
+    error: plaidLinkInitError,
+  } = usePlaidLink({
+    token: plaidLinkToken,
+    onSuccess: async (publicToken, metadata) => {
+      setPlaidLoading(true);
+      setPlaidError("");
+
+      try {
+        const response = await exchangePlaidPublicToken(publicToken);
+        setPlaidConnectedInfo({
+          institution: metadata?.institution?.name || "Connected institution",
+          itemId: response?.data?.itemId || "n/a",
+          requestId: response?.data?.requestId || "n/a",
+        });
+      } catch (error) {
+        setPlaidConnectedInfo(null);
+        setPlaidError(error?.response?.data?.message || "Failed to finalize bank connection.");
+      } finally {
+        setPlaidLoading(false);
+      }
+    },
+    onExit: (error) => {
+      if (!error) return;
+      setPlaidError(error.display_message || error.error_message || "Plaid link was closed before completion.");
+    },
+  });
+
+  useEffect(() => {
+    if (!plaidLinkInitError) return;
+    setPlaidError(plaidLinkInitError.message || "Plaid failed to initialize.");
+  }, [plaidLinkInitError]);
+
+  useEffect(() => {
+    if (pendingPlaidOpen && plaidReady) {
+      openPlaid();
+      setPendingPlaidOpen(false);
+    }
+  }, [openPlaid, pendingPlaidOpen, plaidReady]);
+
+  const handleConnectBank = async () => {
+    setPlaidError("");
+
+    if (plaidReady && plaidLinkToken) {
+      openPlaid();
+      return;
+    }
+
+    setPlaidLoading(true);
+
+    try {
+      const response = await createPlaidLinkToken();
+      const linkToken = response?.data?.linkToken || "";
+      if (!linkToken) {
+        throw new Error("Missing Plaid link token.");
+      }
+      setPlaidLinkToken(linkToken);
+      setPendingPlaidOpen(true);
+    } catch (error) {
+      setPlaidError(error?.response?.data?.message || "Failed to create Plaid link token.");
+    } finally {
+      setPlaidLoading(false);
+    }
+  };
+
   if (loading && !data.transactions.length) {
     return <div className="p-8 text-center text-gray-500 animate-pulse">Loading Financial Data...</div>;
   }
@@ -95,26 +168,47 @@ const FinancePage = () => {
         <PageHeader title="Finance" subtitle="Manage your wealth." compact={false} />
 
         {/* Month Selector & Refresh */}
-        <div className="flex items-center gap-3 bg-surface p-1 rounded-lg border border-gray-700/50">
+        <div className="flex items-center gap-2">
           <button
-            onClick={refreshData}
-            className="p-2 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+            onClick={handleConnectBank}
+            disabled={plaidLoading}
+            className="px-3 py-2 rounded-lg border border-primary/50 bg-primary/15 text-xs font-semibold text-primary hover:bg-primary/25 disabled:opacity-60"
           >
-            <RefreshCw size={16} />
+            {plaidLoading ? "Preparing Plaid..." : "Connect Bank (Plaid)"}
           </button>
-          <div className="h-4 w-px bg-gray-700 mx-1"></div>
-          <input
-            type="month"
-            value={`${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}`}
-            onChange={(e) => setSelectedMonth(new Date(e.target.value + "-01"))}
-            className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer"
-          />
+
+          <div className="flex items-center gap-3 bg-surface p-1 rounded-lg border border-gray-700/50">
+            <button
+              onClick={refreshData}
+              className="p-2 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
+            >
+              <RefreshCw size={16} />
+            </button>
+            <div className="h-4 w-px bg-gray-700 mx-1"></div>
+            <input
+              type="month"
+              value={`${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}`}
+              onChange={(e) => setSelectedMonth(new Date(e.target.value + "-01"))}
+              className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer"
+            />
+          </div>
         </div>
       </div>
 
       <div className="mb-4 text-xs text-text-secondary">
         Last sync: {lastSyncedAt ? lastSyncedAt.toLocaleTimeString() : "Not synced yet"}
       </div>
+
+      {plaidError && <div className="mb-4 text-xs text-red-400">Plaid error: {plaidError}</div>}
+
+      {plaidConnectedInfo && (
+        <div className="mb-4 rounded-lg border border-emerald-400/35 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+          <div className="font-semibold">Bank account connected.</div>
+          <div className="mt-1">Institution: {plaidConnectedInfo.institution}</div>
+          <div>Item ID: {plaidConnectedInfo.itemId}</div>
+          <div>Request ID: {plaidConnectedInfo.requestId}</div>
+        </div>
+      )}
 
       {/* Mobile Tab Navigation (Bottom Bar) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0B0E0A] border-t border-gray-800 z-50 px-6 py-3 flex justify-between safe-area-pb">

@@ -52,6 +52,11 @@ const HELP_TEXT = [
     type: "info",
   },
   { text: "> theme [name]            - Change terminal color.", type: "info" },
+  { text: "> fonts                   - Open keyboard font selector (arrow keys + enter).", type: "info" },
+  {
+    text: "> font [name]             - Set the terminal font (saved in local storage).",
+    type: "info",
+  },
   {
     text: "> connect                 - Opens the secure login portal to the Admin Panel.",
     type: "info",

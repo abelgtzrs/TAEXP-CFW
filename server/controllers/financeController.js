@@ -1,5 +1,212 @@
+const axios = require("axios");
 const FinancialCategory = require("../models/finance/FinancialCategory");
 const FinancialActionLog = require("../models/finance/FinancialActionLog");
+const User = require("../models/User");
+const PLAID_ENV_BASE_URLS = {
+  sandbox: "https://sandbox.plaid.com",
+  development: "https://development.plaid.com",
+  production: "https://production.plaid.com",
+};
+
+const parseCsvEnv = (value, fallback = []) => {
+  if (!value || !String(value).trim()) return fallback;
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const isPlaidEnabled = () => {
+  const flag = String(process.env.PLAID_ENABLED ?? "true")
+    .trim()
+    .toLowerCase();
+  return ["true", "1", "yes", "on"].includes(flag);
+};
+
+const isInvitedPlaidUser = (user) => {
+  const invitedUsers = parseCsvEnv(process.env.PLAID_INVITED_USERS);
+  if (invitedUsers.length === 0 || invitedUsers.includes("*")) return true;
+
+  const normalized = invitedUsers.map((entry) => entry.toLowerCase());
+  const userId = String(user?.id || user?._id || "").toLowerCase();
+  const userEmail = String(user?.email || "").toLowerCase();
+  return normalized.includes(userId) || normalized.includes(userEmail);
+};
+
+const getPlaidConfigValidationError = () => {
+  const requiredKeys = ["PLAID_CLIENT_ID", "PLAID_SECRET", "PLAID_ENV"];
+  const missing = requiredKeys.filter((key) => !process.env[key] || !String(process.env[key]).trim());
+  if (missing.length > 0) {
+    return `Missing required Plaid environment variables: ${missing.join(", ")}`;
+  }
+
+  const envKey = String(process.env.PLAID_ENV).trim().toLowerCase();
+  if (!PLAID_ENV_BASE_URLS[envKey]) {
+    return "Invalid PLAID_ENV. Expected one of: sandbox, development, production.";
+  }
+
+  return null;
+};
+
+const createPlaidRequestCorrelationId = () => `plaid-link-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+const getPlaidHeaders = () => ({
+  "Content-Type": "application/json",
+  "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID,
+  "PLAID-SECRET": process.env.PLAID_SECRET,
+});
+
+const sanitizePlaidError = (error) => ({
+  status: error?.response?.status,
+  code: error?.response?.data?.error_code,
+  type: error?.response?.data?.error_type,
+  message: error?.response?.data?.error_message || error?.message,
+});
+
+// --- Plaid: Create Link Token ---
+exports.createPlaidLinkToken = async (req, res) => {
+  const correlationId = createPlaidRequestCorrelationId();
+
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (!isPlaidEnabled()) {
+      return res.status(403).json({ success: false, message: "Plaid integration is disabled." });
+    }
+
+    if (!isInvitedPlaidUser(req.user)) {
+      return res.status(403).json({ success: false, message: "Access not enabled for this account." });
+    }
+
+    const configError = getPlaidConfigValidationError();
+    if (configError) {
+      console.error(`[Plaid][${correlationId}] ${configError}`);
+      return res.status(500).json({ success: false, message: "Plaid configuration is incomplete." });
+    }
+
+    const plaidEnv = String(process.env.PLAID_ENV).trim().toLowerCase();
+    const products = parseCsvEnv(process.env.PLAID_PRODUCTS, ["transactions"]);
+    const countryCodes = parseCsvEnv(process.env.PLAID_COUNTRY_CODES, ["US"]);
+
+    const payload = {
+      client_name: "The Abel Experience",
+      language: "en",
+      country_codes: countryCodes,
+      products,
+      user: {
+        client_user_id: String(req.user.id),
+      },
+    };
+
+    if (process.env.PLAID_REDIRECT_URI && String(process.env.PLAID_REDIRECT_URI).trim()) {
+      payload.redirect_uri = String(process.env.PLAID_REDIRECT_URI).trim();
+    }
+
+    const plaidResponse = await axios.post(`${PLAID_ENV_BASE_URLS[plaidEnv]}/link/token/create`, payload, {
+      headers: getPlaidHeaders(),
+      timeout: 15000,
+    });
+
+    const { link_token: linkToken, expiration, request_id: requestId } = plaidResponse.data || {};
+    if (!linkToken) {
+      console.error(`[Plaid][${correlationId}] Missing link token in Plaid response.`);
+      return res.status(502).json({ success: false, message: "Failed to create Plaid link token." });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        linkToken,
+        expiration,
+        requestId: requestId || correlationId,
+      },
+    });
+  } catch (error) {
+    const sanitizedError = sanitizePlaidError(error);
+    console.error(`[Plaid][${correlationId}] create-link-token failed:`, sanitizedError);
+    return res.status(502).json({ success: false, message: "Failed to create Plaid link token." });
+  }
+};
+
+// --- Plaid: Exchange Public Token ---
+exports.exchangePlaidPublicToken = async (req, res) => {
+  const correlationId = createPlaidRequestCorrelationId().replace("plaid-link", "plaid-exchange");
+
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (!isPlaidEnabled()) {
+      return res.status(403).json({ success: false, message: "Plaid integration is disabled." });
+    }
+
+    if (!isInvitedPlaidUser(req.user)) {
+      return res.status(403).json({ success: false, message: "Access not enabled for this account." });
+    }
+
+    const configError = getPlaidConfigValidationError();
+    if (configError) {
+      console.error(`[Plaid][${correlationId}] ${configError}`);
+      return res.status(500).json({ success: false, message: "Plaid configuration is incomplete." });
+    }
+
+    const publicToken = String(req.body?.publicToken || req.body?.public_token || "").trim();
+    if (!publicToken) {
+      return res.status(400).json({ success: false, message: "publicToken is required." });
+    }
+
+    const plaidEnv = String(process.env.PLAID_ENV).trim().toLowerCase();
+
+    const plaidResponse = await axios.post(
+      `${PLAID_ENV_BASE_URLS[plaidEnv]}/item/public_token/exchange`,
+      { public_token: publicToken },
+      {
+        headers: getPlaidHeaders(),
+        timeout: 15000,
+      },
+    );
+
+    const { access_token: accessToken, item_id: itemId, request_id: requestId } = plaidResponse.data || {};
+    if (!accessToken || !itemId) {
+      console.error(`[Plaid][${correlationId}] Missing access token or item id in exchange response.`);
+      return res.status(502).json({ success: false, message: "Failed to exchange Plaid public token." });
+    }
+
+    await User.findByIdAndUpdate(req.user.id, {
+      plaidConnected: true,
+      plaidItemId: itemId,
+      plaidAccessToken: accessToken,
+      plaidLastLinkedAt: new Date(),
+    });
+
+    await FinancialActionLog.create({
+      user: req.user.id,
+      action: "plaid_connect",
+      details: {
+        itemId,
+        requestId: requestId || correlationId,
+      },
+      timestamp: new Date(),
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        connected: true,
+        itemId,
+        requestId: requestId || correlationId,
+      },
+    });
+  } catch (error) {
+    const sanitizedError = sanitizePlaidError(error);
+    console.error(`[Plaid][${correlationId}] exchange-public-token failed:`, sanitizedError);
+    return res.status(502).json({ success: false, message: "Failed to exchange Plaid public token." });
+  }
+};
+
 // --- Clear All Finances for User ---
 exports.clearFinances = async (req, res) => {
   try {

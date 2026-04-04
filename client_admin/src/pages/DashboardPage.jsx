@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { useLayout } from "../context/LayoutContext";
 import api from "../services/api";
 import { emitToast } from "../utils/toastBus";
 
@@ -32,22 +33,14 @@ import StreakCompactPreview from "../components/dashboard/StreakCompactPreview";
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const { activeColumnCount, applyLayoutProfile, getAutoColumnCountForWidth } = useLayout();
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [streakStatus, setStreakStatus] = useState({ countedToday: true, currentLoginStreak: 0 });
   const [ticking, setTicking] = useState(false);
   const [showStreakModal, setShowStreakModal] = useState(false);
+  const dashboardWidthRef = useRef(null);
   // Team popover moved to global Header; local state removed
-
-  // Resolve server base for images
-  const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
-
-  const getPokemonSprite = (basePokemon) => {
-    if (!basePokemon) return null;
-    const firstForm = basePokemon.forms?.[0];
-    const sprite = firstForm?.spriteGen5Animated || firstForm?.spriteGen6Animated || null;
-    return sprite ? `${serverBaseUrl}${sprite}` : null;
-  };
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -98,35 +91,35 @@ const DashboardPage = () => {
   };
 
   // --- Midnight (America/New_York) refresh scheduler ---
-  // Utility: extract current NY time parts using Intl (handles EST/EDT automatically)
-  const getNYParts = () => {
-    const fmt = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      hour12: false,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-    const parts = Object.fromEntries(fmt.formatToParts(new Date()).map((p) => [p.type, p.value]));
-    const hour = parseInt(parts.hour || "0", 10);
-    const minute = parseInt(parts.minute || "0", 10);
-    const second = parseInt(parts.second || "0", 10);
-    return { hour, minute, second };
-  };
-
-  const msUntilNextNYMidnight = () => {
-    const { hour, minute, second } = getNYParts();
-    const secondsToday = hour * 3600 + minute * 60 + second;
-    const remaining = 24 * 3600 - secondsToday;
-    // add a small buffer to cross the boundary safely
-    return Math.max(remaining * 1000 + 500, 1000);
-  };
-
   // Schedule a refresh at 0:00 America/New_York and show the modal if needed
   useEffect(() => {
+    // Utility: extract current NY time parts using Intl (handles EST/EDT automatically)
+    const getNYParts = () => {
+      const fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        hour12: false,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      const parts = Object.fromEntries(fmt.formatToParts(new Date()).map((p) => [p.type, p.value]));
+      const hour = parseInt(parts.hour || "0", 10);
+      const minute = parseInt(parts.minute || "0", 10);
+      const second = parseInt(parts.second || "0", 10);
+      return { hour, minute, second };
+    };
+
+    const msUntilNextNYMidnight = () => {
+      const { hour, minute, second } = getNYParts();
+      const secondsToday = hour * 3600 + minute * 60 + second;
+      const remaining = 24 * 3600 - secondsToday;
+      // add a small buffer to cross the boundary safely
+      return Math.max(remaining * 1000 + 500, 1000);
+    };
+
     let timerId = setTimeout(async function midnightTick() {
       try {
         const streakRes = await api.get("/users/me/streak/status");
@@ -143,16 +136,64 @@ const DashboardPage = () => {
     return () => clearTimeout(timerId);
   }, []);
 
+  // Automatically adapt widget column count to page width.
+  useEffect(() => {
+    const target = dashboardWidthRef.current;
+    if (!target) return undefined;
+
+    let frameId = null;
+
+    const applyCountForWidth = (width) => {
+      const nextCount = getAutoColumnCountForWidth(width);
+      if (nextCount !== activeColumnCount) {
+        applyLayoutProfile(nextCount);
+      }
+    };
+
+    const scheduleApply = (width) => {
+      if (frameId) cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => applyCountForWidth(width));
+    };
+
+    const initialWidth = target.getBoundingClientRect().width || target.clientWidth || window.innerWidth;
+    applyCountForWidth(initialWidth);
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect?.width || target.clientWidth || window.innerWidth;
+        scheduleApply(width);
+      });
+
+      observer.observe(target);
+
+      return () => {
+        if (frameId) cancelAnimationFrame(frameId);
+        observer.disconnect();
+      };
+    }
+
+    const onResize = () => scheduleApply(target.clientWidth || window.innerWidth);
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [activeColumnCount, applyLayoutProfile, getAutoColumnCountForWidth]);
+
   return (
-    <div className="max-w-[1800px] mx-auto px-2 md:px-4 h-full min-h-0 overflow-y-auto md:overflow-hidden">
-      <motion.div
+    <div
+      ref={dashboardWidthRef}
+      className="max-w-[1800px] mx-auto px-2 md:px-4 h-full min-h-0 overflow-y-auto md:overflow-hidden"
+    >
+      <Motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="space-y-3 h-full min-h-0 flex flex-col"
         style={{ zoom: "0.75", transformOrigin: "top left" }}
       >
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -167,17 +208,17 @@ const DashboardPage = () => {
             }
           />
           {/* Layout edit toggle is in the sidebar footer above Customize UI */}
-        </motion.div>
+        </Motion.div>
 
         {/* --- Main Dashboard Grid --- */}
-        <motion.div
+        <Motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.4 }}
           className="relative grid grid-cols-1 md:grid-cols-8 gap-3 -mt-1 grid-flow-row-dense flex-1 min-h-0 overflow-y-auto md:overflow-hidden"
         >
           {/* Row 1: Full-width Stat Box */}
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.6 }}
@@ -196,11 +237,11 @@ const DashboardPage = () => {
                 </div>
               )}
             </div>
-          </motion.div>
+          </Motion.div>
 
           {/* --- Precise Widget Placement --- */}
           {/* Main content: first 3 columns (all other widgets) */}
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.9 }}
@@ -216,12 +257,12 @@ const DashboardPage = () => {
             />
 
             {/* All additional widgets now participate in the LeftColumns layout via registry */}
-          </motion.div>
+          </Motion.div>
 
           {/* Subtle edge fades for the widget viewport */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-background to-transparent" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-background to-transparent" />
-        </motion.div>
+        </Motion.div>
 
         {/* Streak Modal (appears at 0:00 America/New_York if not yet counted) */}
         {showStreakModal && (
@@ -252,7 +293,7 @@ const DashboardPage = () => {
             </div>
           </div>
         )}
-      </motion.div>
+      </Motion.div>
     </div>
   );
 };
