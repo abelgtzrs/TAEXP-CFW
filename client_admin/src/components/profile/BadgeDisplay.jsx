@@ -2,8 +2,23 @@ import { useMemo } from "react";
 import Widget from "../ui/Widget";
 import api from "../../services/api";
 
-const BadgeDisplay = ({ allBadges = [], earnedBadges = [] }) => {
-  const earnedBadgeIds = new Set(earnedBadges.map((b) => b.badgeBase._id));
+const BadgeDisplay = ({
+  allBadges = [],
+  earnedBadges = [],
+  badgeSizePx = 64,
+  maxBadges = 8,
+  activeCollectionKey = "",
+}) => {
+  const earnedBadgeIds = useMemo(() => {
+    return new Set(
+      (earnedBadges || [])
+        .map((b) => {
+          const baseId = b?.badgeBase?._id || b?.badgeBase || b?._id || b;
+          return baseId ? String(baseId) : null;
+        })
+        .filter(Boolean),
+    );
+  }, [earnedBadges]);
 
   // Compute API origin for resolving server-hosted assets
   const API_ORIGIN = useMemo(() => {
@@ -26,7 +41,11 @@ const BadgeDisplay = ({ allBadges = [], earnedBadges = [] }) => {
 
   // Optional: sort for a stable layout (by collectionKey then order)
   const flatBadges = useMemo(() => {
-    return [...allBadges].sort((a, b) => {
+    const source = activeCollectionKey
+      ? allBadges.filter((badge) => String(badge.collectionKey || "") === String(activeCollectionKey))
+      : allBadges;
+
+    return [...source].sort((a, b) => {
       const ak = a.collectionKey || a.category || "";
       const bk = b.collectionKey || b.category || "";
       if (ak !== bk) return ak.localeCompare(bk);
@@ -34,25 +53,33 @@ const BadgeDisplay = ({ allBadges = [], earnedBadges = [] }) => {
       const bi = Number(b.orderInCategory || b.index || 0);
       return ai - bi;
     });
-  }, [allBadges]);
+  }, [allBadges, activeCollectionKey]);
+
+  const visibleBadges = flatBadges.slice(0, Math.max(1, Number(maxBadges) || 8));
 
   return (
     <Widget title="Badges" className="h-full">
-      <div className="overflow-y-auto h-full pr-2">
-        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
-          {flatBadges.map((badge) => {
+      <div className="overflow-x-auto overflow-y-hidden h-full pr-2">
+        <div className="flex flex-nowrap items-center gap-2 min-w-max">
+          {visibleBadges.map((badge) => {
             const isEarned = earnedBadgeIds.has(badge._id);
             const src = resolveImage(badge);
             // Tooltip content
             const tip = [badge.name, badge.collectionKey || badge.category].filter(Boolean).join(" • ");
             return (
-              <div key={badge._id} className="aspect-square flex items-center justify-center" title={tip}>
+              <div
+                key={badge._id}
+                className="flex items-center justify-center"
+                style={{ width: `${badgeSizePx}px`, height: `${badgeSizePx}px` }}
+                title={tip}
+              >
                 <img
                   src={src}
                   alt={badge.name || "badge"}
-                  className={`w-full h-full object-contain transition-all duration-300 ${
+                  className={`object-contain transition-all duration-300 ${
                     isEarned ? "opacity-100" : "opacity-20 grayscale"
                   }`}
+                  style={{ width: `${badgeSizePx}px`, height: `${badgeSizePx}px` }}
                   onError={(e) => {
                     // Hide broken image boxes silently
                     e.currentTarget.style.visibility = "hidden";

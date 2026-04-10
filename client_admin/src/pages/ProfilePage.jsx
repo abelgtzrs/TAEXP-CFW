@@ -299,7 +299,13 @@ const ProfilePage = () => {
               {/* Left: Profile summary + badges */}
               <div className="lg:col-span-1 space-y-3">
                 <UserOverviewCard onEdit={() => setActiveTab("edit")} />
-                <BadgeDisplay allBadges={allBadges} earnedBadges={user.badges} />
+                <BadgeDisplay
+                  allBadges={allBadges}
+                  earnedBadges={user.badges}
+                  badgeSizePx={64}
+                  maxBadges={8}
+                  activeCollectionKey={user.activeBadgeCollectionKey || ""}
+                />
               </div>
               {/* Right: Compact all displayed collections */}
               <div className="lg:col-span-2 space-y-3">
@@ -346,7 +352,13 @@ const ProfilePage = () => {
 
           {activeTab === "badges" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <BadgeDisplay allBadges={allBadges} earnedBadges={user.badges} />
+              <BadgeDisplay
+                allBadges={allBadges}
+                earnedBadges={user.badges}
+                badgeSizePx={64}
+                maxBadges={8}
+                activeCollectionKey={user.activeBadgeCollectionKey || ""}
+              />
             </motion.div>
           )}
 

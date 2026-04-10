@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion as Motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useLayout } from "../context/LayoutContext";
@@ -31,16 +31,38 @@ import StrokesLyricsWidget from "../components/dashboard/StrokesLyricsWidget";
 import LeftColumns from "../components/dashboard/layout/LeftColumns";
 import StreakCompactPreview from "../components/dashboard/StreakCompactPreview";
 
+const getMaxUsefulColumnsForVisibleWidgets = (visibleWidgetCount) => {
+  if (visibleWidgetCount <= 1) return 1;
+  if (visibleWidgetCount <= 4) return 2;
+  if (visibleWidgetCount <= 8) return 3;
+  return 4;
+};
+
 const DashboardPage = () => {
-  const { user } = useAuth();
-  const { activeColumnCount, applyLayoutProfile, getAutoColumnCountForWidth } = useLayout();
+  const { user, setUser } = useAuth();
+  const { activeColumnCount, applyLayoutProfile, getAutoColumnCountForWidth, columns, widgetVisibility } = useLayout();
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [streakStatus, setStreakStatus] = useState({ countedToday: true, currentLoginStreak: 0 });
   const [ticking, setTicking] = useState(false);
   const [showStreakModal, setShowStreakModal] = useState(false);
   const dashboardWidthRef = useRef(null);
+  const activeColumnCountRef = useRef(activeColumnCount);
+  const pendingColumnCountRef = useRef(null);
+  const pendingColumnCountHitsRef = useRef(0);
   // Team popover moved to global Header; local state removed
+
+  const visibleWidgetCount = useMemo(() => {
+    const allColumns = ["col1", "col2", "col3", "col4"];
+    return allColumns.reduce((total, colId) => {
+      const visibleInColumn = (columns[colId] || []).filter((item) => widgetVisibility[item.id] !== false).length;
+      return total + visibleInColumn;
+    }, 0);
+  }, [columns, widgetVisibility]);
+
+  useEffect(() => {
+    activeColumnCountRef.current = activeColumnCount;
+  }, [activeColumnCount]);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -79,6 +101,14 @@ const DashboardPage = () => {
           imageUrl,
           tag: "BADGE",
         });
+
+        // Keep auth context in sync so Profile shows newly obtained badges immediately.
+        try {
+          const meRes = await api.get("/auth/me");
+          setUser(meRes.data?.data || null);
+        } catch (syncErr) {
+          console.warn("Failed to sync user after badge award:", syncErr);
+        }
       }
       // Refresh dashboard stats to reflect new streak immediately
       const statsRes = await api.get("/users/me/dashboard-stats");
@@ -143,11 +173,37 @@ const DashboardPage = () => {
 
     let frameId = null;
 
-    const applyCountForWidth = (width) => {
-      const nextCount = getAutoColumnCountForWidth(width);
-      if (nextCount !== activeColumnCount) {
-        applyLayoutProfile(nextCount);
+    const resetPendingColumnChange = () => {
+      pendingColumnCountRef.current = null;
+      pendingColumnCountHitsRef.current = 0;
+    };
+
+    const applyCountForWidth = (width, { force = false } = {}) => {
+      const widthBasedCount = getAutoColumnCountForWidth(width);
+      const maxUsefulColumns = getMaxUsefulColumnsForVisibleWidgets(visibleWidgetCount);
+      const nextCount = Math.min(widthBasedCount, maxUsefulColumns);
+
+      if (nextCount === activeColumnCountRef.current) {
+        resetPendingColumnChange();
+        return;
       }
+
+      if (!force) {
+        if (pendingColumnCountRef.current !== nextCount) {
+          pendingColumnCountRef.current = nextCount;
+          pendingColumnCountHitsRef.current = 1;
+          return;
+        }
+
+        pendingColumnCountHitsRef.current += 1;
+        if (pendingColumnCountHitsRef.current < 2) {
+          return;
+        }
+      }
+
+      applyLayoutProfile(nextCount);
+      activeColumnCountRef.current = nextCount;
+      resetPendingColumnChange();
     };
 
     const scheduleApply = (width) => {
@@ -156,7 +212,7 @@ const DashboardPage = () => {
     };
 
     const initialWidth = target.getBoundingClientRect().width || target.clientWidth || window.innerWidth;
-    applyCountForWidth(initialWidth);
+    applyCountForWidth(initialWidth, { force: true });
 
     if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver((entries) => {
@@ -179,7 +235,7 @@ const DashboardPage = () => {
       if (frameId) cancelAnimationFrame(frameId);
       window.removeEventListener("resize", onResize);
     };
-  }, [activeColumnCount, applyLayoutProfile, getAutoColumnCountForWidth]);
+  }, [applyLayoutProfile, getAutoColumnCountForWidth, visibleWidgetCount]);
 
   return (
     <div
