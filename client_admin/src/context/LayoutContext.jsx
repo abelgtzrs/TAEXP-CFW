@@ -62,6 +62,10 @@ const defaultLayout = {
   ],
 };
 
+const DEFAULT_WIDGET_ITEMS = COLUMN_IDS.flatMap((columnId) =>
+  (defaultLayout[columnId] || []).map((item) => ({ ...item, defaultColumnId: columnId })),
+);
+
 export const LayoutContext = React.createContext(null);
 
 export function LayoutProvider({ children }) {
@@ -125,16 +129,12 @@ export function LayoutProvider({ children }) {
       ...normalized.col3.map((i) => i.id),
       ...normalized.col4.map((i) => i.id),
     ]);
-    const toAdd = [
-      { id: "quick-notes", key: "quick-notes", size: "md" },
-      { id: "quick-links", key: "quick-links", size: "md" },
-      { id: "focus-timer", key: "focus-timer", size: "sm" },
-      { id: "daily-quote", key: "daily-quote", size: "sm" },
-      { id: "countdown", key: "countdown", size: "sm" },
-    ].filter((it) => !present.has(it.id));
-    if (toAdd.length > 0) {
-      normalized.col4 = [...normalized.col4, ...toAdd];
-    }
+    DEFAULT_WIDGET_ITEMS.forEach(({ defaultColumnId, ...item }) => {
+      if (present.has(item.id)) return;
+      normalized[defaultColumnId] = [...normalized[defaultColumnId], item];
+      present.add(item.id);
+    });
+
     return normalized;
   };
 
