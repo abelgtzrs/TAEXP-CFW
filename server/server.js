@@ -228,6 +228,7 @@ app.use("/api/spotify", require("./routes/spotifyRoutes"));
 app.use("/api/finance", require("./routes/financeRoutes"));
 app.use("/api/strokes", strokesRoutes);
 app.use("/api/sports", require("./routes/sportsRoutes"));
+app.use("/api/sports/baseball", require("./routes/baseballRoutes"));
 app.use("/api/calendar", require("./routes/calendarRoutes"));
 
 // Catch-all middleware: send back React's index.html file for client-side routing

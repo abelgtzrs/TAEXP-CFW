@@ -31,7 +31,6 @@ The main client (`client-admin`) is a web application with a dark interface for 
 ### What's New in v4.1
 
 - Latest changes (Nov 2025):
-
   - Dashboard layout editing overhaul with persistent per-user layouts
     - Three-column left container with drag/drop, up/down controls, and move-to-adjacent-column
     - Height controls and size presets per widget; width controls removed
@@ -45,7 +44,6 @@ The main client (`client-admin`) is a web application with a dark interface for 
   - UX polish: hidden left-column scrollbars and smoother interactions
 
 - **Updated Chart Architecture**: Data visualization system changes including:
-
   - **Modular LoreChartWidget**: Split into four independent, reusable chart components
   - **Responsive Chart Containers**: Charts adapt to widget container sizes using flexible layouts
   - **Data Visualization**: Recharts integration with custom styling, theming support, and animations
@@ -56,7 +54,6 @@ The main client (`client-admin`) is a web application with a dark interface for 
     - **SystemStatusWidget** (Pie Chart): Operational health metrics with interactive segments and tooltips
 
 - **Persona Theming System**: Updated theming architecture including:
-
   - **Real-time Theme Switching**: Apply persona color schemes across UI components
   - **Dropdown Interface**: Converted PersonaWidget from button grid to dropdown with Portal-based positioning
   - **CSS Custom Properties**: Theming system using CSS variables for color transitions
@@ -65,14 +62,12 @@ The main client (`client-admin`) is a web application with a dark interface for 
   - **Z-index Management**: Portal-based dropdown positioning eliminates stacking issues
 
 - **Responsive Design**: Updated responsive architecture including:
-
   - **Flexible Container System**: Charts adjust to any widget container size
   - **Mobile Support**: Improved mobile and tablet compatibility with touch interactions
   - **Grid Layouts**: Dynamic grid systems that respond to screen size changes
   - **Performance**: Efficient rendering with component separation and optimized state management
 
 - **Dashboard Widget Updates**: Widget redesign and optimization including:
-
   - **LoreChartWidget 2x2 Grid**: Four interconnected charts in responsive grid layout displaying narrative data
   - **HabitTrackerWidget**: Shows up to 10 habits with completed items crossed out but remaining visible
   - **WorkoutTrackerWidget**: 2x2 grid of preset workout template buttons plus custom log option
@@ -82,35 +77,30 @@ The main client (`client-admin`) is a web application with a dark interface for 
   - **Additional Widgets**: RecentAcquisitionsWidget, SocialSalesWidget, TopProductsWidget, CurrencySourceWidget
 
 - **Profile Collections Updates**:
-
   - **DisplayedCollection**: Redesigned to show 6 items per row with 20% width-to-height ratio
   - **Responsive Grid**: 3 columns on mobile, 6 on desktop
   - **Height Management**: Middle column no longer forced to align with sidebar heights
   - **Error Handling**: Fallbacks for undefined collection data
 
 - **Pokemon Editor Updates**:
-
   - **Wider Editor**: Increased editor width by reducing sidebar from 240px to 192px
   - **Better Layout**: More space for forms and content editing
   - **Success Feedback**: Toast notifications positioned in top-right corner
   - **Navigation**: Updated Pokemon selector with better search functionality
 
 - **Persona Theming System Updates**:
-
   - **UI Theming**: Persona-based theme switching that updates CSS custom properties in real-time
   - **Dropdown Interface**: Converted PersonaWidget from button grid to dropdown with Portal-based positioning
   - **Theme Color Integration**: Each persona applies unique color schemes across UI components including charts
   - **Backend Integration**: Database schema alignment for persona data with corrected color and text object structures
 
 - **Backend Architecture Updates**: Server-side functionality and API improvements:
-
   - **Function Export Structure**: Updated userController.js with const function patterns
   - **Database Schema Updates**: Corrected AbelPersonaBase schema for proper color and text object structures
   - **API Population**: Improved persona data population in authentication endpoints
   - **Error Resolution**: Fixed setActivePersona function exports and middleware integration
 
 - **Technical Infrastructure Updates**: Codebase modernization including:
-
   - **Component Modularization**: Split complex widgets into maintainable, reusable components
   - **State Management**: Updated React state handling for better performance
   - **Cross-component Communication**: Improved data flow between chart components and theming system
@@ -179,6 +169,10 @@ The server is located in the `server/` directory.
     - `MONGO_URI`: Your MongoDB connection string.
     - `JWT_SECRET`: A long, random string for signing tokens.
     - `PORT`: The port for the backend server (e.g., 5000).
+    - `MLB_API_BASE_URL`: MLB API base URL. Defaults to `https://statsapi.mlb.com/api/v1`.
+    - `MLB_API_KEY`: Optional RapidAPI key if you route MLB requests through RapidAPI.
+    - `MLB_API_HOST`: Optional RapidAPI host value, such as `api-baseball.p.rapidapi.com`.
+    - `MLB_SEASON`: Optional override for the season year (defaults to the current year).
 
 ### Frontend Setup (client-admin & client-public)
 

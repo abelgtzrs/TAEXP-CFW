@@ -38,6 +38,7 @@ import AdminUserManagementPage from "./pages/AdminUserManagementPage";
 import BlessingsAdminPage from "./pages/BlessingsAdminPage";
 import BlessingsUsagePage from "./pages/BlessingsUsagePage";
 import FootballTrackerPage from "./pages/FootballTrackerPage";
+import BaseballTrackerPage from "./pages/BaseballTrackerPage";
 import CalendarAdminPage from "./pages/CalendarAdminPage";
 import BulkWorkoutImportPage from "./pages/BulkWorkoutImportPage";
 import DailyDraftsPage from "./pages/DailyDraftsPage";
@@ -73,6 +74,7 @@ function App() {
           <Route path="/finance/rich" element={<RichFinancePage />} />
           <Route path="/spotify-stats" element={<SpotifyStatsPage />} />
           <Route path="/football-tracker" element={<FootballTrackerPage />} />
+          <Route path="/baseball-tracker" element={<BaseballTrackerPage />} />
           <Route path="/daily-drafts" element={<DailyDraftsPage />} />
           <Route path="/terminal" element={<TerminalPage />} />
           <Route path="/dashboard/layout-editor" element={<DashboardLayoutEditorPage />} />

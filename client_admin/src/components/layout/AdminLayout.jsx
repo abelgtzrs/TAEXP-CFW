@@ -544,6 +544,9 @@ const AdminLayout = () => {
                 <NavItem to="/football-tracker" icon={Trophy} isCollapsed={isSidebarCollapsed}>
                   Football Tracker
                 </NavItem>
+                <NavItem to="/baseball-tracker" icon={Trophy} isCollapsed={isSidebarCollapsed}>
+                  Baseball Tracker
+                </NavItem>
               </ul>
             </div>
 

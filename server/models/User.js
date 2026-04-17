@@ -225,6 +225,82 @@ const UserSchema = new mongoose.Schema({
       ref: "UserHabboRare",
     },
   ],
+  watchedBaseballTeams: [
+    {
+      teamId: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      teamName: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      abbreviation: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      league: {
+        type: String,
+        default: "MLB",
+        trim: true,
+      },
+      division: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      watchedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
+  watchedBaseballPlayers: [
+    {
+      playerId: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      name: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      teamId: {
+        type: String,
+        default: null,
+        trim: true,
+      },
+      teamName: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      position: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      bats: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      throws: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      watchedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
   badges: [
     {
       type: mongoose.Schema.Types.ObjectId,
