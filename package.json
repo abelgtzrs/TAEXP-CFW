@@ -30,6 +30,9 @@
     "build:full": "npm install && cd server && npm install && cd ../client_admin && npm install && npm run build",
     "dev": "concurrently \"cd server && npm run dev\" \"cd client_admin && npm run dev\"",
     "admin": "cd ./client_admin && npm run dev",
+    "native": "cd ./client_native && npm start",
+    "native:android": "cd ./client_native && npm run android",
+    "native:ios": "cd ./client_native && npm run ios",
     "public": "cd ./client_public && npm run dev",
     "server": "cd ./server && npm run dev",
     "yugioh:import": "node yugiohSeeder -i"

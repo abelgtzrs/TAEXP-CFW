@@ -137,6 +137,7 @@ If you want my behind-the-scenes notes on how this codebase is wired and how I a
 - docs/DEVELOPER_NOTES.md — repo-wide overview and conventions
 - client_admin/DEVELOPER_NOTES.md — admin dashboard specifics (widgets, theming, header sprites)
 - client_public/DEVELOPER_NOTES.md — public terminal viewer shape
+- client_native/README.md — active Expo native client scaffold and run instructions
 - server/DEVELOPER_NOTES.md — API layout, scripts, static assets
 - mobile/DEVELOPER_NOTES.md — Expo app layout
 
