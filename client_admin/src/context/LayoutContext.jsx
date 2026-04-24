@@ -119,8 +119,9 @@ export function LayoutProvider({ children }) {
     return copy;
   };
 
-  const ensureNewItems = (layout) => {
+  const ensureNewItems = (layout, maxCols = 4) => {
     const normalized = cloneColumns(layout || {});
+    const activeCols = COLUMN_IDS.slice(0, Math.max(1, Math.min(4, maxCols)));
 
     // Ensure additional widgets exist if user had an older saved layout
     const present = new Set([
@@ -131,7 +132,9 @@ export function LayoutProvider({ children }) {
     ]);
     DEFAULT_WIDGET_ITEMS.forEach(({ defaultColumnId, ...item }) => {
       if (present.has(item.id)) return;
-      normalized[defaultColumnId] = [...normalized[defaultColumnId], item];
+      // Clamp to active columns so widgets never land in a column that isn't rendered
+      const targetCol = activeCols.includes(defaultColumnId) ? defaultColumnId : activeCols[activeCols.length - 1];
+      normalized[targetCol] = [...normalized[targetCol], item];
       present.add(item.id);
     });
 
@@ -150,10 +153,31 @@ export function LayoutProvider({ children }) {
     return normalized;
   };
 
+  // Move any widgets sitting in inactive columns into the last active column,
+  // preserving the arrangement within active columns.
+  const clampColumnsToCount = (layout, count) => {
+    const safe = Math.max(1, Math.min(4, count));
+    const inactiveCols = COLUMN_IDS.slice(safe);
+    const orphans = inactiveCols.flatMap((id) => layout[id] || []);
+    if (orphans.length === 0) return layout;
+    const result = cloneColumns(layout);
+    const lastActive = COLUMN_IDS[safe - 1];
+    const activeIds = new Set(COLUMN_IDS.slice(0, safe).flatMap((id) => result[id].map((x) => x.id)));
+    const uniqueOrphans = orphans.filter((x) => !activeIds.has(x.id));
+    result[lastActive] = [...result[lastActive], ...uniqueOrphans];
+    for (const id of inactiveCols) result[id] = [];
+    return result;
+  };
+
   const [columns, setColumns] = React.useState(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if (raw) return withHeights(ensureNewItems(JSON.parse(raw)));
+      if (raw) {
+        const savedColsRaw = Number(localStorage.getItem(ACTIVE_COLS_KEY));
+        const savedCols = Number.isFinite(savedColsRaw) && savedColsRaw >= 1 ? Math.min(4, savedColsRaw) : 4;
+        const parsed = JSON.parse(raw);
+        return withHeights(clampColumnsToCount(ensureNewItems(parsed, savedCols), savedCols));
+      }
     } catch {}
     return withHeights(defaultLayout);
   });
@@ -167,6 +191,12 @@ export function LayoutProvider({ children }) {
       return 4;
     }
   });
+
+  // Ref so async callbacks always read the latest activeColumnCount without stale closures.
+  const activeColumnCountRef = React.useRef(activeColumnCount);
+  React.useEffect(() => {
+    activeColumnCountRef.current = activeColumnCount;
+  }, [activeColumnCount]);
 
   const [autoColumnBreakpoints, setAutoColumnBreakpointsState] = React.useState(() => {
     try {
@@ -185,7 +215,7 @@ export function LayoutProvider({ children }) {
       if (!parsed || typeof parsed !== "object") return {};
       const out = {};
       for (const k of [1, 2, 3, 4]) {
-        if (parsed[k]) out[k] = withHeights(ensureNewItems(parsed[k]));
+        if (parsed[k]) out[k] = withHeights(clampColumnsToCount(ensureNewItems(parsed[k], k), k));
       }
       return out;
     } catch {
@@ -239,7 +269,10 @@ export function LayoutProvider({ children }) {
         const serverLayout = await layoutService.getLayout();
         if (cancelled) return;
         if (serverLayout && typeof serverLayout === "object") {
-          setColumns(withHeights(ensureNewItems(serverLayout)));
+          // Use the ref so we get the current count even after auto-resize has fired
+          const curCols = activeColumnCountRef.current;
+          const withNew = ensureNewItems(serverLayout, curCols);
+          setColumns(withHeights(clampColumnsToCount(withNew, curCols)));
         }
       } catch (e) {
         // ignore network errors; keep local layout
@@ -393,7 +426,9 @@ export function LayoutProvider({ children }) {
     const safe = Math.max(1, Math.min(4, Number(columnCount) || 4));
     const profile = layoutProfiles[safe];
     if (profile) {
-      setColumns(withHeights(ensureNewItems(profile)));
+      // Add any missing default widgets, then clamp all widgets to active columns
+      const withNew = ensureNewItems(profile, safe);
+      setColumns(withHeights(clampColumnsToCount(withNew, safe)));
     } else {
       setColumns((prev) => withHeights(normalizeToColumnCount(prev, safe)));
     }
