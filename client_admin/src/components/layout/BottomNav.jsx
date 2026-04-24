@@ -48,7 +48,9 @@ const BottomNavItem = ({ to, icon: Icon, label, onClick, dragging }) => {
       to={to}
       draggable={false}
       onDragStart={(e) => e.preventDefault()}
-      onClick={(e) => { if (dragging.current) e.preventDefault(); }}
+      onClick={(e) => {
+        if (dragging.current) e.preventDefault();
+      }}
       className={({ isActive }) =>
         `shrink-0 min-w-[68px] h-full px-2 flex flex-col items-center justify-center transition-colors ${
           isActive ? "text-primary" : "text-text-secondary hover:text-white"
@@ -113,7 +115,14 @@ const BottomNav = ({ onMenuClick }) => {
     if (!el) return;
     cancelMomentum();
     dragging.current = false;
-    drag.current = { active: true, startX: e.clientX, scrollLeft: el.scrollLeft, lastX: e.clientX, lastT: performance.now(), velocity: 0 };
+    drag.current = {
+      active: true,
+      startX: e.clientX,
+      scrollLeft: el.scrollLeft,
+      lastX: e.clientX,
+      lastT: performance.now(),
+      velocity: 0,
+    };
     el.setPointerCapture(e.pointerId);
     e.preventDefault();
   }, []);
@@ -136,7 +145,9 @@ const BottomNav = ({ onMenuClick }) => {
 
   const onPointerUp = useCallback(() => {
     drag.current.active = false;
-    setTimeout(() => { dragging.current = false; }, 0);
+    setTimeout(() => {
+      dragging.current = false;
+    }, 0);
     // Launch momentum animation
     let velocity = drag.current.velocity; // px/ms
     const friction = 0.92; // multiplied each frame (~60fps → decays nicely)
@@ -204,7 +215,12 @@ const BottomNav = ({ onMenuClick }) => {
                 dragging={dragging}
               />
             ))}
-            <BottomNavItem to="/settings/bottom-nav-order" icon={SlidersHorizontal} label="Organize" dragging={dragging} />
+            <BottomNavItem
+              to="/settings/bottom-nav-order"
+              icon={SlidersHorizontal}
+              label="Organize"
+              dragging={dragging}
+            />
           </div>
         </div>
       </div>

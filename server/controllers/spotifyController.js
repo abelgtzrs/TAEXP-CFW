@@ -502,3 +502,276 @@ exports.getSpotifyStats = async (req, res) => {
     res.status(500).json({ success: false, message: "Could not fetch Spotify statistics." });
   }
 };
+
+// ── Detail endpoints ──────────────────────────────────────────────────────────
+
+exports.getArtistDetail = async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user || !user.spotifyConnected)
+    return res.status(400).json({ success: false, message: "Spotify not connected." });
+
+  const { name } = req.query;
+  if (!name) return res.status(400).json({ success: false, message: "Artist name required." });
+
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [summary, topTracks, dailyTrend, dowData] = await Promise.all([
+      SpotifyLog.aggregate([
+        { $match: { user: user._id, artistName: name } },
+        {
+          $group: {
+            _id: null,
+            totalPlays: { $sum: 1 },
+            totalMinutes: { $sum: { $divide: ["$durationMs", 60000] } },
+            uniqueTracks: { $addToSet: "$trackName" },
+            uniqueAlbums: { $addToSet: "$albumName" },
+            firstPlayed: { $min: "$playedAt" },
+            lastPlayed: { $max: "$playedAt" },
+          },
+        },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: user._id, artistName: name } },
+        { $group: { _id: "$trackName", plays: { $sum: 1 }, minutes: { $sum: { $divide: ["$durationMs", 60000] } } } },
+        { $sort: { plays: -1 } },
+        { $limit: 20 },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: user._id, artistName: name, playedAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$playedAt" } }, plays: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: user._id, artistName: name } },
+        { $group: { _id: { $dayOfWeek: "$playedAt" }, plays: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    const s = summary[0] || {};
+    res.json({
+      success: true,
+      detail: {
+        name,
+        totalPlays: s.totalPlays || 0,
+        totalMinutes: Math.round(s.totalMinutes || 0),
+        uniqueTrackCount: (s.uniqueTracks || []).length,
+        uniqueAlbumCount: (s.uniqueAlbums || []).length,
+        firstPlayed: s.firstPlayed,
+        lastPlayed: s.lastPlayed,
+        topTracks: topTracks.map((t) => ({ name: t._id, plays: t.plays, minutes: Math.round(t.minutes) })),
+        dailyTrend: dailyTrend.map((d) => ({ date: d._id, plays: d.plays })),
+        dayOfWeek: dowData.map((d) => ({ day: d._id, plays: d.plays })),
+      },
+    });
+  } catch (err) {
+    console.error("Artist detail error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch artist details." });
+  }
+};
+
+exports.getAlbumDetail = async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user || !user.spotifyConnected)
+    return res.status(400).json({ success: false, message: "Spotify not connected." });
+
+  const { name } = req.query;
+  if (!name) return res.status(400).json({ success: false, message: "Album name required." });
+
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [summary, topTracks, dailyTrend, dowData] = await Promise.all([
+      SpotifyLog.aggregate([
+        { $match: { user: user._id, albumName: name } },
+        {
+          $group: {
+            _id: null,
+            totalPlays: { $sum: 1 },
+            totalMinutes: { $sum: { $divide: ["$durationMs", 60000] } },
+            uniqueTracks: { $addToSet: "$trackName" },
+            firstPlayed: { $min: "$playedAt" },
+            lastPlayed: { $max: "$playedAt" },
+          },
+        },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: user._id, albumName: name } },
+        {
+          $group: {
+            _id: { track: "$trackName", artist: "$artistName" },
+            plays: { $sum: 1 },
+            minutes: { $sum: { $divide: ["$durationMs", 60000] } },
+          },
+        },
+        { $sort: { plays: -1 } },
+        { $limit: 20 },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: user._id, albumName: name, playedAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$playedAt" } }, plays: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: user._id, albumName: name } },
+        { $group: { _id: { $dayOfWeek: "$playedAt" }, plays: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    const s = summary[0] || {};
+    res.json({
+      success: true,
+      detail: {
+        name,
+        totalPlays: s.totalPlays || 0,
+        totalMinutes: Math.round(s.totalMinutes || 0),
+        uniqueTrackCount: (s.uniqueTracks || []).length,
+        firstPlayed: s.firstPlayed,
+        lastPlayed: s.lastPlayed,
+        topTracks: topTracks.map((t) => ({
+          name: t._id.track,
+          artist: t._id.artist,
+          plays: t.plays,
+          minutes: Math.round(t.minutes),
+        })),
+        dailyTrend: dailyTrend.map((d) => ({ date: d._id, plays: d.plays })),
+        dayOfWeek: dowData.map((d) => ({ day: d._id, plays: d.plays })),
+      },
+    });
+  } catch (err) {
+    console.error("Album detail error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch album details." });
+  }
+};
+
+exports.getFullList = async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user || !user.spotifyConnected)
+    return res.status(400).json({ success: false, message: "Spotify not connected." });
+
+  const { type } = req.query;
+  if (!["artist", "album", "track"].includes(type))
+    return res.status(400).json({ success: false, message: "Invalid type. Use artist, album, or track." });
+
+  try {
+    let items = [];
+
+    if (type === "artist") {
+      const docs = await SpotifyLog.aggregate([
+        { $match: { user: user._id } },
+        {
+          $group: {
+            _id: "$artistName",
+            plays: { $sum: 1 },
+            totalMinutes: { $sum: { $divide: ["$durationMs", 60000] } },
+          },
+        },
+        { $sort: { plays: -1 } },
+      ]);
+      items = docs.map((d) => ({ name: d._id, plays: d.plays, minutes: Math.round(d.totalMinutes) }));
+    } else if (type === "album") {
+      const docs = await SpotifyLog.aggregate([
+        { $match: { user: user._id } },
+        {
+          $group: {
+            _id: "$albumName",
+            plays: { $sum: 1 },
+            totalMinutes: { $sum: { $divide: ["$durationMs", 60000] } },
+          },
+        },
+        { $sort: { plays: -1 } },
+      ]);
+      items = docs.map((d) => ({ name: d._id, plays: d.plays, minutes: Math.round(d.totalMinutes) }));
+    } else {
+      const docs = await SpotifyLog.aggregate([
+        { $match: { user: user._id } },
+        {
+          $group: {
+            _id: { track: "$trackName", artist: "$artistName" },
+            plays: { $sum: 1 },
+            totalMinutes: { $sum: { $divide: ["$durationMs", 60000] } },
+          },
+        },
+        { $sort: { plays: -1 } },
+      ]);
+      items = docs.map((d) => ({
+        name: d._id.track,
+        artist: d._id.artist,
+        plays: d.plays,
+        minutes: Math.round(d.totalMinutes),
+      }));
+    }
+
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error("getFullList error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch full list." });
+  }
+};
+
+exports.getTrackDetail = async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user || !user.spotifyConnected)
+    return res.status(400).json({ success: false, message: "Spotify not connected." });
+
+  const { name, artist } = req.query;
+  if (!name) return res.status(400).json({ success: false, message: "Track name required." });
+
+  try {
+    const matchFilter = { user: user._id, trackName: name, ...(artist ? { artistName: artist } : {}) };
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [summary, dailyTrend, dowData, recentPlays] = await Promise.all([
+      SpotifyLog.aggregate([
+        { $match: matchFilter },
+        {
+          $group: {
+            _id: null,
+            totalPlays: { $sum: 1 },
+            totalMinutes: { $sum: { $divide: ["$durationMs", 60000] } },
+            avgDuration: { $avg: "$durationMs" },
+            firstPlayed: { $min: "$playedAt" },
+            lastPlayed: { $max: "$playedAt" },
+          },
+        },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { ...matchFilter, playedAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$playedAt" } }, plays: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: matchFilter },
+        { $group: { _id: { $dayOfWeek: "$playedAt" }, plays: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      SpotifyLog.find(matchFilter).sort({ playedAt: -1 }).limit(30).select("playedAt durationMs albumName"),
+    ]);
+
+    const s = summary[0] || {};
+    res.json({
+      success: true,
+      detail: {
+        name,
+        artist: artist || "",
+        totalPlays: s.totalPlays || 0,
+        totalMinutes: Math.round(s.totalMinutes || 0),
+        avgDurationMs: Math.round(s.avgDuration || 0),
+        firstPlayed: s.firstPlayed,
+        lastPlayed: s.lastPlayed,
+        dailyTrend: dailyTrend.map((d) => ({ date: d._id, plays: d.plays })),
+        dayOfWeek: dowData.map((d) => ({ day: d._id, plays: d.plays })),
+        recentPlays: recentPlays.map((p) => ({
+          playedAt: p.playedAt,
+          durationMs: p.durationMs,
+          albumName: p.albumName,
+        })),
+      },
+    });
+  } catch (err) {
+    console.error("Track detail error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch track details." });
+  }
+};

@@ -35,7 +35,7 @@ import {
   Terminal as TerminalIcon,
 } from "lucide-react";
 
-const STANDARD_THEME_STORAGE_KEY = "tae.standardTheme.v1";
+import { STANDARD_THEME_STORAGE_KEY, STANDARD_ISSUE_DEFAULT } from "../../constants/standardTheme";
 
 const NavItem = ({ to, icon: Icon, children, isCollapsed }) => {
   return (
@@ -157,18 +157,36 @@ const AdminLayout = () => {
 
   const loadThemeSettings = () => {
     try {
+      // tae.standardTheme.v1 is the SOLE source of truth for colors.
+      // tae.theme.* mirror keys are write-only (written by the [theme] effect) and
+      // are intentionally NOT read back here — that prevents stale UiCustomizer or
+      // old-session values from ever overriding the user's Standard Issue settings.
+      let stdTheme = null;
+      try {
+        const raw = localStorage.getItem(STANDARD_THEME_STORAGE_KEY);
+        stdTheme = raw ? JSON.parse(raw) : null;
+      } catch {}
+      // Seed localStorage on first ever load so it always has an entry
+      if (!stdTheme) {
+        try {
+          localStorage.setItem(STANDARD_THEME_STORAGE_KEY, JSON.stringify(STANDARD_ISSUE_DEFAULT));
+        } catch {}
+        stdTheme = STANDARD_ISSUE_DEFAULT;
+      }
+      const sc = stdTheme?.colors || {};
+      const st = stdTheme?.text || {};
+      const D = STANDARD_ISSUE_DEFAULT;
       return {
         glassEnabled: (localStorage.getItem("tae.glass.enabled") ?? "true") === "true",
         glassBlur: localStorage.getItem("tae.glass.blur") || getRootVar("--glass-blur", "8px"),
         glassSurfaceAlpha: localStorage.getItem("tae.glass.surfaceAlpha") || getRootVar("--glass-surface-alpha", "0.6"),
-        // Fallbacks aligned to Standard Issue persona values
-        primary: localStorage.getItem("tae.theme.primary") || "#1a6359ff",
-        secondary: localStorage.getItem("tae.theme.secondary") || "#0099c399",
-        background: localStorage.getItem("tae.theme.background") || "#0D1117",
-        surface: localStorage.getItem("tae.theme.surface") || "#161B22",
-        textMain: localStorage.getItem("tae.theme.textMain") || "#E5E7EB",
-        textSecondary: localStorage.getItem("tae.theme.textSecondary") || "#9CA3AF",
-        textTertiary: localStorage.getItem("tae.theme.textTertiary") || "#4B5563",
+        primary: sc.primary || D.colors.primary,
+        secondary: sc.secondary || D.colors.secondary,
+        background: sc.bg || D.colors.bg,
+        surface: sc.surface || D.colors.surface,
+        textMain: st.main || D.text.main,
+        textSecondary: st.secondary || D.text.secondary,
+        textTertiary: st.tertiary || D.text.tertiary,
         persona: localStorage.getItem("tae.persona") || "default",
       };
     } catch {
@@ -176,13 +194,13 @@ const AdminLayout = () => {
         glassEnabled: true,
         glassBlur: "8px",
         glassSurfaceAlpha: "0.6",
-        primary: "#1a6359ff",
-        secondary: "#0099c399",
-        background: "#0D1117",
-        surface: "#161B22",
-        textMain: "#E5E7EB",
-        textSecondary: "#9CA3AF",
-        textTertiary: "#4B5563",
+        primary: STANDARD_ISSUE_DEFAULT.colors.primary,
+        secondary: STANDARD_ISSUE_DEFAULT.colors.secondary,
+        background: STANDARD_ISSUE_DEFAULT.colors.bg,
+        surface: STANDARD_ISSUE_DEFAULT.colors.surface,
+        textMain: STANDARD_ISSUE_DEFAULT.text.main,
+        textSecondary: STANDARD_ISSUE_DEFAULT.text.secondary,
+        textTertiary: STANDARD_ISSUE_DEFAULT.text.tertiary,
         persona: "default",
       };
     }
@@ -204,8 +222,24 @@ const AdminLayout = () => {
 
   useEffect(() => {
     const onStorage = (e) => {
-      if (!e || (e && !e.key)) {
+      // tae:settings-changed is a custom event (no e.key). It fires both from this
+      // component's own [theme] effect AND from external saves (PersonaEditor).
+      // We reload theme state in both cases, but guard against loops with a value
+      // comparison — if the new values match current state, React skips the re-render.
+      if (!e || !e.key) {
         setUiSettings(loadUiSettings());
+        setTheme((prev) => {
+          const next = loadThemeSettings();
+          return prev.primary === next.primary &&
+            prev.secondary === next.secondary &&
+            prev.background === next.background &&
+            prev.surface === next.surface &&
+            prev.textMain === next.textMain &&
+            prev.textSecondary === next.textSecondary &&
+            prev.textTertiary === next.textTertiary
+            ? prev
+            : next;
+        });
         return;
       }
       if (
@@ -217,13 +251,7 @@ const AdminLayout = () => {
           "tae.pageBgTint",
           "tae.glass.blur",
           "tae.glass.surfaceAlpha",
-          "tae.theme.primary",
-          "tae.theme.secondary",
-          "tae.theme.background",
-          "tae.theme.surface",
-          "tae.theme.textMain",
-          "tae.theme.textSecondary",
-          "tae.theme.textTertiary",
+          STANDARD_THEME_STORAGE_KEY,
           "tae.persona",
         ].includes(e.key)
       ) {
@@ -237,7 +265,7 @@ const AdminLayout = () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("tae:settings-changed", onStorage);
     };
-  }, []);
+  }, [];
 
   // Apply theme variables whenever theme changes (live preview + persist)
   useEffect(() => {
@@ -271,32 +299,39 @@ const AdminLayout = () => {
     window.dispatchEvent(new Event("tae:settings-changed"));
   }, [theme]);
 
-  // Enforce Standard Issue persona defaults if no active persona is set on the user profile
+  // Enforce Standard Issue persona defaults if no active persona is set on the user profile.
+  // Reading from tae.standardTheme.v1 ensures user-saved Standard Issue colors are applied.
+  // We ALSO update `theme` state so the [theme] effect stays in sync and can't later
+  // overwrite CSS vars with stale values.
   useEffect(() => {
     if (!user?.activeAbelPersona) {
       const root = document.documentElement;
       if (!root) return;
 
-      let standardTheme = null;
+      const freshTheme = loadThemeSettings();
+      // Set --color-bg and --color-tertiary which are not in `theme` state
+      root.style.setProperty("--color-bg", freshTheme.background);
       try {
         const raw = localStorage.getItem(STANDARD_THEME_STORAGE_KEY);
-        standardTheme = raw ? JSON.parse(raw) : null;
+        const st = raw ? JSON.parse(raw) : null;
+        root.style.setProperty("--color-tertiary", st?.colors?.tertiary || STANDARD_ISSUE_DEFAULT.colors.tertiary);
+        root.style.setProperty("--font-main", st?.font || STANDARD_ISSUE_DEFAULT.font);
       } catch {
-        standardTheme = null;
+        root.style.setProperty("--color-tertiary", STANDARD_ISSUE_DEFAULT.colors.tertiary);
+        root.style.setProperty("--font-main", STANDARD_ISSUE_DEFAULT.font);
       }
-
-      const colors = standardTheme?.colors || {};
-      const text = standardTheme?.text || {};
-      root.style.setProperty("--color-background", colors.bg || "#0D1117");
-      root.style.setProperty("--color-bg", colors.bg || "#0D1117");
-      root.style.setProperty("--color-surface", colors.surface || "#161B22");
-      root.style.setProperty("--color-primary", colors.primary || "#1a6359ff");
-      root.style.setProperty("--color-secondary", colors.secondary || "#0099c399");
-      root.style.setProperty("--color-tertiary", colors.tertiary || "#A5F3FC");
-      root.style.setProperty("--color-text-main", text.main || "#E5E7EB");
-      root.style.setProperty("--color-text-secondary", text.secondary || "#9CA3AF");
-      root.style.setProperty("--color-text-tertiary", text.tertiary || "#4B5563");
-      root.style.setProperty("--font-main", standardTheme?.font || "Inter, sans-serif");
+      // Sync theme state — loop-safe because setTheme with identical values is a no-op
+      setTheme((prev) =>
+        prev.primary === freshTheme.primary &&
+        prev.secondary === freshTheme.secondary &&
+        prev.background === freshTheme.background &&
+        prev.surface === freshTheme.surface &&
+        prev.textMain === freshTheme.textMain &&
+        prev.textSecondary === freshTheme.textSecondary &&
+        prev.textTertiary === freshTheme.textTertiary
+          ? prev
+          : freshTheme,
+      );
     }
   }, [user?.activeAbelPersona]);
 

@@ -3,8 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import { listPersonas, updatePersona } from "../../services/personaService";
 import Widget from "../ui/Widget";
-
-const STANDARD_THEME_STORAGE_KEY = "tae.standardTheme.v1";
+import { STANDARD_THEME_STORAGE_KEY, STANDARD_ISSUE_DEFAULT } from "../../constants/standardTheme";
 
 const ColorInput = ({ label, hint, value, onChange }) => (
   <label className="flex items-center gap-2 text-xs">
@@ -68,25 +67,7 @@ const PersonaEditor = ({ className = "" }) => {
   const [showOwnedOnly, setShowOwnedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
-
-  const DEFAULT_THEME = {
-    _id: "__standard__",
-    name: "Standard Issue",
-    description: "Default system theme",
-    colors: {
-      bg: "#0D1117",
-      surface: "#161B22",
-      primary: "#1a6359ff",
-      secondary: "#0099c399",
-      tertiary: "#A5F3FC",
-    },
-    text: {
-      main: "#E5E7EB",
-      secondary: "#9CA3AF",
-      tertiary: "#4B5563",
-    },
-    font: "Inter, sans-serif",
-  };
+  const DEFAULT_THEME = STANDARD_ISSUE_DEFAULT;
 
   const getStoredStandardTheme = () => {
     if (typeof window === "undefined") return DEFAULT_THEME;
@@ -206,6 +187,29 @@ const PersonaEditor = ({ className = "" }) => {
       root.style.setProperty("--font-main", theme.font);
     }
   }, [editing, user?.activeAbelPersona]);
+
+  // Auto-persist Standard Issue edits — changes survive refresh without needing a Save click
+  useEffect(() => {
+    if (!editing || editing._id !== "__standard__") return;
+    const normalized = {
+      ...DEFAULT_THEME,
+      ...editing,
+      _id: "__standard__",
+      name: "Standard Issue",
+      colors: { ...DEFAULT_THEME.colors, ...(editing.colors || {}) },
+      text: { ...DEFAULT_THEME.text, ...(editing.text || {}) },
+    };
+    try {
+      window.localStorage.setItem(STANDARD_THEME_STORAGE_KEY, JSON.stringify(normalized));
+      window.localStorage.setItem("tae.theme.background", normalized.colors.bg);
+      window.localStorage.setItem("tae.theme.surface", normalized.colors.surface);
+      window.localStorage.setItem("tae.theme.primary", normalized.colors.primary);
+      window.localStorage.setItem("tae.theme.secondary", normalized.colors.secondary);
+      window.localStorage.setItem("tae.theme.textMain", normalized.text.main);
+      window.localStorage.setItem("tae.theme.textSecondary", normalized.text.secondary);
+      window.localStorage.setItem("tae.theme.textTertiary", normalized.text.tertiary);
+    } catch {}
+  }, [editing]);
 
   useEffect(() => {
     setCurrentPage(1);

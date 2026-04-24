@@ -7,6 +7,10 @@ const {
   syncRecentTracks,
   getRecentlyPlayed,
   getSpotifyStats,
+  getArtistDetail,
+  getAlbumDetail,
+  getTrackDetail,
+  getFullList,
 } = require("../controllers/spotifyController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -19,5 +23,9 @@ router.get("/currently-playing", protect, getCurrentlyPlaying);
 router.get("/recently-played", protect, getRecentlyPlayed);
 router.get("/stats", protect, getSpotifyStats);
 router.post("/sync", protect, syncRecentTracks);
+router.get("/artist-detail", protect, getArtistDetail);
+router.get("/album-detail", protect, getAlbumDetail);
+router.get("/track-detail", protect, getTrackDetail);
+router.get("/full-list", protect, getFullList);
 
 module.exports = router;
