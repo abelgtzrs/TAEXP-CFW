@@ -323,7 +323,7 @@ const AdminLayout = () => {
     const root = document.documentElement;
     if (root) {
       root.style.setProperty("--left-sidebar-width", `${effectiveSidebarWidth}px`);
-      root.style.setProperty("--bottom-nav-height", isMobile ? "64px" : "0px");
+      root.style.setProperty("--bottom-nav-height", "56px");
     }
   }, [effectiveSidebarWidth, isMobile]);
 
@@ -368,7 +368,7 @@ const AdminLayout = () => {
             ${isSidebarCollapsed ? "w-12 -translate-x-full lg:translate-x-0" : "w-64 lg:w-52 translate-x-0"}
             lg:block
           `}
-          style={{ bottom: isMobile ? "64px" : "0" }}
+          style={{ bottom: "56px" }}
         >
           {/* Toggle (15px from bottom) - Desktop only */}
           <button
@@ -704,7 +704,7 @@ const AdminLayout = () => {
             left: effectiveSidebarWidth,
             top: headerHeight,
             right: 0,
-            bottom: isMobile ? mobileBottomNavHeight : 0,
+            bottom: mobileBottomNavHeight,
           }}
         >
           <div className="flex-1 overflow-y-auto scrollbar-hide p-2 lg:p-3 min-h-0 pb-0 lg:pb-3">
