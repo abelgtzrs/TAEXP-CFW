@@ -16,7 +16,7 @@ export function Screen({ children, scroll = true, style, contentContainerStyle }
   if (!scroll) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }, style]}>
-        <View style={[styles.content, contentContainerStyle]}>{children}</View>
+        <View style={[styles.safeArea, contentContainerStyle]}>{children}</View>
       </SafeAreaView>
     );
   }
@@ -30,10 +30,10 @@ export function Screen({ children, scroll = true, style, contentContainerStyle }
 
 const styles = StyleSheet.create({
   safeArea: {
-    flex: 1
+    flex: 1,
   },
   content: {
     padding: 16,
-    gap: 16
-  }
+    gap: 16,
+  },
 });

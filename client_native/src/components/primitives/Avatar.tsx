@@ -20,12 +20,7 @@ export function Avatar({ uri, name, size = 48 }: Props) {
     : "?";
 
   if (uri) {
-    return (
-      <Image
-        source={{ uri }}
-        style={[styles.image, { width: size, height: size, borderRadius: size / 2.5 }]}
-      />
-    );
+    return <Image source={{ uri }} style={[styles.image, { width: size, height: size, borderRadius: size / 2.5 }]} />;
   }
 
   return (
@@ -40,9 +35,7 @@ export function Avatar({ uri, name, size = 48 }: Props) {
         },
       ]}
     >
-      <Text style={[styles.initials, { color: theme.colors.textSecondary, fontSize: size * 0.36 }]}>
-        {initials}
-      </Text>
+      <Text style={[styles.initials, { color: theme.colors.textSecondary, fontSize: size * 0.36 }]}>{initials}</Text>
     </View>
   );
 }

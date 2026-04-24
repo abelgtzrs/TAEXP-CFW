@@ -6,7 +6,7 @@ export function formatCurrency(value: number, currency = "USD") {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   }).format(value);
 }
 
@@ -16,6 +16,6 @@ export function formatDateTime(value: string | number | Date) {
     month: "short",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
   }).format(new Date(value));
 }

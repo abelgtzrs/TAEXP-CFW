@@ -5,7 +5,7 @@ export const LOCAL_STORAGE_KEYS = {
   dashboardPrefs: "tae.mobile.dashboardPrefs.v1",
   dailyDrafts: "tae.mobile.dailyDrafts.v1",
   profileAppearance: "tae.mobile.profileAppearance.v1",
-  notificationPrefs: "tae.mobile.notificationPrefs.v1"
+  notificationPrefs: "tae.mobile.notificationPrefs.v1",
 } as const;
 
 export async function getStoredString(key: string) {

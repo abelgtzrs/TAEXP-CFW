@@ -60,21 +60,21 @@ const darkBase: AppTheme = {
     textPrimary: "#F8FAFC",
     textSecondary: "#94A3B8",
     textTertiary: "#64748B",
-    buttonText: "#071018"
+    buttonText: "#071018",
   },
   spacing: {
     xs: 4,
     sm: 8,
     md: 12,
     lg: 16,
-    xl: 24
+    xl: 24,
   },
   radii: {
     sm: 10,
     md: 14,
     lg: 18,
-    xl: 24
-  }
+    xl: 24,
+  },
 };
 
 const lightBase: AppTheme = {
@@ -93,21 +93,21 @@ const lightBase: AppTheme = {
     textPrimary: "#0F172A",
     textSecondary: "#475569",
     textTertiary: "#64748B",
-    buttonText: "#FFFFFF"
+    buttonText: "#FFFFFF",
   },
   spacing: {
     xs: 4,
     sm: 8,
     md: 12,
     lg: 16,
-    xl: 24
+    xl: 24,
   },
   radii: {
     sm: 10,
     md: 14,
     lg: 18,
-    xl: 24
-  }
+    xl: 24,
+  },
 };
 
 function coercePersonaColors(input: unknown): PersonaColorInput | null {
@@ -137,6 +137,6 @@ export function buildTheme(mode: ThemeMode, personaColorsInput?: unknown): AppTh
       textPrimary: personaColors.textMain || base.colors.textPrimary,
       textSecondary: personaColors.textSecondary || base.colors.textSecondary,
       textTertiary: personaColors.tertiary || base.colors.textTertiary,
-    }
+    },
   };
 }

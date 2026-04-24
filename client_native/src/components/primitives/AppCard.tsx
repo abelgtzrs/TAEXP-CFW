@@ -18,7 +18,7 @@ export function AppCard({ children, title, subtitle, style }: AppCardProps) {
         styles.card,
         {
           backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border
+          borderColor: theme.colors.border,
         },
         style,
       ]}
@@ -39,16 +39,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 20,
     padding: 16,
-    gap: 12
+    gap: 12,
   },
   header: {
-    gap: 4
+    gap: 4,
   },
   title: {
     fontSize: 16,
-    fontWeight: "700"
+    fontWeight: "700",
   },
   subtitle: {
-    fontSize: 13
-  }
+    fontSize: 13,
+  },
 });

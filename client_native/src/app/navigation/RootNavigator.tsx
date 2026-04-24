@@ -2,15 +2,11 @@ import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator, NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useState } from "react";
-import { Text, View } from "react-native";
+import { Text } from "react-native";
 
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { LoginScreen } from "@/features/auth/screens/LoginScreen";
 import { RegisterScreen } from "@/features/auth/screens/RegisterScreen";
-import { ProfileScreen } from "@/features/profile/screens/ProfileScreen";
-import { SettingsScreen } from "@/features/settings/screens/SettingsScreen";
-import { CollectionsHubScreen } from "@/features/collections/screens/CollectionsHubScreen";
-import { PokedexListScreen } from "@/features/pokedex/screens/PokedexListScreen";
 import { useAppTheme } from "@/theme/ThemeProvider";
 import { useTabOrder, getTabLabel, type TabKey } from "@/hooks/useTabOrder";
 
@@ -19,9 +15,11 @@ import { PlanStack } from "./stacks/PlanStack";
 import { FitnessStack } from "./stacks/FitnessStack";
 import { LibraryStack } from "./stacks/LibraryStack";
 import { FinanceStack } from "./stacks/FinanceStack";
+import { MoreStack } from "./stacks/MoreStack";
 import { MoreSheet } from "./components/MoreSheet";
 
 import type { AppTabParamList, AppStackParamList, AuthStackParamList } from "./types";
+import type { MoreDestinationKey } from "./components/MoreSheet";
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 const AppStack = createNativeStackNavigator<AppStackParamList>();
@@ -46,11 +44,6 @@ const TAB_COMPONENTS: Record<TabKey, React.ComponentType<object>> = {
   FinanceTab: FinanceStack,
 };
 
-// ── Dummy component for the More tab (never rendered) ─
-function MoreTabPlaceholder() {
-  return <View />;
-}
-
 // ── Main tabs ─────────────────────────────────────────
 function AppTabs() {
   const { theme } = useAppTheme();
@@ -59,9 +52,52 @@ function AppTabs() {
   const { order } = useTabOrder();
 
   const handleMoreNavigate = useCallback(
-    (screen: string) => {
-      const name = screen as Extract<keyof AppStackParamList, "Profile" | "Collections" | "Pokedex" | "Settings">;
-      navigation.navigate(name);
+    (screen: MoreDestinationKey) => {
+      switch (screen) {
+        case "Profile":
+        case "Collections":
+        case "Pokedex":
+        case "Settings":
+        case "VolumesList":
+          navigation.navigate("Tabs", {
+            screen: "MoreTab",
+            params: { screen, initial: false },
+          } as never);
+          return;
+        case "Dashboard":
+          navigation.navigate("Tabs", { screen: "HomeTab", params: { screen: "Dashboard" } } as never);
+          return;
+        case "DashboardPrefs":
+          navigation.navigate("Tabs", { screen: "HomeTab", params: { screen: "DashboardPrefs" } } as never);
+          return;
+        case "PlannerHome":
+        case "HabitsList":
+        case "HabitEditor":
+        case "TasksList":
+        case "TaskEditor":
+          navigation.navigate("Tabs", { screen: "PlanTab", params: { screen } } as never);
+          return;
+        case "WorkoutList":
+        case "WorkoutTemplates":
+        case "WorkoutEditor":
+        case "FitnessGoals":
+          navigation.navigate("Tabs", { screen: "FitnessTab", params: { screen } } as never);
+          return;
+        case "BooksList":
+        case "BookDetails":
+        case "BookNotes":
+        case "DailyDrafts":
+          navigation.navigate("Tabs", { screen: "LibraryTab", params: { screen } } as never);
+          return;
+        case "FinanceHome":
+        case "Transactions":
+        case "Budgets":
+        case "Bills":
+          navigation.navigate("Tabs", { screen: "FinanceTab", params: { screen } } as never);
+          return;
+        default:
+          return;
+      }
     },
     [navigation],
   );
@@ -89,7 +125,14 @@ function AppTabs() {
             const icons = TAB_ICONS[route.name];
             if (route.name === "MoreTab") {
               return (
-                <Text style={{ color: focused ? theme.colors.primary : theme.colors.textSecondary, fontSize: 16, fontWeight: "700", letterSpacing: 2 }}>
+                <Text
+                  style={{
+                    color: focused ? theme.colors.primary : theme.colors.textSecondary,
+                    fontSize: 16,
+                    fontWeight: "700",
+                    letterSpacing: 2,
+                  }}
+                >
                   •••
                 </Text>
               );
@@ -108,7 +151,7 @@ function AppTabs() {
         ))}
         <Tab.Screen
           name="MoreTab"
-          component={MoreTabPlaceholder}
+          component={MoreStack}
           options={{ title: "More" }}
           listeners={{
             tabPress: (e) => {
@@ -167,10 +210,6 @@ export function RootNavigator() {
         }}
       >
         <AppStack.Screen name="Tabs" component={AppTabs} options={{ headerShown: false }} />
-        <AppStack.Screen name="Profile" component={ProfileScreen} />
-        <AppStack.Screen name="Collections" component={CollectionsHubScreen} />
-        <AppStack.Screen name="Pokedex" component={PokedexListScreen} options={{ title: "Pokédex" }} />
-        <AppStack.Screen name="Settings" component={SettingsScreen} />
       </AppStack.Navigator>
     </NavigationContainer>
   );

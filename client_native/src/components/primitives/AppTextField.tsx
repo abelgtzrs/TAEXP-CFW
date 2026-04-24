@@ -25,7 +25,7 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
           {
             backgroundColor: theme.colors.surfaceMuted,
             borderColor: error ? theme.colors.danger : theme.colors.border,
-            color: theme.colors.textPrimary
+            color: theme.colors.textPrimary,
           },
           style,
         ]}
@@ -38,11 +38,11 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
 
 const styles = StyleSheet.create({
   container: {
-    gap: 6
+    gap: 6,
   },
   label: {
     fontSize: 13,
-    fontWeight: "600"
+    fontWeight: "600",
   },
   input: {
     minHeight: 48,
@@ -50,9 +50,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 15
+    fontSize: 15,
   },
   error: {
-    fontSize: 12
-  }
+    fontSize: 12,
+  },
 });

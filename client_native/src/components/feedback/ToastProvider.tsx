@@ -84,7 +84,9 @@ function ToastItem({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () =>
   };
 
   return (
-    <Animated.View style={[styles.toast, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, opacity }]}>
+    <Animated.View
+      style={[styles.toast, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, opacity }]}
+    >
       <Pressable style={styles.toastInner} onPress={onDismiss}>
         <View style={[styles.iconBadge, { backgroundColor: variantColors[toast.variant] + "22" }]}>
           <Text style={[styles.iconText, { color: variantColors[toast.variant] }]}>{icons[toast.variant]}</Text>

@@ -24,9 +24,7 @@ export function ActionSheet({ visible, title, actions, onClose }: Props) {
       <Pressable style={styles.backdrop} onPress={onClose}>
         <View style={[styles.sheet, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
           <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
-          {title ? (
-            <Text style={[styles.title, { color: theme.colors.textSecondary }]}>{title}</Text>
-          ) : null}
+          {title ? <Text style={[styles.title, { color: theme.colors.textSecondary }]}>{title}</Text> : null}
 
           {actions.map((action) => (
             <Pressable

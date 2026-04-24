@@ -22,15 +22,12 @@ export function useTabOrder() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    getStoredJson<TabKey[]>(LOCAL_STORAGE_KEYS.bottomNavOrder, [...DEFAULT_TAB_ORDER]).then(
-      (stored) => {
-        // Validate stored order contains exactly the right keys
-        const valid = stored.length === DEFAULT_TAB_ORDER.length &&
-          DEFAULT_TAB_ORDER.every((k) => stored.includes(k));
-        setOrder(valid ? stored : [...DEFAULT_TAB_ORDER]);
-        setLoaded(true);
-      },
-    );
+    getStoredJson<TabKey[]>(LOCAL_STORAGE_KEYS.bottomNavOrder, [...DEFAULT_TAB_ORDER]).then((stored) => {
+      // Validate stored order contains exactly the right keys
+      const valid = stored.length === DEFAULT_TAB_ORDER.length && DEFAULT_TAB_ORDER.every((k) => stored.includes(k));
+      setOrder(valid ? stored : [...DEFAULT_TAB_ORDER]);
+      setLoaded(true);
+    });
   }, []);
 
   const saveOrder = useCallback(async (newOrder: TabKey[]) => {

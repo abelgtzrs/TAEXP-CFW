@@ -44,8 +44,8 @@ export const apiClient = axios.create({
   baseURL: resolveApiBaseUrl(),
   headers: {
     "Content-Type": "application/json",
-    Accept: "application/json"
-  }
+    Accept: "application/json",
+  },
 });
 
 apiClient.interceptors.request.use(async (config) => {
@@ -62,7 +62,7 @@ apiClient.interceptors.response.use(
     const normalized: ApiError = {
       status: error.response?.status,
       message: error.response?.data?.message || error.message || "Unexpected network error",
-      data: error.response?.data
+      data: error.response?.data,
     };
 
     if (error.response?.status === 401 && unauthorizedHandler) {

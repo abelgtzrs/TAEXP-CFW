@@ -7,6 +7,21 @@ export type RecentAcquisition = {
   type: string;
   rarity?: string;
   imageUrl?: string | null;
+  obtainedAt?: string | null;
+};
+
+export type YearlyGoal = {
+  name: string;
+  metric?: string;
+  target: number;
+  current: number;
+  icon?: string;
+  color?: string;
+};
+
+export type TopProduct = {
+  name: string;
+  units: number;
 };
 
 export type DashboardStats = {
@@ -14,10 +29,17 @@ export type DashboardStats = {
   totalWorkouts?: number;
   booksFinished?: number;
   activeStreaks?: number;
+  longestLoginStreak?: number;
   gachaPulls?: number;
   volumesPublished?: number;
+  tasksCompletedToday?: number;
+  tasksPending?: number;
+  workoutsThisWeek?: number;
+  totalBudget?: number;
   goals?: Record<string, number>;
+  allGoals?: YearlyGoal[];
   recentAcquisitions?: RecentAcquisition[];
+  topProducts?: TopProduct[];
   [key: string]: unknown;
 };
 

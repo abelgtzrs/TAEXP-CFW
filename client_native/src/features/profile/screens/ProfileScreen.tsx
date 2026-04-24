@@ -26,12 +26,18 @@ export function ProfileScreen() {
     <Screen>
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Profile</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>This starter screen confirms the populated session profile is available in native code.</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+          This starter screen confirms the populated session profile is available in native code.
+        </Text>
       </View>
 
       <AppCard title={profile?.username ?? "User"} subtitle={profile?.email ?? "No email available"}>
         <View style={styles.identityRow}>
-          {avatarUrl ? <Image source={{ uri: avatarUrl }} style={styles.avatar} /> : <View style={[styles.avatar, { backgroundColor: theme.colors.surfaceMuted }]} />}
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: theme.colors.surfaceMuted }]} />
+          )}
           <View style={styles.identityCopy}>
             <Text style={[styles.metaLabel, { color: theme.colors.textSecondary }]}>Role</Text>
             <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>{profile?.role ?? "user"}</Text>
@@ -47,15 +53,21 @@ export function ProfileScreen() {
       <AppCard title="Collections Snapshot" subtitle="A full collections hub lands in the next implementation phase.">
         <View style={styles.metricRow}>
           <Text style={[styles.metaLabel, { color: theme.colors.textSecondary }]}>Pokemon</Text>
-          <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>{profile?.pokemonCollection?.length ?? 0}</Text>
+          <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>
+            {profile?.pokemonCollection?.length ?? 0}
+          </Text>
         </View>
         <View style={styles.metricRow}>
           <Text style={[styles.metaLabel, { color: theme.colors.textSecondary }]}>Snoopy</Text>
-          <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>{profile?.snoopyArtCollection?.length ?? 0}</Text>
+          <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>
+            {profile?.snoopyArtCollection?.length ?? 0}
+          </Text>
         </View>
         <View style={styles.metricRow}>
           <Text style={[styles.metaLabel, { color: theme.colors.textSecondary }]}>Habbo</Text>
-          <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>{profile?.habboRares?.length ?? 0}</Text>
+          <Text style={[styles.metaValue, { color: theme.colors.textPrimary }]}>
+            {profile?.habboRares?.length ?? 0}
+          </Text>
         </View>
         <View style={styles.metricRow}>
           <Text style={[styles.metaLabel, { color: theme.colors.textSecondary }]}>Badges</Text>
@@ -68,39 +80,39 @@ export function ProfileScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    gap: 6
+    gap: 6,
   },
   title: {
     fontSize: 28,
-    fontWeight: "800"
+    fontWeight: "800",
   },
   subtitle: {
     fontSize: 15,
-    lineHeight: 22
+    lineHeight: 22,
   },
   identityRow: {
     flexDirection: "row",
     gap: 16,
-    alignItems: "center"
+    alignItems: "center",
   },
   avatar: {
     width: 88,
     height: 88,
-    borderRadius: 44
+    borderRadius: 44,
   },
   identityCopy: {
     flex: 1,
-    gap: 6
+    gap: 6,
   },
   metricRow: {
     flexDirection: "row",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
   },
   metaLabel: {
-    fontSize: 14
+    fontSize: 14,
   },
   metaValue: {
     fontSize: 14,
-    fontWeight: "700"
-  }
+    fontWeight: "700",
+  },
 });

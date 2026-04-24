@@ -1,10 +1,12 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "react-native";
 
 import { AppButton } from "./AppButton";
 import { useAppTheme } from "@/theme/ThemeProvider";
+import type { ReactNode } from "react";
 
 type Props = {
-  icon?: string;
+  icon?: ReactNode;
   title: string;
   subtitle?: string;
   actionLabel?: string;
@@ -16,11 +18,9 @@ export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: Pro
 
   return (
     <View style={styles.container}>
-      {icon ? <Text style={styles.icon}>{icon}</Text> : null}
+      {icon ? <View style={styles.iconWrapper}>{icon}</View> : null}
       <Text style={[styles.title, { color: theme.colors.textPrimary }]}>{title}</Text>
-      {subtitle ? (
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>{subtitle}</Text>
-      ) : null}
+      {subtitle ? <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>{subtitle}</Text> : null}
       {actionLabel && onAction ? (
         <View style={styles.action}>
           <AppButton title={actionLabel} onPress={onAction} variant="secondary" />
@@ -38,9 +38,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 8,
   },
-  icon: {
-    fontSize: 40,
+  iconWrapper: {
     marginBottom: 4,
+    alignItems: "center",
   },
   title: {
     fontSize: 17,

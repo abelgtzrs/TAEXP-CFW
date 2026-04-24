@@ -40,7 +40,9 @@ export function LoginScreen({ navigation }: Props) {
       <View style={styles.hero}>
         <Text style={[styles.eyebrow, { color: theme.colors.primary }]}>TAE Native</Text>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Sign in to your dashboard</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>EPIC-0 shell with secure auth and native theming is ready.</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+          EPIC-0 shell with secure auth and native theming is ready.
+        </Text>
       </View>
 
       <AppCard title="Login" subtitle="Use the same backend account as the web app." style={styles.card}>
@@ -71,29 +73,29 @@ export function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
-    justifyContent: "center"
+    justifyContent: "center",
   },
   hero: {
-    gap: 6
+    gap: 6,
   },
   eyebrow: {
     fontSize: 12,
     fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 1.2
+    letterSpacing: 1.2,
   },
   title: {
     fontSize: 28,
-    fontWeight: "800"
+    fontWeight: "800",
   },
   subtitle: {
     fontSize: 15,
-    lineHeight: 22
+    lineHeight: 22,
   },
   card: {
-    marginTop: 8
+    marginTop: 8,
   },
   error: {
-    fontSize: 13
-  }
+    fontSize: 13,
+  },
 });

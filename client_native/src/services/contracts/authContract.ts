@@ -12,6 +12,11 @@ export type AuthUser = {
   username?: string;
   role?: string;
   profilePicture?: string;
+  level?: number;
+  experience?: number;
+  temuTokens?: number;
+  gatillaGold?: number;
+  wendyHearts?: number;
   activeAbelPersona?: PersonaModel | null;
   pokemonCollection?: unknown[];
   snoopyArtCollection?: unknown[];

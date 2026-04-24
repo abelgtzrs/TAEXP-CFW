@@ -17,7 +17,10 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
   const systemScheme = useColorScheme();
   const { user } = useAuth();
 
-  const theme = useMemo(() => buildTheme(systemScheme === "light" ? "light" : "dark", user?.activeAbelPersona?.colors), [systemScheme, user?.activeAbelPersona?.colors]);
+  const theme = useMemo(
+    () => buildTheme(systemScheme === "light" ? "light" : "dark", user?.activeAbelPersona?.colors),
+    [systemScheme, user?.activeAbelPersona?.colors],
+  );
 
   const navigationTheme = useMemo<NavigationTheme>(() => {
     const base = theme.isDark ? DarkTheme : DefaultTheme;
@@ -32,7 +35,7 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
         text: theme.colors.textPrimary,
         border: theme.colors.border,
         notification: theme.colors.secondary,
-      }
+      },
     };
   }, [theme]);
 

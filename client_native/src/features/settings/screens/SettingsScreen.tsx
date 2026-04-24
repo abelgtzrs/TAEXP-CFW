@@ -25,7 +25,9 @@ export function SettingsScreen() {
     <Screen>
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Settings</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Manage your device preferences, tab order, and session.</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+          Manage your device preferences, tab order, and session.
+        </Text>
       </View>
 
       <AppCard title="Tab Order" subtitle="Reorder your bottom navigation. Changes are saved locally.">
@@ -50,7 +52,10 @@ export function SettingsScreen() {
                 disabled={index === order.length - 1}
                 style={({ pressed }) => [
                   styles.reorderBtn,
-                  { backgroundColor: theme.colors.surfaceMuted, opacity: index === order.length - 1 ? 0.3 : pressed ? 0.7 : 1 },
+                  {
+                    backgroundColor: theme.colors.surfaceMuted,
+                    opacity: index === order.length - 1 ? 0.3 : pressed ? 0.7 : 1,
+                  },
                 ]}
               >
                 <Text style={{ color: theme.colors.textPrimary, fontSize: 14 }}>▼</Text>
@@ -69,7 +74,9 @@ export function SettingsScreen() {
       </AppCard>
 
       <AppCard title="Device-local preferences" subtitle="These remain unsynced by product decision.">
-        <Text style={[styles.value, { color: theme.colors.textPrimary }]}>{Object.values(LOCAL_STORAGE_KEYS).join("\n")}</Text>
+        <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
+          {Object.values(LOCAL_STORAGE_KEYS).join("\n")}
+        </Text>
         <AppButton onPress={() => void handleClearLocal()} title="Clear local-only preferences" variant="secondary" />
       </AppCard>
 
@@ -82,23 +89,23 @@ export function SettingsScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    gap: 6
+    gap: 6,
   },
   title: {
     fontSize: 28,
-    fontWeight: "800"
+    fontWeight: "800",
   },
   subtitle: {
     fontSize: 15,
-    lineHeight: 22
+    lineHeight: 22,
   },
   label: {
     fontSize: 13,
-    fontWeight: "700"
+    fontWeight: "700",
   },
   value: {
     fontSize: 14,
-    lineHeight: 22
+    lineHeight: 22,
   },
   reorderRow: {
     flexDirection: "row",

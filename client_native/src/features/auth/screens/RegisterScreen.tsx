@@ -40,7 +40,9 @@ export function RegisterScreen({ navigation }: Props) {
     <Screen contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Create your account</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Registration is wired to the same auth backend as the web client.</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+          Registration is wired to the same auth backend as the web client.
+        </Text>
       </View>
 
       <AppCard title="Register" subtitle="This flow can be disabled later if the product requires invite-only access.">
@@ -54,7 +56,13 @@ export function RegisterScreen({ navigation }: Props) {
           placeholder="you@example.com"
           value={email}
         />
-        <AppTextField label="Password" onChangeText={setPassword} placeholder="Password" secureTextEntry value={password} />
+        <AppTextField
+          label="Password"
+          onChangeText={setPassword}
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+        />
         {error ? <Text style={[styles.error, { color: theme.colors.danger }]}>{error}</Text> : null}
         <AppButton loading={submitting} onPress={handleSubmit} title="Create account" />
         <AppButton onPress={() => navigation.goBack()} title="Back to login" variant="secondary" />
@@ -66,20 +74,20 @@ export function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
-    justifyContent: "center"
+    justifyContent: "center",
   },
   hero: {
-    gap: 6
+    gap: 6,
   },
   title: {
     fontSize: 28,
-    fontWeight: "800"
+    fontWeight: "800",
   },
   subtitle: {
     fontSize: 15,
-    lineHeight: 22
+    lineHeight: 22,
   },
   error: {
-    fontSize: 13
-  }
+    fontSize: 13,
+  },
 });

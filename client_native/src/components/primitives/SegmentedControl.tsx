@@ -26,17 +26,9 @@ export function SegmentedControl<T extends string>({ segments, selected, onSelec
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             onPress={() => onSelect(seg.key)}
-            style={[
-              styles.segment,
-              active && { backgroundColor: theme.colors.surface },
-            ]}
+            style={[styles.segment, active && { backgroundColor: theme.colors.surface }]}
           >
-            <Text
-              style={[
-                styles.label,
-                { color: active ? theme.colors.primary : theme.colors.textSecondary },
-              ]}
-            >
+            <Text style={[styles.label, { color: active ? theme.colors.primary : theme.colors.textSecondary }]}>
               {seg.label}
             </Text>
           </Pressable>

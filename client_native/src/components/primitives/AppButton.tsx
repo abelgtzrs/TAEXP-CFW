@@ -8,9 +8,17 @@ type AppButtonProps = {
   disabled?: boolean;
   loading?: boolean;
   variant?: "primary" | "secondary" | "danger";
+  size?: "sm" | "md";
 };
 
-export function AppButton({ title, onPress, disabled = false, loading = false, variant = "primary" }: AppButtonProps) {
+export function AppButton({
+  title,
+  onPress,
+  disabled = false,
+  loading = false,
+  variant = "primary",
+  size = "md",
+}: AppButtonProps) {
   const { theme } = useAppTheme();
 
   const backgroundColor =
@@ -29,13 +37,18 @@ export function AppButton({ title, onPress, disabled = false, loading = false, v
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        size === "sm" && styles.buttonSm,
         {
           backgroundColor,
-          opacity: disabled || loading ? 0.6 : pressed ? 0.88 : 1
+          opacity: disabled || loading ? 0.6 : pressed ? 0.88 : 1,
         },
       ]}
     >
-      {loading ? <ActivityIndicator color={textColor} /> : <Text style={[styles.text, { color: textColor }]}>{title}</Text>}
+      {loading ? (
+        <ActivityIndicator color={textColor} size={size === "sm" ? "small" : "small"} />
+      ) : (
+        <Text style={[styles.text, size === "sm" && styles.textSm, { color: textColor }]}>{title}</Text>
+      )}
     </Pressable>
   );
 }
@@ -46,10 +59,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 16
+    paddingHorizontal: 16,
+  },
+  buttonSm: {
+    minHeight: 34,
+    borderRadius: 10,
+    paddingHorizontal: 12,
   },
   text: {
     fontSize: 15,
-    fontWeight: "700"
-  }
+    fontWeight: "700",
+  },
+  textSm: {
+    fontSize: 13,
+  },
 });

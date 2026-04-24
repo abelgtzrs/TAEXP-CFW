@@ -28,9 +28,7 @@ export function ListRow({ title, subtitle, left, right, onPress, showChevron = !
         ) : null}
       </View>
       {right ? <View style={styles.right}>{right}</View> : null}
-      {showChevron && !right ? (
-        <Text style={[styles.chevron, { color: theme.colors.textTertiary }]}>›</Text>
-      ) : null}
+      {showChevron && !right ? <Text style={[styles.chevron, { color: theme.colors.textTertiary }]}>›</Text> : null}
     </View>
   );
 
