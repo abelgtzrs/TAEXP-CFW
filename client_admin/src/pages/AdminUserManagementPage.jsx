@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { adminUserService } from "../services/adminUserService";
+import api from "../services/api";
 import {
   FiRefreshCcw,
   FiEdit2,
@@ -24,6 +25,10 @@ import {
   FiGlobe,
   FiType,
   FiImage,
+  FiAward,
+  FiCheck,
+  FiPlus,
+  FiLoader,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -40,6 +45,18 @@ const AdminUserManagementPage = () => {
   const [sortConfig, setSortConfig] = useState({ key: "username", direction: "ascending" });
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Badge manager state
+  const [badgeModal, setBadgeModal] = useState({ open: false, user: null });
+  const [allCollections, setAllCollections] = useState([]);
+  const [allBadgesMap, setAllBadgesMap] = useState({}); // { [collectionKey]: [BadgeBase] }
+  const [earnedBadges, setEarnedBadges] = useState([]); // UserBadge[] with populated badgeBase
+  const [badgeModalLoading, setBadgeModalLoading] = useState(false);
+  const [badgeModalError, setBadgeModalError] = useState("");
+  const [grantingId, setGrantingId] = useState(null); // badgeBase _id being granted
+  const [badgeCollectionFilter, setBadgeCollectionFilter] = useState("");
+  const [badgeSearch, setBadgeSearch] = useState("");
+  const [badgesLoadedCollections, setBadgesLoadedCollections] = useState(new Set());
+
   const load = async () => {
     setLoading(true);
     setError("");
@@ -54,6 +71,72 @@ const AdminUserManagementPage = () => {
   useEffect(() => {
     load();
   }, []);
+
+  // --- Badge Manager logic ---
+  const openBadgeModal = useCallback(async (u) => {
+    setBadgeModal({ open: true, user: u });
+    setBadgeModalError("");
+    setBadgeModalLoading(true);
+    setBadgesLoadedCollections(new Set());
+    setBadgeCollectionFilter("");
+    setBadgeSearch("");
+    try {
+      const [collectionsRes, earnedRes] = await Promise.all([
+        api.get("/admin/badge-collections/collections"),
+        adminUserService.getUserBadges(u._id),
+      ]);
+      const cols = collectionsRes.data.data || [];
+      setAllCollections(cols);
+      setEarnedBadges(earnedRes || []);
+      // Pre-load badges for first collection
+      if (cols.length > 0) {
+        const firstKey = cols[0].key;
+        setBadgeCollectionFilter(firstKey);
+        const badgesRes = await api.get(`/admin/badge-collections/collections/${firstKey}`);
+        setAllBadgesMap({ [firstKey]: badgesRes.data.data || [] });
+        setBadgesLoadedCollections(new Set([firstKey]));
+      }
+    } catch (e) {
+      setBadgeModalError("Failed to load badge data");
+    } finally {
+      setBadgeModalLoading(false);
+    }
+  }, []);
+
+  const switchBadgeCollection = useCallback(async (key) => {
+    setBadgeCollectionFilter(key);
+    setBadgeSearch("");
+    if (badgesLoadedCollections.has(key)) return;
+    try {
+      const res = await api.get(`/admin/badge-collections/collections/${key}`);
+      setAllBadgesMap((prev) => ({ ...prev, [key]: res.data.data || [] }));
+      setBadgesLoadedCollections((prev) => new Set([...prev, key]));
+    } catch {
+      // silently fall back to empty
+    }
+  }, [badgesLoadedCollections]);
+
+  const grantBadge = useCallback(async (badgeBaseId) => {
+    if (!badgeModal.user) return;
+    setGrantingId(badgeBaseId);
+    setBadgeModalError("");
+    try {
+      const newUserBadge = await adminUserService.grantBadge(badgeModal.user._id, badgeBaseId);
+      setEarnedBadges((prev) => [...prev, newUserBadge]);
+    } catch (e) {
+      setBadgeModalError(e.response?.data?.message || "Failed to grant badge");
+    } finally {
+      setGrantingId(null);
+    }
+  }, [badgeModal.user]);
+
+  const closeBadgeModal = () => {
+    setBadgeModal({ open: false, user: null });
+    setAllCollections([]);
+    setAllBadgesMap({});
+    setEarnedBadges([]);
+    setBadgeModalError("");
+  };
 
   const startEdit = (u) => {
     setEditingId(u._id);
@@ -472,6 +555,13 @@ const AdminUserManagementPage = () => {
                         >
                           <FiKey />
                         </button>
+                        <button
+                          onClick={() => openBadgeModal(u)}
+                          className="text-cyan-400 hover:text-text-main hover:bg-cyan-400/20 p-1"
+                          title="BADGES"
+                        >
+                          <FiAward />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -481,6 +571,159 @@ const AdminUserManagementPage = () => {
           </table>
         )}
       </div>
+
+      {/* ── Badge Manager Modal ── */}
+      {badgeModal.open && (
+        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-mono">
+          <div className="bg-background border-2 border-cyan-400/60 w-full max-w-3xl max-h-[90vh] flex flex-col shadow-[0_0_30px_rgba(34,211,238,0.15)] relative">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-cyan-400/30 bg-cyan-400/5 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <FiAward className="text-cyan-400" size={18} />
+                <div>
+                  <h2 className="font-bold uppercase tracking-widest text-cyan-400 text-sm">Badge Manager</h2>
+                  <p className="text-[9px] text-text-tertiary uppercase tracking-wider">{badgeModal.user?.username}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] text-cyan-400/60 uppercase">
+                  {earnedBadges.length} earned
+                </span>
+                <button onClick={closeBadgeModal} className="text-primary/50 hover:text-primary p-1">
+                  <FiX size={16} />
+                </button>
+              </div>
+            </div>
+
+            {badgeModalLoading ? (
+              <div className="flex-1 flex items-center justify-center text-cyan-400/50 uppercase tracking-widest animate-pulse text-xs py-12">
+                Loading badges...
+              </div>
+            ) : (
+              <>
+                {badgeModalError && (
+                  <div className="mx-5 mt-3 flex-shrink-0 border border-status-danger/40 bg-status-danger/10 text-status-danger text-[10px] px-3 py-2 uppercase tracking-wide flex items-center gap-2">
+                    <FiX size={12} /> {badgeModalError}
+                  </div>
+                )}
+
+                {/* Collection tabs */}
+                <div className="flex gap-0 overflow-x-auto flex-shrink-0 border-b border-cyan-400/20 px-5 pt-3">
+                  {allCollections.map((col) => (
+                    <button
+                      key={col.key}
+                      onClick={() => switchBadgeCollection(col.key)}
+                      className={`px-3 py-1.5 text-[9px] uppercase tracking-wider whitespace-nowrap border-b-2 transition-colors ${
+                        badgeCollectionFilter === col.key
+                          ? "border-cyan-400 text-cyan-400"
+                          : "border-transparent text-text-tertiary hover:text-primary"
+                      }`}
+                    >
+                      {col.name || col.key}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search within collection */}
+                <div className="px-5 pt-3 flex-shrink-0">
+                  <div className="relative">
+                    <FiSearch className="absolute left-2 top-1/2 -translate-y-1/2 text-primary/30" size={11} />
+                    <input
+                      type="text"
+                      placeholder="SEARCH BADGES..."
+                      value={badgeSearch}
+                      onChange={(e) => setBadgeSearch(e.target.value)}
+                      className="w-full bg-background border border-primary/20 pl-7 pr-3 py-1 text-[10px] text-primary placeholder-primary/25 focus:border-cyan-400/50 outline-none uppercase tracking-wider"
+                    />
+                  </div>
+                </div>
+
+                {/* Badge grid */}
+                <div className="flex-1 overflow-y-auto px-5 py-4">
+                  {(() => {
+                    const earnedSet = new Set(
+                      earnedBadges
+                        .map((eb) => String(eb.badgeBase?._id || eb.badgeBase))
+                        .filter(Boolean)
+                    );
+                    const badges = (allBadgesMap[badgeCollectionFilter] || []).filter((b) => {
+                      if (!badgeSearch) return true;
+                      return b.name?.toLowerCase().includes(badgeSearch.toLowerCase()) ||
+                        b.badgeId?.toLowerCase().includes(badgeSearch.toLowerCase());
+                    });
+                    if (badges.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-text-tertiary text-[10px] uppercase tracking-widest">
+                          No badges found
+                        </div>
+                      );
+                    }
+                    const API_ORIGIN = (() => {
+                      try { return new URL(api.defaults.baseURL || "").origin; } catch { return ""; }
+                    })();
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {badges.map((badge) => {
+                          const isEarned = earnedSet.has(String(badge._id));
+                          const isGranting = grantingId === badge._id;
+                          const imgSrc = badge.spriteSmallUrl || badge.spriteLargeUrl || badge.imageUrl || "";
+                          const resolvedImg = imgSrc.startsWith("http") ? imgSrc : imgSrc ? `${API_ORIGIN}${imgSrc}` : "";
+                          return (
+                            <div
+                              key={badge._id}
+                              className={`border p-3 flex flex-col items-center gap-2 transition-colors ${
+                                isEarned
+                                  ? "border-cyan-400/50 bg-cyan-400/5"
+                                  : "border-primary/20 bg-background hover:border-primary/40"
+                              }`}
+                            >
+                              <div className={`w-10 h-10 flex items-center justify-center relative ${
+                                isEarned ? "" : "opacity-40 grayscale"
+                              }`}>
+                                {resolvedImg ? (
+                                  <img src={resolvedImg} alt={badge.name} className="w-full h-full object-contain" />
+                                ) : (
+                                  <FiAward className="text-primary/40" size={24} />
+                                )}
+                                {isEarned && (
+                                  <span className="absolute -top-1 -right-1 bg-cyan-400 rounded-full p-0.5">
+                                    <FiCheck size={8} className="text-background" />
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-center min-w-0 w-full">
+                                <div className="text-[9px] font-bold uppercase tracking-wide text-primary truncate">{badge.name}</div>
+                                <div className="text-[8px] text-text-tertiary truncate">{badge.badgeId}</div>
+                              </div>
+                              {isEarned ? (
+                                <span className="text-[8px] text-cyan-400 uppercase tracking-wider flex items-center gap-1">
+                                  <FiCheck size={9} /> Earned
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => grantBadge(badge._id)}
+                                  disabled={!!grantingId}
+                                  className="w-full border border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10 text-[8px] uppercase tracking-wider py-1 flex items-center justify-center gap-1 disabled:opacity-40"
+                                >
+                                  {isGranting ? (
+                                    <span className="animate-spin text-[10px]">◌</span>
+                                  ) : (
+                                    <><FiPlus size={9} /> Grant</>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {pwModal.open && (
         <div className="fixed inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-mono">

@@ -1,6 +1,7 @@
 // server/controllers/badgeAdminController.js
 const path = require("path");
 const BadgeBase = require("../models/BadgeBase");
+const UserBadge = require("../models/userSpecific/userBadge");
 
 // Collections are represented by collectionKey + optional generation in BadgeBase
 
@@ -65,6 +66,13 @@ exports.deleteBadge = async (req, res) => {
   try {
     const badge = await BadgeBase.findById(req.params.badgeId);
     if (!badge) return res.status(404).json({ success: false, message: "Badge not found" });
+    const earnedCount = await UserBadge.countDocuments({ badgeBase: badge._id });
+    if (earnedCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete: ${earnedCount} user(s) have earned this badge. Earned badges are permanent.`,
+      });
+    }
     await badge.deleteOne();
     res.json({ success: true, data: {} });
   } catch (e) {

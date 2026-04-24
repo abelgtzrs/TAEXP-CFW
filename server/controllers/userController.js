@@ -805,6 +805,55 @@ const updateUserAdmin = async (req, res) => {
   }
 };
 
+// --- Admin: Get all badges a user has earned ---
+const adminGetUserBadges = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).select("_id");
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const earned = await UserBadge.find({ user: id })
+      .populate({ path: "badgeBase", model: "BadgeBase" })
+      .sort({ earnedAt: 1 });
+    res.status(200).json({ success: true, data: earned });
+  } catch (error) {
+    console.error("Admin getUserBadges Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// --- Admin: Grant a badge to a user ---
+const adminGrantBadge = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { badgeBaseId } = req.body;
+    if (!badgeBaseId) {
+      return res.status(400).json({ success: false, message: "badgeBaseId is required" });
+    }
+    const [user, badge] = await Promise.all([
+      User.findById(id).select("badges"),
+      BadgeBase.findById(badgeBaseId).select("_id badgeId name"),
+    ]);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    if (!badge) return res.status(404).json({ success: false, message: "Badge not found" });
+
+    const existing = await UserBadge.findOne({ user: id, badgeBase: badgeBaseId });
+    if (existing) {
+      return res.status(400).json({ success: false, message: "User already has this badge" });
+    }
+
+    const newUserBadge = await UserBadge.create({ user: id, badgeBase: badgeBaseId });
+    if (!user.badges) user.badges = [];
+    user.badges.push(newUserBadge._id);
+    await user.save();
+
+    const populated = await newUserBadge.populate({ path: "badgeBase", model: "BadgeBase" });
+    res.status(201).json({ success: true, data: populated });
+  } catch (error) {
+    console.error("Admin grantBadge Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
 // --- Admin: Reset user password ---
 const resetUserPasswordAdmin = async (req, res) => {
   try {
@@ -837,6 +886,8 @@ module.exports = {
   getAllUsersAdmin,
   updateUserAdmin,
   resetUserPasswordAdmin,
+  adminGetUserBadges,
+  adminGrantBadge,
   // Streak endpoints
   getStreakStatus,
   tickLoginStreak,

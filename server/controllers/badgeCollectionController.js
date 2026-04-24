@@ -1,6 +1,7 @@
 // server/controllers/badgeCollectionController.js
 const BadgeCollection = require("../models/BadgeCollection");
 const BadgeBase = require("../models/BadgeBase");
+const UserBadge = require("../models/userSpecific/userBadge");
 
 exports.listCollections = async (req, res) => {
   try {
@@ -46,9 +47,17 @@ exports.deleteCollection = async (req, res) => {
   try {
     const col = await BadgeCollection.findOne({ key: req.params.key });
     if (!col) return res.status(404).json({ success: false, message: "Collection not found" });
-    // Optional: ensure no badges remain in this collection
-    const badgeCount = await BadgeBase.countDocuments({ collectionKey: col.key });
-    if (badgeCount > 0) {
+    // Block if any badge bases exist in this collection
+    const bases = await BadgeBase.find({ collectionKey: col.key }).select("_id");
+    if (bases.length > 0) {
+      // Block if any user has earned a badge from this collection
+      const earnedCount = await UserBadge.countDocuments({ badgeBase: { $in: bases.map((b) => b._id) } });
+      if (earnedCount > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete: ${earnedCount} user(s) have earned badges from this collection. Earned badges are permanent.`,
+        });
+      }
       return res.status(400).json({ success: false, message: "Cannot delete: badges exist in this collection" });
     }
     await col.deleteOne();
