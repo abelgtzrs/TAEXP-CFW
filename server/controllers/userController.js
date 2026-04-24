@@ -2,6 +2,7 @@ const User = require("../models/User");
 const BadgeBase = require("../models/BadgeBase");
 const UserBadge = require("../models/userSpecific/userBadge");
 const BadgeCollection = require("../models/BadgeCollection");
+const { awardNextStreakBadge } = require("../utils/badgeAwardUtils");
 const Habit = require("../models/userSpecific/Habit");
 const Book = require("../models/userSpecific/Book");
 const WorkoutLog = require("../models/userSpecific/WorkoutLog");
@@ -83,36 +84,9 @@ const tickLoginStreak = async (req, res) => {
     let awardedBadge = null;
     const shouldAward = user.currentLoginStreak > 0 && user.currentLoginStreak % 5 === 0;
     const notAlreadyAwardedForThisStreak = (user.lastBadgeUnlockedStreak || 0) !== user.currentLoginStreak;
-    if (shouldAward && notAlreadyAwardedForThisStreak && user.activeBadgeCollectionKey) {
+    if (shouldAward && notAlreadyAwardedForThisStreak) {
       try {
-        // Find all badge bases for the active collection
-        const bases = await BadgeBase.find({ collectionKey: user.activeBadgeCollectionKey })
-          .sort({ unlockDay: 1, orderInCategory: 1, name: 1 })
-          .select("_id badgeId name imageUrl spriteSmallUrl spriteLargeUrl collectionKey");
-        if (bases && bases.length > 0) {
-          // Find which badges user already has
-          const earned = await UserBadge.find({ user: user._id }).select("badgeBase");
-          const earnedSet = new Set(earned.map((e) => String(e.badgeBase)));
-          // Pick the first not-yet-earned badge from the collection
-          const nextBase = bases.find((b) => !earnedSet.has(String(b._id)));
-          if (nextBase) {
-            // Create user badge and link to user
-            const newUserBadge = await UserBadge.create({ user: user._id, badgeBase: nextBase._id });
-            // Push reference into user.badges array if not already present
-            if (!user.badges) user.badges = [];
-            user.badges.push(newUserBadge._id);
-            // Mark the last awarded streak to prevent duplicates
-            user.lastBadgeUnlockedStreak = user.currentLoginStreak;
-            awardedBadge = {
-              badgeId: nextBase.badgeId,
-              name: nextBase.name,
-              imageUrl: nextBase.imageUrl,
-              spriteSmallUrl: nextBase.spriteSmallUrl,
-              spriteLargeUrl: nextBase.spriteLargeUrl,
-              collectionKey: nextBase.collectionKey,
-            };
-          }
-        }
+        awardedBadge = await awardNextStreakBadge(user);
       } catch (awardErr) {
         console.warn("Badge award on streak failed:", awardErr.message);
       }

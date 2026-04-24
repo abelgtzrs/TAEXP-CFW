@@ -103,32 +103,38 @@ const AdminUserManagementPage = () => {
     }
   }, []);
 
-  const switchBadgeCollection = useCallback(async (key) => {
-    setBadgeCollectionFilter(key);
-    setBadgeSearch("");
-    if (badgesLoadedCollections.has(key)) return;
-    try {
-      const res = await api.get(`/admin/badge-collections/collections/${key}`);
-      setAllBadgesMap((prev) => ({ ...prev, [key]: res.data.data || [] }));
-      setBadgesLoadedCollections((prev) => new Set([...prev, key]));
-    } catch {
-      // silently fall back to empty
-    }
-  }, [badgesLoadedCollections]);
+  const switchBadgeCollection = useCallback(
+    async (key) => {
+      setBadgeCollectionFilter(key);
+      setBadgeSearch("");
+      if (badgesLoadedCollections.has(key)) return;
+      try {
+        const res = await api.get(`/admin/badge-collections/collections/${key}`);
+        setAllBadgesMap((prev) => ({ ...prev, [key]: res.data.data || [] }));
+        setBadgesLoadedCollections((prev) => new Set([...prev, key]));
+      } catch {
+        // silently fall back to empty
+      }
+    },
+    [badgesLoadedCollections],
+  );
 
-  const grantBadge = useCallback(async (badgeBaseId) => {
-    if (!badgeModal.user) return;
-    setGrantingId(badgeBaseId);
-    setBadgeModalError("");
-    try {
-      const newUserBadge = await adminUserService.grantBadge(badgeModal.user._id, badgeBaseId);
-      setEarnedBadges((prev) => [...prev, newUserBadge]);
-    } catch (e) {
-      setBadgeModalError(e.response?.data?.message || "Failed to grant badge");
-    } finally {
-      setGrantingId(null);
-    }
-  }, [badgeModal.user]);
+  const grantBadge = useCallback(
+    async (badgeBaseId) => {
+      if (!badgeModal.user) return;
+      setGrantingId(badgeBaseId);
+      setBadgeModalError("");
+      try {
+        const newUserBadge = await adminUserService.grantBadge(badgeModal.user._id, badgeBaseId);
+        setEarnedBadges((prev) => [...prev, newUserBadge]);
+      } catch (e) {
+        setBadgeModalError(e.response?.data?.message || "Failed to grant badge");
+      } finally {
+        setGrantingId(null);
+      }
+    },
+    [badgeModal.user],
+  );
 
   const closeBadgeModal = () => {
     setBadgeModal({ open: false, user: null });
@@ -209,7 +215,7 @@ const AdminUserManagementPage = () => {
         (u) =>
           u.username.toLowerCase().includes(lower) ||
           u.email.toLowerCase().includes(lower) ||
-          u._id.toLowerCase().includes(lower)
+          u._id.toLowerCase().includes(lower),
       );
     }
 
@@ -519,8 +525,8 @@ const AdminUserManagementPage = () => {
                           u.role === "admin"
                             ? "bg-status-danger/30 text-status-danger"
                             : u.role === "wife_of_the_year"
-                            ? "bg-pink-900/30 text-pink-500"
-                            : "bg-primary/10 text-primary"
+                              ? "bg-pink-900/30 text-pink-500"
+                              : "bg-primary/10 text-primary"
                         }`}
                       >
                         {u.role === "wife_of_the_year" ? "WIFE_ADMIN" : u.role}
@@ -586,9 +592,7 @@ const AdminUserManagementPage = () => {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-[10px] text-cyan-400/60 uppercase">
-                  {earnedBadges.length} earned
-                </span>
+                <span className="text-[10px] text-cyan-400/60 uppercase">{earnedBadges.length} earned</span>
                 <button onClick={closeBadgeModal} className="text-primary/50 hover:text-primary p-1">
                   <FiX size={16} />
                 </button>
@@ -642,14 +646,14 @@ const AdminUserManagementPage = () => {
                 <div className="flex-1 overflow-y-auto px-5 py-4">
                   {(() => {
                     const earnedSet = new Set(
-                      earnedBadges
-                        .map((eb) => String(eb.badgeBase?._id || eb.badgeBase))
-                        .filter(Boolean)
+                      earnedBadges.map((eb) => String(eb.badgeBase?._id || eb.badgeBase)).filter(Boolean),
                     );
                     const badges = (allBadgesMap[badgeCollectionFilter] || []).filter((b) => {
                       if (!badgeSearch) return true;
-                      return b.name?.toLowerCase().includes(badgeSearch.toLowerCase()) ||
-                        b.badgeId?.toLowerCase().includes(badgeSearch.toLowerCase());
+                      return (
+                        b.name?.toLowerCase().includes(badgeSearch.toLowerCase()) ||
+                        b.badgeId?.toLowerCase().includes(badgeSearch.toLowerCase())
+                      );
                     });
                     if (badges.length === 0) {
                       return (
@@ -659,7 +663,11 @@ const AdminUserManagementPage = () => {
                       );
                     }
                     const API_ORIGIN = (() => {
-                      try { return new URL(api.defaults.baseURL || "").origin; } catch { return ""; }
+                      try {
+                        return new URL(api.defaults.baseURL || "").origin;
+                      } catch {
+                        return "";
+                      }
                     })();
                     return (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -667,7 +675,11 @@ const AdminUserManagementPage = () => {
                           const isEarned = earnedSet.has(String(badge._id));
                           const isGranting = grantingId === badge._id;
                           const imgSrc = badge.spriteSmallUrl || badge.spriteLargeUrl || badge.imageUrl || "";
-                          const resolvedImg = imgSrc.startsWith("http") ? imgSrc : imgSrc ? `${API_ORIGIN}${imgSrc}` : "";
+                          const resolvedImg = imgSrc.startsWith("http")
+                            ? imgSrc
+                            : imgSrc
+                              ? `${API_ORIGIN}${imgSrc}`
+                              : "";
                           return (
                             <div
                               key={badge._id}
@@ -677,9 +689,11 @@ const AdminUserManagementPage = () => {
                                   : "border-primary/20 bg-background hover:border-primary/40"
                               }`}
                             >
-                              <div className={`w-10 h-10 flex items-center justify-center relative ${
-                                isEarned ? "" : "opacity-40 grayscale"
-                              }`}>
+                              <div
+                                className={`w-10 h-10 flex items-center justify-center relative ${
+                                  isEarned ? "" : "opacity-40 grayscale"
+                                }`}
+                              >
                                 {resolvedImg ? (
                                   <img src={resolvedImg} alt={badge.name} className="w-full h-full object-contain" />
                                 ) : (
@@ -692,7 +706,9 @@ const AdminUserManagementPage = () => {
                                 )}
                               </div>
                               <div className="text-center min-w-0 w-full">
-                                <div className="text-[9px] font-bold uppercase tracking-wide text-primary truncate">{badge.name}</div>
+                                <div className="text-[9px] font-bold uppercase tracking-wide text-primary truncate">
+                                  {badge.name}
+                                </div>
                                 <div className="text-[8px] text-text-tertiary truncate">{badge.badgeId}</div>
                               </div>
                               {isEarned ? (
@@ -708,7 +724,9 @@ const AdminUserManagementPage = () => {
                                   {isGranting ? (
                                     <span className="animate-spin text-[10px]">◌</span>
                                   ) : (
-                                    <><FiPlus size={9} /> Grant</>
+                                    <>
+                                      <FiPlus size={9} /> Grant
+                                    </>
                                   )}
                                 </button>
                               )}

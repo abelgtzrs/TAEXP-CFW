@@ -15,6 +15,7 @@ const ProfilePage = () => {
 
   // State for data fetched specifically for this page
   const [allBadges, setAllBadges] = useState([]);
+  const [earnedBadges, setEarnedBadges] = useState([]);
   const [dashboardStats, setDashboardStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
@@ -33,12 +34,14 @@ const ProfilePage = () => {
     const fetchData = async () => {
       try {
         // Fetch all data needed for the profile page in parallel
-        const [badgesRes, statsRes] = await Promise.all([
+        const [badgesRes, statsRes, earnedRes] = await Promise.all([
           api.get("/badges/base"),
           api.get("/users/me/dashboard-stats"),
+          api.get("/badges/earned"),
         ]);
         setAllBadges(badgesRes.data.data);
         setDashboardStats(statsRes.data.data);
+        setEarnedBadges(earnedRes.data.data || []);
       } catch (error) {
         console.error("Failed to load profile page data:", error);
       } finally {
@@ -301,9 +304,7 @@ const ProfilePage = () => {
                 <UserOverviewCard onEdit={() => setActiveTab("edit")} />
                 <BadgeDisplay
                   allBadges={allBadges}
-                  earnedBadges={user.badges}
-                  badgeSizePx={64}
-                  maxBadges={8}
+                  earnedBadges={earnedBadges}
                   activeCollectionKey={user.activeBadgeCollectionKey || ""}
                 />
               </div>
@@ -354,9 +355,7 @@ const ProfilePage = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <BadgeDisplay
                 allBadges={allBadges}
-                earnedBadges={user.badges}
-                badgeSizePx={64}
-                maxBadges={8}
+                earnedBadges={earnedBadges}
                 activeCollectionKey={user.activeBadgeCollectionKey || ""}
               />
             </motion.div>

@@ -1,8 +1,7 @@
 // server/controllers/authController.js
 const jwt = require("jsonwebtoken");
 const User = require("../models/User"); // Make sure the User model is imported
-const BadgeBase = require("../models/BadgeBase");
-const UserBadge = require("../models/userSpecific/userBadge");
+const { awardNextStreakBadge } = require("../utils/badgeAwardUtils");
 
 // --- Helper function to generate JWT ---
 const generateToken = (id, role) => {
@@ -105,30 +104,8 @@ const loginUser = async (req, res) => {
       try {
         const shouldAward = user.currentLoginStreak > 0 && user.currentLoginStreak % 5 === 0;
         const notAlreadyAwardedForThisStreak = (user.lastBadgeUnlockedStreak || 0) !== user.currentLoginStreak;
-        if (shouldAward && notAlreadyAwardedForThisStreak && user.activeBadgeCollectionKey) {
-          const bases = await BadgeBase.find({ collectionKey: user.activeBadgeCollectionKey })
-            .sort({ unlockDay: 1, orderInCategory: 1, name: 1 })
-            .select("_id badgeId name imageUrl spriteSmallUrl spriteLargeUrl collectionKey");
-          if (bases && bases.length > 0) {
-            const earned = await UserBadge.find({ user: user._id }).select("badgeBase");
-            const earnedSet = new Set(earned.map((e) => String(e.badgeBase)));
-            const nextBase = bases.find((b) => !earnedSet.has(String(b._id)));
-            if (nextBase) {
-              const newUserBadge = await UserBadge.create({ user: user._id, badgeBase: nextBase._id });
-              if (!user.badges) user.badges = [];
-              user.badges.push(newUserBadge._id);
-              user.lastBadgeUnlockedStreak = user.currentLoginStreak;
-              // Attach for response
-              user.__awardedBadge = {
-                badgeId: nextBase.badgeId,
-                name: nextBase.name,
-                imageUrl: nextBase.imageUrl,
-                spriteSmallUrl: nextBase.spriteSmallUrl,
-                spriteLargeUrl: nextBase.spriteLargeUrl,
-                collectionKey: nextBase.collectionKey,
-              };
-            }
-          }
+        if (shouldAward && notAlreadyAwardedForThisStreak) {
+          user.__awardedBadge = await awardNextStreakBadge(user);
         }
       } catch (awardErr) {
         console.warn("Badge award on login failed:", awardErr.message);
