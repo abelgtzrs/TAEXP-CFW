@@ -171,12 +171,23 @@ export function LayoutProvider({ children }) {
 
   const [columns, setColumns] = React.useState(() => {
     try {
+      const savedBpRaw = localStorage.getItem(AUTO_COLUMN_BREAKPOINTS_KEY);
+      const bp = normalizeAutoColumnBreakpoints(savedBpRaw ? JSON.parse(savedBpRaw) : DEFAULT_AUTO_COLUMN_BREAKPOINTS);
+      const w = typeof window !== "undefined" ? window.innerWidth : 0;
+      const widthCols = w >= bp.fourColsMin ? 4 : w >= bp.threeColsMin ? 3 : w >= bp.twoColsMin ? 2 : 1;
+
+      // Prefer the saved layout profile for this column count if one exists
+      const profilesRaw = localStorage.getItem(LAYOUT_PROFILES_KEY);
+      const profiles = profilesRaw ? JSON.parse(profilesRaw) : null;
+      if (profiles && profiles[widthCols]) {
+        return withHeights(clampColumnsToCount(ensureNewItems(profiles[widthCols], widthCols), widthCols));
+      }
+
+      // Fall back to the general saved layout, redistributing widgets across the right number of columns
       const raw = localStorage.getItem(LS_KEY);
       if (raw) {
-        const savedColsRaw = Number(localStorage.getItem(ACTIVE_COLS_KEY));
-        const savedCols = Number.isFinite(savedColsRaw) && savedColsRaw >= 1 ? Math.min(4, savedColsRaw) : 4;
         const parsed = JSON.parse(raw);
-        return withHeights(clampColumnsToCount(ensureNewItems(parsed, savedCols), savedCols));
+        return withHeights(normalizeToColumnCount(parsed, widthCols));
       }
     } catch {}
     return withHeights(defaultLayout);
@@ -184,9 +195,13 @@ export function LayoutProvider({ children }) {
 
   const [activeColumnCount, setActiveColumnCount] = React.useState(() => {
     try {
-      const raw = Number(localStorage.getItem(ACTIVE_COLS_KEY) || 4);
-      const safe = Math.max(1, Math.min(4, raw));
-      return Number.isFinite(safe) ? safe : 4;
+      const savedBpRaw = localStorage.getItem(AUTO_COLUMN_BREAKPOINTS_KEY);
+      const bp = normalizeAutoColumnBreakpoints(savedBpRaw ? JSON.parse(savedBpRaw) : DEFAULT_AUTO_COLUMN_BREAKPOINTS);
+      const w = typeof window !== "undefined" ? window.innerWidth : 0;
+      if (w >= bp.fourColsMin) return 4;
+      if (w >= bp.threeColsMin) return 3;
+      if (w >= bp.twoColsMin) return 2;
+      return 1;
     } catch {
       return 4;
     }
@@ -272,7 +287,14 @@ export function LayoutProvider({ children }) {
           // Use the ref so we get the current count even after auto-resize has fired
           const curCols = activeColumnCountRef.current;
           const withNew = ensureNewItems(serverLayout, curCols);
-          setColumns(withHeights(clampColumnsToCount(withNew, curCols)));
+          // If the saved layout uses fewer columns than needed (e.g. was saved as 1-col),
+          // redistribute widgets across all active columns instead of just clamping.
+          const activeSavedCols = COLUMN_IDS.filter((id) => (withNew[id] || []).length > 0).length;
+          const normalized =
+            activeSavedCols < curCols
+              ? normalizeToColumnCount(withNew, curCols)
+              : clampColumnsToCount(withNew, curCols);
+          setColumns(withHeights(normalized));
         }
       } catch (e) {
         // ignore network errors; keep local layout

@@ -62,14 +62,8 @@ export default function LeftColumns({ extraProps }) {
   const allColumnIds = ["col1", "col2", "col3", "col4"];
   const columnIds = allColumnIds.slice(0, activeColumnCount || 4);
 
-  const gridClass =
-    activeColumnCount === 1
-      ? "grid grid-cols-1 gap-3 items-start"
-      : activeColumnCount === 2
-        ? "grid grid-cols-1 md:grid-cols-2 gap-3 items-start"
-        : activeColumnCount === 3
-          ? "grid grid-cols-1 md:grid-cols-3 gap-3 items-start"
-          : "grid grid-cols-1 md:grid-cols-3 min-[1600px]:grid-cols-4 gap-3 items-start";
+  const colsMap = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" };
+  const gridClass = `grid ${colsMap[activeColumnCount] ?? "grid-cols-4"} gap-3 items-start`;
 
   return (
     <div className={gridClass}>

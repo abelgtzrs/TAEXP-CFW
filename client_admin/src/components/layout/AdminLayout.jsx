@@ -104,7 +104,6 @@ const AdminLayout = () => {
   const sidebarExpandedWidth = 208; // w-52 (was 176)
   const headerHeight = 48; // compact header height (was 56)
   const sidebarWidth = isSidebarCollapsed ? sidebarCollapsedWidth : sidebarExpandedWidth;
-  const mobileBottomNavHeight = 56;
 
   // Mobile specific: Sidebar is hidden (width 0) when collapsed, full width (or drawer width) when open
   // We'll handle this via CSS classes, but for JS calculations:
@@ -265,7 +264,7 @@ const AdminLayout = () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("tae:settings-changed", onStorage);
     };
-  }, [];
+  }, []);
 
   // Apply theme variables whenever theme changes (live preview + persist)
   useEffect(() => {
@@ -358,7 +357,8 @@ const AdminLayout = () => {
     const root = document.documentElement;
     if (root) {
       root.style.setProperty("--left-sidebar-width", `${effectiveSidebarWidth}px`);
-      root.style.setProperty("--bottom-nav-height", "56px");
+      // h-14 (56px) + border-top (1px) + iOS safe-area-inset-bottom
+      root.style.setProperty("--bottom-nav-height", "calc(3.5625rem + env(safe-area-inset-bottom))");
     }
   }, [effectiveSidebarWidth, isMobile]);
 
@@ -403,7 +403,7 @@ const AdminLayout = () => {
             ${isSidebarCollapsed ? "w-12 -translate-x-full lg:translate-x-0" : "w-64 lg:w-52 translate-x-0"}
             lg:block
           `}
-          style={{ bottom: "56px" }}
+          style={{ bottom: "var(--bottom-nav-height)" }}
         >
           {/* Toggle (15px from bottom) - Desktop only */}
           <button
@@ -739,7 +739,7 @@ const AdminLayout = () => {
             left: effectiveSidebarWidth,
             top: headerHeight,
             right: 0,
-            bottom: mobileBottomNavHeight,
+            bottom: "var(--bottom-nav-height)",
           }}
         >
           <div className="flex-1 overflow-y-auto scrollbar-hide p-2 lg:p-3 min-h-0 pb-0 lg:pb-3">
