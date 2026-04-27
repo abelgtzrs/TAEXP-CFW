@@ -31,3 +31,4 @@ yarn-error.log*
 **/.expo-shared/
 client_native/dist/
 client_native/web-build/
+AGENTS.md

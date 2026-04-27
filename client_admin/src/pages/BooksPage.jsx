@@ -1,12 +1,21 @@
 // src/pages/BooksPage.jsx
 import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import AddBookForm from "../components/books/AddBookForm";
 import BookItem from "../components/books/BookItem";
-import PageHeader from "../components/ui/PageHeader";
-import { BookOpen, Filter, Search, Sparkles } from "lucide-react";
+import {
+  BookOpen,
+  Plus,
+  X,
+  Search,
+  CheckCircle2,
+  BookMarked,
+  Layers,
+  TrendingUp,
+  SlidersHorizontal,
+} from "lucide-react";
 
 const BooksPage = () => {
   const { user, setUser } = useAuth();
@@ -17,6 +26,7 @@ const BooksPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortMode, setSortMode] = useState("recent");
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -25,7 +35,7 @@ const BooksPage = () => {
         const response = await api.get("/books");
         // Sort books: unfinished first, then by most recently updated
         const sortedBooks = response.data.data.sort(
-          (a, b) => a.isFinished - b.isFinished || new Date(b.updatedAt) - new Date(a.updatedAt)
+          (a, b) => a.isFinished - b.isFinished || new Date(b.updatedAt) - new Date(a.updatedAt),
         );
         setBooks(sortedBooks);
       } catch (err) {
@@ -172,175 +182,295 @@ const BooksPage = () => {
   }, [books, searchQuery, statusFilter, sortMode]);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.45 }} className="space-y-7">
-      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <PageHeader title="Book Tracker" subtitle="Manage your personal library and track your reading progress." />
-      </motion.div>
+    <div className="min-h-screen text-white" style={{ fontFamily: "var(--font-main)" }}>
+      {/* ── Ambient background ── */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute top-0 left-1/4 h-[420px] w-[420px] rounded-full bg-primary/5 blur-[120px]" />
+        <div className="absolute bottom-1/3 right-0 h-[300px] w-[300px] rounded-full bg-secondary/5 blur-[100px]" />
+      </div>
 
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
+      {/* ─────────────── HEADER ─────────────── */}
+      <motion.header
+        initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.1 }}
-        className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900/80 to-black/70 p-6"
+        transition={{ duration: 0.5 }}
+        className="relative border-b border-white/8 pb-6 mb-8 overflow-hidden"
       >
-        <div className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-cyan-300/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />
+        {/* Decorative oversized background word */}
+        <span
+          className="pointer-events-none select-none absolute -top-4 -left-2 text-[6rem] md:text-[9rem] font-black uppercase leading-none tracking-tighter text-white/[0.03]"
+          aria-hidden
+        >
+          LIBRARY
+        </span>
 
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
+        <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-5">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-text-tertiary">
-              <Sparkles size={14} className="text-amber-300" />
-              Reading Season
+            {/* Chapter label */}
+            <p className="text-[10px] font-medium uppercase tracking-[0.35em] text-primary/70 mb-2">
+              ✦ Personal Collection
             </p>
-            <h2 className="mt-3 text-2xl md:text-3xl font-semibold text-white">Your Library At a Glance</h2>
-            <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-              Build momentum with active reads, monitor completion, and keep your bookshelf moving with focused progress updates.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-pink-300/30 bg-pink-300/10 px-4 py-3 text-right">
-            <p className="text-xs uppercase tracking-[0.18em] text-pink-100/70">Wendy Hearts</p>
-            <p className="text-2xl font-bold text-pink-200">{user?.wendyHearts || 0} ❤️</p>
-          </div>
-        </div>
-
-        <div className="relative mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div className="rounded-xl border border-white/10 bg-black/25 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-text-tertiary">Active Reads</p>
-            <p className="mt-1 text-2xl font-semibold text-white">{stats.activeBooks}</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-black/25 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-text-tertiary">Completed</p>
-            <p className="mt-1 text-2xl font-semibold text-white">{stats.finishedBooks}</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-black/25 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-text-tertiary">Pages Read</p>
-            <p className="mt-1 text-2xl font-semibold text-white">{stats.pagesRead.toLocaleString()}</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-black/25 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-text-tertiary">Completion</p>
-            <p className="mt-1 text-2xl font-semibold text-white">{stats.completionRate}%</p>
-          </div>
-        </div>
-      </motion.section>
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.97 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.45, delay: 0.15 }}
-        whileHover={{ scale: 1.005, transition: { duration: 0.2 } }}
-      >
-        <AddBookForm onAddBook={handleAddBook} loading={formLoading} />
-      </motion.div>
-
-      <motion.section
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="space-y-4"
-      >
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="flex items-center gap-2 text-2xl font-semibold text-white">
-              <BookOpen size={22} className="text-primary" />
-              Your Library
-            </h2>
-            <p className="mt-1 text-xs text-text-tertiary">
-              Hover or focus a cover for deep details. Use Notes/⚙️ to open the interaction workspace.
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white leading-none">Book Tracker</h1>
+            <p className="mt-3 text-sm text-white/40 max-w-md">
+              Track every page. Celebrate every finish. Build the library you always wanted.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="relative">
-              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search title, author, year"
-                className="w-60 rounded-lg border border-white/15 bg-black/25 py-2 pl-9 pr-3 text-sm text-white placeholder:text-text-tertiary outline-none transition focus:border-primary"
-              />
-            </label>
-
-            <div className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-black/25 p-1">
-              <Filter size={14} className="ml-1 text-text-tertiary" />
-              {[
-                { key: "all", label: "All" },
-                { key: "active", label: "Active" },
-                { key: "finished", label: "Finished" },
-              ].map((item) => (
-                <button
-                  key={item.key}
-                  onClick={() => setStatusFilter(item.key)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    statusFilter === item.key
-                      ? "bg-primary text-white"
-                      : "text-text-secondary hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+          {/* Wendy Hearts */}
+          <div className="flex items-center gap-3 rounded-xl border border-secondary/20 bg-secondary/5 px-5 py-3 self-start md:self-auto">
+            <span className="text-2xl leading-none">❤️</span>
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-secondary/60">Wendy Hearts</p>
+              <p className="text-2xl font-bold text-secondary leading-none">{user?.wendyHearts ?? 0}</p>
             </div>
-
-            <select
-              value={sortMode}
-              onChange={(e) => setSortMode(e.target.value)}
-              className="rounded-lg border border-white/15 bg-black/25 px-3 py-2 text-xs text-text-secondary outline-none transition focus:border-primary"
-            >
-              <option value="recent">Sort: Recently Updated</option>
-              <option value="progress">Sort: Highest Progress</option>
-              <option value="title">Sort: Title A-Z</option>
-            </select>
           </div>
         </div>
+      </motion.header>
 
-        {loading && <motion.p className="py-8 text-center text-text-secondary">Loading your library...</motion.p>}
-
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-            className="rounded-xl border border-status-danger/40 bg-status-danger/10 py-4 text-center text-status-danger"
+      {/* ─────────────── STATS STRIP ─────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.08 }}
+        className="mb-8 grid grid-cols-2 md:grid-cols-5 gap-px bg-white/8 rounded-xl overflow-hidden border border-white/8"
+      >
+        {[
+          { icon: Layers, label: "Total Books", value: stats.totalBooks, color: "text-primary" },
+          { icon: BookOpen, label: "Active Reads", value: stats.activeBooks, color: "text-status-info" },
+          { icon: CheckCircle2, label: "Finished", value: stats.finishedBooks, color: "text-status-success" },
+          { icon: BookMarked, label: "Pages Read", value: stats.pagesRead.toLocaleString(), color: "text-secondary" },
+          { icon: TrendingUp, label: "Completion", value: `${stats.completionRate}%`, color: "text-tertiary" },
+        ].map(({ icon: Icon, label, value, color }, i) => (
+          <motion.div
+            key={label}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.12 + i * 0.06 }}
+            className="flex items-center gap-3 bg-surface/60 backdrop-blur px-4 py-4"
           >
-            {error}
-          </motion.p>
-        )}
+            <Icon size={16} className={`${color} flex-shrink-0 opacity-70`} />
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">{label}</p>
+              <p className={`text-xl font-bold leading-tight ${color}`}>{value}</p>
+            </div>
+          </motion.div>
+        ))}
+      </motion.div>
 
-        {!loading && !error && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.45 }} className="space-y-5">
-            {visibleBooks.length > 0 ? (
-              visibleBooks.map((book, index) => (
-                <motion.div
-                  key={book._id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.34, delay: Math.min(0.35, index * 0.05) }}
-                  whileHover={{ y: -2, transition: { duration: 0.18 } }}
-                >
-                  <BookItem
-                    book={book}
-                    onUpdate={handleUpdateBook}
-                    onDelete={handleDeleteBook}
-                    onFinish={handleFinishBook}
-                  />
-                </motion.div>
-              ))
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-dashed border-white/20 bg-black/20 py-10 text-center"
+      {/* ─────────────── CONTROLS + ADD ─────────────── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+      >
+        {/* Left: Search + Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative">
+            <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search title, author…"
+              className="w-52 rounded-lg border border-white/10 bg-white/5 py-2 pl-8 pr-3 text-xs text-white placeholder:text-white/25 outline-none transition focus:border-primary/50 focus:bg-white/8"
+            />
+          </label>
+
+          <div className="inline-flex items-center gap-0.5 rounded-lg border border-white/10 bg-white/5 p-1">
+            <SlidersHorizontal size={11} className="ml-1 mr-0.5 text-white/30" />
+            {[
+              { key: "all", label: "All" },
+              { key: "active", label: "Active" },
+              { key: "finished", label: "Done" },
+            ].map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setStatusFilter(item.key)}
+                className={`rounded-md px-3 py-1.5 text-[11px] font-medium transition-all ${
+                  statusFilter === item.key
+                    ? "bg-primary/20 text-primary border border-primary/30"
+                    : "text-white/40 hover:text-white/70"
+                }`}
               >
-                <p className="text-sm text-text-secondary">No books match your current filters.</p>
-                <p className="mt-1 text-xs text-text-tertiary">Try resetting search/filter controls or add a new book above.</p>
-              </motion.div>
-            )}
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value)}
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-white/50 outline-none transition focus:border-primary/40 focus:text-white/80"
+          >
+            <option value="recent">Recent</option>
+            <option value="progress">Progress</option>
+            <option value="title">Title A–Z</option>
+          </select>
+        </div>
+
+        {/* Right: Add Book toggle */}
+        <button
+          onClick={() => setShowAddForm((v) => !v)}
+          className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-semibold transition-all ${
+            showAddForm
+              ? "border-white/20 bg-white/8 text-white/60"
+              : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+          }`}
+        >
+          {showAddForm ? <X size={13} /> : <Plus size={13} />}
+          {showAddForm ? "Cancel" : "Add Book"}
+        </button>
+      </motion.div>
+
+      {/* ─────────────── ADD BOOK PANEL ─────────────── */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div
+            key="add-form"
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-1">
+              <AddBookForm
+                onAddBook={async (data) => {
+                  await handleAddBook(data);
+                  setShowAddForm(false);
+                }}
+                loading={formLoading}
+              />
+            </div>
           </motion.div>
         )}
-      </motion.section>
-    </motion.div>
+      </AnimatePresence>
+
+      {/* ─────────────── ERROR ─────────────── */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mb-6 rounded-xl border border-status-danger/30 bg-status-danger/10 px-4 py-3 text-sm text-status-danger"
+          >
+            {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─────────────── BOOK LIST ─────────────── */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1.4, ease: "linear" }}
+            className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary"
+          />
+          <p className="text-xs text-white/30 tracking-widest uppercase">Loading your library…</p>
+        </div>
+      ) : (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+          {/* ── Now Reading ── */}
+          {visibleBooks.filter((b) => !b.isFinished).length > 0 && statusFilter !== "finished" && (
+            <section className="mb-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary/70 flex items-center gap-1.5">
+                  <BookOpen size={11} />
+                  Now Reading
+                </p>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+              </div>
+              <div className="space-y-4">
+                {visibleBooks
+                  .filter((b) => !b.isFinished)
+                  .map((book, i) => (
+                    <motion.div
+                      key={book._id}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: Math.min(0.3, i * 0.06) }}
+                    >
+                      <BookItem
+                        book={book}
+                        onUpdate={handleUpdateBook}
+                        onDelete={handleDeleteBook}
+                        onFinish={handleFinishBook}
+                      />
+                    </motion.div>
+                  ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Finished ── */}
+          {visibleBooks.filter((b) => b.isFinished).length > 0 && statusFilter !== "active" && (
+            <section className="mb-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-status-success/30 to-transparent" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-status-success/70 flex items-center gap-1.5">
+                  <CheckCircle2 size={11} />
+                  Finished
+                </p>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-status-success/30 to-transparent" />
+              </div>
+              <div className="space-y-4">
+                {visibleBooks
+                  .filter((b) => b.isFinished)
+                  .map((book, i) => (
+                    <motion.div
+                      key={book._id}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: Math.min(0.3, i * 0.06) }}
+                    >
+                      <BookItem
+                        book={book}
+                        onUpdate={handleUpdateBook}
+                        onDelete={handleDeleteBook}
+                        onFinish={handleFinishBook}
+                      />
+                    </motion.div>
+                  ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Empty state ── */}
+          {visibleBooks.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-20 gap-4"
+            >
+              <div className="rounded-full border border-white/10 bg-white/5 p-5">
+                <BookOpen size={28} className="text-white/20" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-white/40">No books match your current filters.</p>
+                <p className="mt-1 text-xs text-white/20">
+                  {books.length === 0
+                    ? "Add your first book using the button above."
+                    : "Try resetting your search or filter."}
+                </p>
+              </div>
+              {books.length === 0 && (
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="mt-2 inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20 transition-all"
+                >
+                  <Plus size={13} />
+                  Add Your First Book
+                </button>
+              )}
+            </motion.div>
+          )}
+        </motion.div>
+      )}
+    </div>
   );
 };
 
