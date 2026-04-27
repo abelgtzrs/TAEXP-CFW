@@ -53,7 +53,7 @@ export default function AdminBadgeCollectionsPage() {
 
   const selectedCollection = useMemo(
     () => collections.find((c) => c.key === selectedKey) || null,
-    [collections, selectedKey]
+    [collections, selectedKey],
   );
 
   const fetchCollections = async () => {
@@ -109,11 +109,11 @@ export default function AdminBadgeCollectionsPage() {
       const wasEditing = !!editingRows[i];
       const prev = rowForms?.[i] || {};
       forms[i] = {
-        name: wasEditing ? prev.name ?? exist?.name ?? "" : exist?.name ?? "",
-        small: wasEditing ? prev.small ?? null : null,
-        smallPreview: wasEditing ? prev.smallPreview ?? null : null,
-        large: wasEditing ? prev.large ?? null : null,
-        largePreview: wasEditing ? prev.largePreview ?? null : null,
+        name: wasEditing ? (prev.name ?? exist?.name ?? "") : (exist?.name ?? ""),
+        small: wasEditing ? (prev.small ?? null) : null,
+        smallPreview: wasEditing ? (prev.smallPreview ?? null) : null,
+        large: wasEditing ? (prev.large ?? null) : null,
+        largePreview: wasEditing ? (prev.largePreview ?? null) : null,
         saving: false,
       };
       // keep rows in edit if they were, otherwise default to editing for missing rows
@@ -393,7 +393,9 @@ export default function AdminBadgeCollectionsPage() {
                         id="edit-legendaryGateNeeded"
                         type="checkbox"
                         checked={!!editCollectionForm.legendaryGateNeeded}
-                        onChange={(e) => setEditCollectionForm((f) => ({ ...f, legendaryGateNeeded: e.target.checked }))}
+                        onChange={(e) =>
+                          setEditCollectionForm((f) => ({ ...f, legendaryGateNeeded: e.target.checked }))
+                        }
                       />
                       <label htmlFor="edit-legendaryGateNeeded" className="text-[10px] text-text-secondary">
                         Unlocks legendaries when completed
@@ -703,7 +705,7 @@ export default function AdminBadgeCollectionsPage() {
                               </td>
                             </tr>
                           );
-                        }
+                        },
                       )}
                     </tbody>
                   </table>
