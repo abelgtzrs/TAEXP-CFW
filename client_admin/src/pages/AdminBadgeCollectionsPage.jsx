@@ -47,6 +47,9 @@ export default function AdminBadgeCollectionsPage() {
   });
   const [rowForms, setRowForms] = useState({}); // { [index]: { name, small, large, saving } }
   const [editingRows, setEditingRows] = useState({}); // { [index]: boolean }
+  const [editingCollection, setEditingCollection] = useState(false);
+  const [editCollectionForm, setEditCollectionForm] = useState({});
+  const [editCollectionSaving, setEditCollectionSaving] = useState(false);
 
   const selectedCollection = useMemo(
     () => collections.find((c) => c.key === selectedKey) || null,
@@ -82,6 +85,7 @@ export default function AdminBadgeCollectionsPage() {
 
   useEffect(() => {
     fetchBadges(selectedKey);
+    setEditingCollection(false);
   }, [selectedKey]);
 
   // Initialize row forms per index (1..totalItems)
@@ -171,6 +175,36 @@ export default function AdminBadgeCollectionsPage() {
       setError(e.response?.data?.message || "Failed to create badge");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const startEditCollection = () => {
+    if (!selectedCollection) return;
+    setEditCollectionForm({
+      name: selectedCollection.name || "",
+      description: selectedCollection.description || "",
+      generation: selectedCollection.generation ?? 1,
+      totalItems: selectedCollection.totalItems ?? 8,
+      order: selectedCollection.order ?? 0,
+      legendaryGateNeeded: selectedCollection.legendaryGateNeeded ?? false,
+      active: selectedCollection.active ?? false,
+    });
+    setEditingCollection(true);
+  };
+
+  const updateCollectionMeta = async () => {
+    if (!selectedCollection) return;
+    setEditCollectionSaving(true);
+    setError("");
+    try {
+      const res = await api.put(`/admin/badge-collections/collections/${selectedCollection.key}`, editCollectionForm);
+      const updated = res.data?.data;
+      setCollections((prev) => prev.map((c) => (c.key === updated.key ? updated : c)));
+      setEditingCollection(false);
+    } catch (e) {
+      setError(e.response?.data?.message || "Failed to update collection");
+    } finally {
+      setEditCollectionSaving(false);
     }
   };
 
@@ -299,6 +333,94 @@ export default function AdminBadgeCollectionsPage() {
                 </div>
               </button>
             ))}
+            {selectedCollection && !creatingCollection && (
+              <div className="pt-2 border-t border-gray-800 mt-2">
+                <StyledButton
+                  onClick={() => (editingCollection ? setEditingCollection(false) : startEditCollection())}
+                  className="w-full py-1 px-2 text-[11px]"
+                >
+                  {editingCollection ? "Cancel Edit" : `Edit "${selectedCollection.name || selectedCollection.key}"`}
+                </StyledButton>
+                {editingCollection && (
+                  <div className="mt-2 space-y-1">
+                    <div>
+                      <label className="block text-[10px] text-text-tertiary">Name</label>
+                      <StyledInput
+                        className="p-1 text-[11px]"
+                        value={editCollectionForm.name || ""}
+                        onChange={(e) => setEditCollectionForm((f) => ({ ...f, name: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-text-tertiary">Description</label>
+                      <StyledInput
+                        className="p-1 text-[11px]"
+                        value={editCollectionForm.description || ""}
+                        onChange={(e) => setEditCollectionForm((f) => ({ ...f, description: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-text-tertiary">Generation</label>
+                      <StyledInput
+                        type="number"
+                        min={1}
+                        className="p-1 text-[11px]"
+                        value={editCollectionForm.generation ?? 1}
+                        onChange={(e) => setEditCollectionForm((f) => ({ ...f, generation: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-text-tertiary">Total Items</label>
+                      <StyledInput
+                        type="number"
+                        min={1}
+                        className="p-1 text-[11px]"
+                        value={editCollectionForm.totalItems ?? 8}
+                        onChange={(e) => setEditCollectionForm((f) => ({ ...f, totalItems: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-text-tertiary">Order</label>
+                      <StyledInput
+                        type="number"
+                        className="p-1 text-[11px]"
+                        value={editCollectionForm.order ?? 0}
+                        onChange={(e) => setEditCollectionForm((f) => ({ ...f, order: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="edit-legendaryGateNeeded"
+                        type="checkbox"
+                        checked={!!editCollectionForm.legendaryGateNeeded}
+                        onChange={(e) => setEditCollectionForm((f) => ({ ...f, legendaryGateNeeded: e.target.checked }))}
+                      />
+                      <label htmlFor="edit-legendaryGateNeeded" className="text-[10px] text-text-secondary">
+                        Unlocks legendaries when completed
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="edit-activeCollection"
+                        type="checkbox"
+                        checked={!!editCollectionForm.active}
+                        onChange={(e) => setEditCollectionForm((f) => ({ ...f, active: e.target.checked }))}
+                      />
+                      <label htmlFor="edit-activeCollection" className="text-[10px] text-text-secondary">
+                        Active collection
+                      </label>
+                    </div>
+                    <StyledButton
+                      onClick={updateCollectionMeta}
+                      disabled={editCollectionSaving || !editCollectionForm.name}
+                      className="bg-status-success w-full py-1 px-2 text-[11px]"
+                    >
+                      {editCollectionSaving ? "Saving..." : "Save Changes"}
+                    </StyledButton>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="pt-2 border-t border-gray-800 mt-2">
               <StyledButton onClick={() => setCreatingCollection((v) => !v)} className="w-full py-1 px-2 text-[11px]">
                 {creatingCollection ? "Cancel" : "New Collection"}

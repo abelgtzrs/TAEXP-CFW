@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import Widget from "../ui/Widget";
 import api from "../../services/api";
 
-const BadgeDisplay = ({ allBadges = [], earnedBadges = [], activeCollectionKey = "" }) => {
+const BadgeDisplay = ({ allBadges = [], earnedBadges = [] }) => {
   const earnedBadgeIds = useMemo(() => {
     const ids = new Set();
     for (const b of earnedBadges || []) {
@@ -46,12 +46,8 @@ const BadgeDisplay = ({ allBadges = [], earnedBadges = [], activeCollectionKey =
     return `${API_ORIGIN}${path}`;
   };
 
-  const flatBadges = useMemo(() => {
-    const source = activeCollectionKey
-      ? allBadges.filter((badge) => String(badge.collectionKey || "") === String(activeCollectionKey))
-      : allBadges;
-
-    return [...source].sort((a, b) => {
+  const groupedBadges = useMemo(() => {
+    const sorted = [...allBadges].sort((a, b) => {
       const ak = a.collectionKey || a.category || "";
       const bk = b.collectionKey || b.category || "";
       if (ak !== bk) return ak.localeCompare(bk);
@@ -59,32 +55,55 @@ const BadgeDisplay = ({ allBadges = [], earnedBadges = [], activeCollectionKey =
       const bi = Number(b.orderInCategory || b.index || 0);
       return ai - bi;
     });
-  }, [allBadges, activeCollectionKey]);
 
-  const count = flatBadges.length || 1;
+    const groups = [];
+    const seen = new Map();
+    for (const badge of sorted) {
+      const key = badge.collectionKey || badge.category || "";
+      if (!seen.has(key)) {
+        seen.set(key, []);
+        groups.push({ key, badges: seen.get(key) });
+      }
+      seen.get(key).push(badge);
+    }
+    return groups;
+  }, [allBadges]);
 
   return (
     <Widget title="Badges" className="h-full">
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${count}, 1fr)`, gap: "4px" }}>
-        {flatBadges.map((badge) => {
-          const isEarned = earnedBadgeIds.has(String(badge._id));
-          const src = resolveImage(badge);
-          const tip = [badge.name, badge.collectionKey || badge.category].filter(Boolean).join(" • ");
-          return (
-            <div key={badge._id} className="flex items-center justify-center aspect-square" title={tip}>
-              <img
-                src={src}
-                alt={badge.name || "badge"}
-                className={`w-full h-full object-contain transition-all duration-300 ${
-                  isEarned ? "opacity-100" : "opacity-20 grayscale"
-                }`}
-                onError={(e) => {
-                  e.currentTarget.style.visibility = "hidden";
-                }}
-              />
+      <div className="space-y-3">
+        {groupedBadges.map(({ key, badges }) => (
+          <div key={key}>
+            {key && <p className="text-xs text-text-secondary font-medium mb-1 capitalize">{key}</p>}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${badges.length}, 1fr)`,
+                gap: "4px",
+              }}
+            >
+              {badges.map((badge) => {
+                const isEarned = earnedBadgeIds.has(String(badge._id));
+                const src = resolveImage(badge);
+                const tip = [badge.name, key].filter(Boolean).join(" • ");
+                return (
+                  <div key={badge._id} className="flex items-center justify-center aspect-square" title={tip}>
+                    <img
+                      src={src}
+                      alt={badge.name || "badge"}
+                      className={`w-full h-full object-contain transition-all duration-300 ${
+                        isEarned ? "opacity-100" : "opacity-20 grayscale"
+                      }`}
+                      onError={(e) => {
+                        e.currentTarget.style.visibility = "hidden";
+                      }}
+                    />
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </Widget>
   );
