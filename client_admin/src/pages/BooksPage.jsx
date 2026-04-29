@@ -5,17 +5,7 @@ import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import AddBookForm from "../components/books/AddBookForm";
 import BookItem from "../components/books/BookItem";
-import {
-  BookOpen,
-  Plus,
-  X,
-  Search,
-  CheckCircle2,
-  BookMarked,
-  Layers,
-  TrendingUp,
-  SlidersHorizontal,
-} from "lucide-react";
+import { BookOpen, Plus, X } from "lucide-react";
 
 const BooksPage = () => {
   const { user, setUser } = useAuth();
@@ -131,18 +121,33 @@ const BooksPage = () => {
   const stats = useMemo(() => {
     const totalBooks = books.length;
     const finishedBooks = books.filter((book) => book.isFinished).length;
-    const activeBooks = totalBooks - finishedBooks;
+    const readingBooks = books.filter((book) => !book.isFinished && Number(book.pagesRead) > 0).length;
+    const libraryBooks = books.filter((book) => !book.isFinished && !(Number(book.pagesRead) > 0)).length;
     const totalPages = books.reduce((sum, book) => sum + (Number(book.totalPages) || 0), 0);
     const pagesRead = books.reduce((sum, book) => sum + (Number(book.pagesRead) || 0), 0);
     const completionRate = totalPages > 0 ? Math.round((pagesRead / totalPages) * 100) : 0;
+    const pagesLeft = totalPages - pagesRead;
+    const avgPages =
+      finishedBooks > 0
+        ? Math.round(
+            books.filter((b) => b.isFinished).reduce((s, b) => s + (Number(b.totalPages) || 0), 0) / finishedBooks,
+          )
+        : 0;
+    const longestBook = books.reduce((max, b) => Math.max(max, Number(b.totalPages) || 0), 0);
+    const uniqueAuthors = new Set(books.map((b) => (b.author || "").trim().toLowerCase()).filter(Boolean)).size;
 
     return {
       totalBooks,
       finishedBooks,
-      activeBooks,
+      readingBooks,
+      libraryBooks,
       totalPages,
       pagesRead,
       completionRate,
+      pagesLeft,
+      avgPages,
+      longestBook,
+      uniqueAuthors,
     };
   }, [books]);
 
@@ -158,7 +163,8 @@ const BooksPage = () => {
 
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "active" && !book.isFinished) ||
+        (statusFilter === "library" && !book.isFinished && !(Number(book.pagesRead) > 0)) ||
+        (statusFilter === "reading" && !book.isFinished && Number(book.pagesRead) > 0) ||
         (statusFilter === "finished" && book.isFinished);
 
       return matchesQuery && matchesStatus;
@@ -182,126 +188,379 @@ const BooksPage = () => {
   }, [books, searchQuery, statusFilter, sortMode]);
 
   return (
-    <div className="min-h-screen text-white" style={{ fontFamily: "var(--font-main)" }}>
-      {/* ── Ambient background ── */}
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute top-0 left-1/4 h-[420px] w-[420px] rounded-full bg-primary/5 blur-[120px]" />
-        <div className="absolute bottom-1/3 right-0 h-[300px] w-[300px] rounded-full bg-secondary/5 blur-[100px]" />
-      </div>
+    <div
+      style={{
+        fontFamily: "var(--font-main)",
+        color: "var(--color-text-main, #e5e7eb)",
+      }}
+    >
+      <style>{`
+        /* ── Buttons ── */
+        .bk-btn {
+          cursor: pointer;
+          font-family: var(--font-main);
+          font-size: 12px;
+          font-weight: 600;
+          padding: 6px 14px;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.06);
+          color: var(--color-text-main, #e5e7eb);
+          user-select: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+          letter-spacing: 0.03em;
+          transition: background 0.15s, border-color 0.15s, transform 0.1s;
+          touch-action: manipulation;
+          backdrop-filter: blur(4px);
+        }
+        .bk-btn:hover {
+          background: rgba(255,255,255,0.1);
+          border-color: rgba(255,255,255,0.2);
+        }
+        .bk-btn:active { transform: scale(0.97); }
+        .bk-btn-primary {
+          background: var(--color-primary);
+          border-color: transparent;
+          color: #fff;
+          box-shadow: 0 2px 12px color-mix(in srgb, var(--color-primary) 40%, transparent);
+        }
+        .bk-btn-primary:hover {
+          background: color-mix(in srgb, var(--color-primary) 85%, white);
+          border-color: transparent;
+        }
+        .bk-btn-danger {
+          background: rgba(239,68,68,0.1);
+          border-color: rgba(239,68,68,0.2);
+          color: rgba(239,68,68,0.7);
+        }
+        .bk-btn-danger:hover {
+          background: rgba(239,68,68,0.18);
+          border-color: rgba(239,68,68,0.35);
+          color: rgba(239,68,68,1);
+        }
+        /* ── Inputs ── */
+        .bk-input {
+          font-family: var(--font-main);
+          font-size: 13px;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(0,0,0,0.25);
+          color: var(--color-text-main, #e5e7eb);
+          padding: 7px 10px;
+          outline: none;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .bk-input::placeholder { color: rgba(255,255,255,0.2); }
+        .bk-input:focus {
+          border-color: var(--color-primary);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+        }
+        .bk-select {
+          font-family: var(--font-main);
+          font-size: 13px;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(0,0,0,0.3);
+          color: var(--color-text-main, #e5e7eb);
+          padding: 7px 10px;
+          cursor: pointer;
+          outline: none;
+          transition: border-color 0.15s;
+        }
+        .bk-select:focus { border-color: var(--color-primary); }
+        /* ── Filter pills ── */
+        .bk-pill {
+          font-family: var(--font-main);
+          font-size: 12px;
+          font-weight: 600;
+          padding: 5px 14px;
+          cursor: pointer;
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: transparent;
+          color: rgba(255,255,255,0.38);
+          user-select: none;
+          letter-spacing: 0.03em;
+          transition: all 0.15s;
+          touch-action: manipulation;
+        }
+        .bk-pill.active {
+          background: var(--color-primary);
+          border-color: transparent;
+          color: #fff;
+          box-shadow: 0 2px 10px color-mix(in srgb, var(--color-primary) 35%, transparent);
+        }
+        .bk-pill:not(.active):hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2); }
+        /* ── Stats grid ── */
+        .bk-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 1px;
+        }
+        .bk-stat-cell {
+          padding: 10px 4px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          gap: 3px;
+          min-width: 0;
+        }
+        /* ── Section headers ── */
+        .bk-section-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 0 10px;
+          margin-bottom: 2px;
+        }
+        .bk-section-header::after {
+          content: "";
+          flex: 1;
+          height: 1px;
+          background: linear-gradient(90deg, rgba(255,255,255,0.08), transparent);
+        }
+        /* ── Book list rows ── */
+        .bk-list-row {
+          padding: 3px 0;
+          transition: transform 0.15s;
+        }
+        .bk-list-row:hover { transform: translateX(2px); }
+        /* ── Toolbar layout ── */
+        .bk-toolbar-search { order: 1; }
+        .bk-toolbar-filters {
+          order: 2;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .bk-toolbar-add { order: 3; }
+        .bk-toolbar-sep {
+          width: 1px;
+          height: 16px;
+          background: rgba(255,255,255,0.1);
+          margin: 0 2px;
+          flex-shrink: 0;
+        }
+        /* ── Status bar ── */
+        .bk-status-bar {
+          display: flex;
+          flex-wrap: wrap;
+          padding: 6px 16px;
+          font-size: 11px;
+          background: var(--color-surface);
+          border-top: 1px solid rgba(255,255,255,0.06);
+          font-family: var(--font-main);
+          gap: 16px;
+        }
+        /* ── Form ── */
+        .bk-form-footer { flex-direction: row; }
+        /* ── Spin animation ── */
+        @keyframes bk-spin { to { transform: rotate(360deg); } }
+        .bk-spin { animation: bk-spin 1s linear infinite; }
+        @media (max-width: 560px) {
+          .bk-stat-cell { padding: 8px 3px; }
+          .bk-stat-value { font-size: 16px !important; }
+          .bk-status-bar { display: none; }
+          .bk-toolbar-filters { order: 3; flex: 1 1 100%; }
+          .bk-toolbar-add { order: 2; flex-shrink: 0; }
+          .bk-toolbar-sep { display: none; }
+          .bk-pill { flex: 1; text-align: center; }
+          .bk-btn { min-height: 40px; }
+          .bk-input { font-size: 16px; }
+          .bk-select { font-size: 16px; }
+          .bk-page-input { font-size: 16px !important; }
+          .bk-ctrl-complete { flex: 1; justify-content: center; }
+          .bk-form-footer { flex-direction: column !important; align-items: stretch !important; }
+          .bk-form-footer button { justify-content: center; min-height: 44px; }
+          .bk-list-row:hover { transform: none; }
+        }
+      `}</style>
 
-      {/* ─────────────── HEADER ─────────────── */}
-      <motion.header
-        initial={{ opacity: 0, y: -16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative border-b border-white/8 pb-6 mb-8 overflow-hidden"
+      {/* ── Header ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "20px 20px",
+          overflow: "hidden",
+          minWidth: 0,
+        }}
       >
-        {/* Decorative oversized background word */}
-        <span
-          className="pointer-events-none select-none absolute -top-4 -left-2 text-[6rem] md:text-[9rem] font-black uppercase leading-none tracking-tighter text-white/[0.03]"
-          aria-hidden
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background:
+              "linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 60%, black))",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            boxShadow: "0 4px 16px color-mix(in srgb, var(--color-primary) 35%, transparent)",
+          }}
         >
-          LIBRARY
-        </span>
-
-        <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-5">
-          <div>
-            {/* Chapter label */}
-            <p className="text-[10px] font-medium uppercase tracking-[0.35em] text-primary/70 mb-2">
-              ✦ Personal Collection
-            </p>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white leading-none">Book Tracker</h1>
-            <p className="mt-3 text-sm text-white/40 max-w-md">
-              Track every page. Celebrate every finish. Build the library you always wanted.
-            </p>
+          <BookOpen size={18} color="white" />
+        </div>
+        <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 17,
+              fontWeight: 700,
+              color: "var(--color-text-main, #f1f5f9)",
+              letterSpacing: "-0.01em",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Book Tracker
           </div>
-
-          {/* Wendy Hearts */}
-          <div className="flex items-center gap-3 rounded-xl border border-secondary/20 bg-secondary/5 px-5 py-3 self-start md:self-auto">
-            <span className="text-2xl leading-none">❤️</span>
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-secondary/60">Wendy Hearts</p>
-              <p className="text-2xl font-bold text-secondary leading-none">{user?.wendyHearts ?? 0}</p>
-            </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", letterSpacing: "0.04em", marginTop: 1 }}>
+            Personal Library
           </div>
         </div>
-      </motion.header>
-
-      {/* ─────────────── STATS STRIP ─────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, delay: 0.08 }}
-        className="mb-8 grid grid-cols-2 md:grid-cols-5 gap-px bg-white/8 rounded-xl overflow-hidden border border-white/8"
-      >
-        {[
-          { icon: Layers, label: "Total Books", value: stats.totalBooks, color: "text-primary" },
-          { icon: BookOpen, label: "Active Reads", value: stats.activeBooks, color: "text-status-info" },
-          { icon: CheckCircle2, label: "Finished", value: stats.finishedBooks, color: "text-status-success" },
-          { icon: BookMarked, label: "Pages Read", value: stats.pagesRead.toLocaleString(), color: "text-secondary" },
-          { icon: TrendingUp, label: "Completion", value: `${stats.completionRate}%`, color: "text-tertiary" },
-        ].map(({ icon: Icon, label, value, color }, i) => (
-          <motion.div
-            key={label}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.12 + i * 0.06 }}
-            className="flex items-center gap-3 bg-surface/60 backdrop-blur px-4 py-4"
+        <div style={{ flexShrink: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "5px 12px",
+              borderRadius: 20,
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
           >
-            <Icon size={16} className={`${color} flex-shrink-0 opacity-70`} />
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">{label}</p>
-              <p className={`text-xl font-bold leading-tight ${color}`}>{value}</p>
-            </div>
-          </motion.div>
-        ))}
-      </motion.div>
+            <span style={{ fontSize: 13 }}>❤️</span>
+            <span style={{ color: "var(--color-primary)", fontWeight: 700, fontSize: 14, lineHeight: 1 }}>
+              {user?.wendyHearts ?? 0}
+            </span>
+            <span style={{ color: "var(--color-primary)", fontSize: 14, letterSpacing: "0.06em", fontWeight: 600 }}>
+              W
+            </span>
+          </div>
+        </div>
+      </div>
 
-      {/* ─────────────── CONTROLS + ADD ─────────────── */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-        className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-      >
-        {/* Left: Search + Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="relative">
-            <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search title, author…"
-              className="w-52 rounded-lg border border-white/10 bg-white/5 py-2 pl-8 pr-3 text-xs text-white placeholder:text-white/25 outline-none transition focus:border-primary/50 focus:bg-white/8"
-            />
-          </label>
-
-          <div className="inline-flex items-center gap-0.5 rounded-lg border border-white/10 bg-white/5 p-1">
-            <SlidersHorizontal size={11} className="ml-1 mr-0.5 text-white/30" />
-            {[
-              { key: "all", label: "All" },
-              { key: "active", label: "Active" },
-              { key: "finished", label: "Done" },
-            ].map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setStatusFilter(item.key)}
-                className={`rounded-md px-3 py-1.5 text-[11px] font-medium transition-all ${
-                  statusFilter === item.key
-                    ? "bg-primary/20 text-primary border border-primary/30"
-                    : "text-white/40 hover:text-white/70"
-                }`}
-              >
-                {item.label}
-              </button>
+      {/* ── Stats grid ── */}
+      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        {[
+          [
+            { label: "Total", value: stats.totalBooks, color: "var(--color-primary)" },
+            { label: "Library", value: stats.libraryBooks, color: "rgba(255,255,255,0.5)" },
+            { label: "Reading", value: stats.readingBooks, color: "var(--color-status-info, #60a5fa)" },
+            { label: "Finished", value: stats.finishedBooks, color: "var(--color-status-success, #34d399)" },
+            { label: "Complete", value: `${stats.completionRate}%`, color: "var(--color-tertiary, #f59e0b)" },
+          ],
+          [
+            { label: "Pg Read", value: stats.pagesRead.toLocaleString(), color: "var(--color-primary)" },
+            { label: "Pg Left", value: stats.pagesLeft.toLocaleString(), color: "rgba(255,255,255,0.5)" },
+            { label: "Total Pg", value: stats.totalPages.toLocaleString(), color: "var(--color-status-info, #60a5fa)" },
+            {
+              label: "Avg Pg",
+              value: stats.avgPages > 0 ? stats.avgPages.toLocaleString() : "—",
+              color: "var(--color-status-success, #34d399)",
+            },
+            { label: "Authors", value: stats.uniqueAuthors, color: "var(--color-tertiary, #f59e0b)" },
+          ],
+        ].map((row, rowIdx) => (
+          <div
+            key={rowIdx}
+            className="bk-stats-grid"
+            style={rowIdx === 0 ? { borderBottom: "1px solid rgba(255,255,255,0.05)" } : undefined}
+          >
+            {row.map(({ label, value, color }) => (
+              <div key={label} className="bk-stat-cell">
+                <span className="bk-stat-value" style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1 }}>
+                  {value}
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.3)",
+                    letterSpacing: "0.06em",
+                    fontWeight: 500,
+                    marginTop: 2,
+                  }}
+                >
+                  {label}
+                </span>
+              </div>
             ))}
           </div>
+        ))}
+      </div>
 
+      {/* ── Toolbar ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 6,
+          rowGap: 8,
+          padding: "10px 16px",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        {/* Search */}
+        <div
+          className="bk-toolbar-search"
+          style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0, position: "relative" }}
+        >
+          <svg
+            style={{ position: "absolute", left: 10, opacity: 0.3, pointerEvents: "none" }}
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search title or author..."
+            className="bk-input"
+            style={{ flex: 1, minWidth: 80, paddingLeft: 30 }}
+          />
+        </div>
+
+        <div className="bk-toolbar-sep" />
+
+        {/* Filter pills + Sort */}
+        <div className="bk-toolbar-filters">
+          {[
+            { key: "all", label: "All" },
+            { key: "library", label: "Library" },
+            { key: "reading", label: "Reading" },
+            { key: "finished", label: "Finished" },
+          ].map((item) => (
+            <button
+              key={item.key}
+              onClick={() => setStatusFilter(item.key)}
+              className={`bk-pill ${statusFilter === item.key ? "active" : ""}`}
+            >
+              {item.label}
+            </button>
+          ))}
+          <div className="bk-toolbar-sep" />
           <select
             value={sortMode}
             onChange={(e) => setSortMode(e.target.value)}
-            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-white/50 outline-none transition focus:border-primary/40 focus:text-white/80"
+            className="bk-select"
+            style={{ padding: "6px 10px" }}
           >
             <option value="recent">Recent</option>
             <option value="progress">Progress</option>
@@ -309,32 +568,47 @@ const BooksPage = () => {
           </select>
         </div>
 
-        {/* Right: Add Book toggle */}
+        {/* Add button */}
         <button
           onClick={() => setShowAddForm((v) => !v)}
-          className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-semibold transition-all ${
-            showAddForm
-              ? "border-white/20 bg-white/8 text-white/60"
-              : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
-          }`}
+          className={`bk-btn bk-toolbar-add ${showAddForm ? "" : "bk-btn-primary"}`}
         >
-          {showAddForm ? <X size={13} /> : <Plus size={13} />}
-          {showAddForm ? "Cancel" : "Add Book"}
+          {showAddForm ? (
+            <>
+              <X size={13} /> Cancel
+            </>
+          ) : (
+            <>
+              <Plus size={13} /> Add Book
+            </>
+          )}
         </button>
-      </motion.div>
+      </div>
 
-      {/* ─────────────── ADD BOOK PANEL ─────────────── */}
+      {/* ── Add Book Panel ── */}
       <AnimatePresence>
         {showAddForm && (
           <motion.div
             key="add-form"
-            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-            animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
-            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            style={{ overflow: "hidden", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-1">
+            <div style={{ padding: "16px 20px", background: "rgba(255,255,255,0.02)" }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--color-primary)",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  marginBottom: 12,
+                }}
+              >
+                New Entry
+              </div>
               <AddBookForm
                 onAddBook={async (data) => {
                   await handleAddBook(data);
@@ -347,129 +621,182 @@ const BooksPage = () => {
         )}
       </AnimatePresence>
 
-      {/* ─────────────── ERROR ─────────────── */}
+      {/* ── Error ── */}
       <AnimatePresence>
         {error && (
           <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mb-6 rounded-xl border border-status-danger/30 bg-status-danger/10 px-4 py-3 text-sm text-status-danger"
+            style={{
+              margin: "12px 16px",
+              padding: "10px 14px",
+              background: "rgba(239,68,68,0.08)",
+              border: "1px solid rgba(239,68,68,0.25)",
+              borderRadius: 8,
+              fontSize: 13,
+              color: "var(--color-status-danger, #f87171)",
+              fontFamily: "var(--font-main)",
+              display: "flex",
+              gap: 8,
+              alignItems: "flex-start",
+            }}
           >
-            {error}
+            <span>⚠</span>
+            <span>{error}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ─────────────── BOOK LIST ─────────────── */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1.4, ease: "linear" }}
-            className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary"
-          />
-          <p className="text-xs text-white/30 tracking-widest uppercase">Loading your library…</p>
-        </div>
-      ) : (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-          {/* ── Now Reading ── */}
-          {visibleBooks.filter((b) => !b.isFinished).length > 0 && statusFilter !== "finished" && (
-            <section className="mb-10">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary/70 flex items-center gap-1.5">
-                  <BookOpen size={11} />
-                  Now Reading
-                </p>
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-              </div>
-              <div className="space-y-4">
-                {visibleBooks
-                  .filter((b) => !b.isFinished)
-                  .map((book, i) => (
-                    <motion.div
-                      key={book._id}
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: Math.min(0.3, i * 0.06) }}
-                    >
-                      <BookItem
-                        book={book}
-                        onUpdate={handleUpdateBook}
-                        onDelete={handleDeleteBook}
-                        onFinish={handleFinishBook}
-                      />
-                    </motion.div>
-                  ))}
-              </div>
-            </section>
-          )}
-
-          {/* ── Finished ── */}
-          {visibleBooks.filter((b) => b.isFinished).length > 0 && statusFilter !== "active" && (
-            <section className="mb-10">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-status-success/30 to-transparent" />
-                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-status-success/70 flex items-center gap-1.5">
-                  <CheckCircle2 size={11} />
-                  Finished
-                </p>
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-status-success/30 to-transparent" />
-              </div>
-              <div className="space-y-4">
-                {visibleBooks
-                  .filter((b) => b.isFinished)
-                  .map((book, i) => (
-                    <motion.div
-                      key={book._id}
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: Math.min(0.3, i * 0.06) }}
-                    >
-                      <BookItem
-                        book={book}
-                        onUpdate={handleUpdateBook}
-                        onDelete={handleDeleteBook}
-                        onFinish={handleFinishBook}
-                      />
-                    </motion.div>
-                  ))}
-              </div>
-            </section>
-          )}
-
-          {/* ── Empty state ── */}
-          {visibleBooks.length === 0 && (
+      {/* ── Main content ── */}
+      <div style={{ padding: "16px 16px 24px", minHeight: "60vh" }}>
+        {loading ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "72px 0", gap: 14 }}>
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-20 gap-4"
-            >
-              <div className="rounded-full border border-white/10 bg-white/5 p-5">
-                <BookOpen size={28} className="text-white/20" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-white/40">No books match your current filters.</p>
-                <p className="mt-1 text-xs text-white/20">
-                  {books.length === 0
-                    ? "Add your first book using the button above."
-                    : "Try resetting your search or filter."}
-                </p>
-              </div>
-              {books.length === 0 && (
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="mt-2 inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20 transition-all"
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                border: "2.5px solid rgba(255,255,255,0.08)",
+                borderTopColor: "var(--color-primary)",
+              }}
+            />
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", letterSpacing: "0.12em", fontWeight: 600 }}>
+              Loading…
+            </span>
+          </div>
+        ) : (
+          <>
+            {[
+              {
+                key: "library",
+                label: "In Library",
+                color: "rgba(255,255,255,0.45)",
+                filter: (b) => !b.isFinished && !(Number(b.pagesRead) > 0),
+                hidden: statusFilter === "reading" || statusFilter === "finished",
+              },
+              {
+                key: "reading",
+                label: "Currently Reading",
+                color: "var(--color-status-info, #60a5fa)",
+                filter: (b) => !b.isFinished && Number(b.pagesRead) > 0,
+                hidden: statusFilter === "library" || statusFilter === "finished",
+              },
+              {
+                key: "finished",
+                label: "Finished",
+                color: "var(--color-status-success, #34d399)",
+                filter: (b) => b.isFinished,
+                hidden: statusFilter === "library" || statusFilter === "reading",
+              },
+            ].map(({ key, label, color, filter, hidden }) => {
+              const sectionBooks = visibleBooks.filter(filter);
+              if (hidden || sectionBooks.length === 0) return null;
+              return (
+                <div key={key} style={{ marginBottom: 24 }}>
+                  <div className="bk-section-header">
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {label}
+                    </span>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 500 }}>
+                      {sectionBooks.length}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {sectionBooks.map((book, i) => (
+                      <motion.div
+                        key={book._id}
+                        className="bk-list-row"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.18, delay: Math.min(0.2, i * 0.04) }}
+                      >
+                        <BookItem
+                          book={book}
+                          onUpdate={handleUpdateBook}
+                          onDelete={handleDeleteBook}
+                          onFinish={handleFinishBook}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Empty state */}
+            {visibleBooks.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "60px 0", gap: 14 }}
+              >
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 16,
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  <Plus size={13} />
-                  Add Your First Book
-                </button>
-              )}
-            </motion.div>
-          )}
-        </motion.div>
-      )}
+                  <BookOpen size={28} style={{ color: "rgba(255,255,255,0.15)" }} />
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>No books found</p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)", marginTop: 5 }}>
+                    {books.length === 0 ? "Add your first book to get started." : "Try adjusting your filters."}
+                  </p>
+                </div>
+                {books.length === 0 && (
+                  <button onClick={() => setShowAddForm(true)} className="bk-btn bk-btn-primary">
+                    <Plus size={13} /> Add Book
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ── Status bar ── */}
+      <div className="bk-status-bar">
+        {[
+          { label: "Records", value: books.length },
+          { label: "Shown", value: visibleBooks.length },
+          { label: "Pages", value: `${stats.pagesRead.toLocaleString()} / ${stats.totalPages.toLocaleString()}` },
+          { label: "Complete", value: `${stats.completionRate}%` },
+        ].map(({ label, value }) => (
+          <span key={label} style={{ color: "rgba(255,255,255,0.3)", whiteSpace: "nowrap" }}>
+            <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>{label}:</span> {value}
+          </span>
+        ))}
+        <span
+          style={{
+            marginLeft: "auto",
+            color: "var(--color-primary)",
+            fontWeight: 700,
+            fontSize: 10,
+            letterSpacing: "0.06em",
+            opacity: 0.7,
+          }}
+        >
+          BOOK TRACKER
+        </span>
+      </div>
     </div>
   );
 };

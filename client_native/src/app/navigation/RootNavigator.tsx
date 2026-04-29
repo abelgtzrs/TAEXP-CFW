@@ -112,7 +112,6 @@ function AppTabs() {
             borderTopColor: theme.colors.border,
             borderTopWidth: 1,
             paddingTop: 6,
-            height: 60,
           },
           tabBarActiveTintColor: theme.colors.primary,
           tabBarInactiveTintColor: theme.colors.textSecondary,

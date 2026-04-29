@@ -15,14 +15,20 @@ export function Screen({ children, scroll = true, style, contentContainerStyle }
 
   if (!scroll) {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }, style]}>
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        style={[styles.safeArea, { backgroundColor: theme.colors.background }, style]}
+      >
         <View style={[styles.safeArea, contentContainerStyle]}>{children}</View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }, style]}>
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }, style]}
+    >
       <ScrollView contentContainerStyle={[styles.content, contentContainerStyle]}>{children}</ScrollView>
     </SafeAreaView>
   );

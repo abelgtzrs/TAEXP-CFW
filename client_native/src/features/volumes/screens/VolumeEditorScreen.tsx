@@ -170,7 +170,7 @@ export function VolumeEditorScreen() {
   const headerTitle = editId ? (form.volumeNumber ? `Vol ${form.volumeNumber}` : "Edit Volume") : "New Volume";
 
   return (
-    <SafeAreaView style={[st.root, { backgroundColor: c.background }]}>
+    <SafeAreaView edges={["top", "left", "right"]} style={[st.root, { backgroundColor: c.background }]}>
       {/* Header */}
       <View style={[st.header, { borderBottomColor: c.border }]}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={10} style={st.headerBtn}>

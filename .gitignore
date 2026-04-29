@@ -32,3 +32,4 @@ yarn-error.log*
 client_native/dist/
 client_native/web-build/
 AGENTS.md
+AGENTS.md

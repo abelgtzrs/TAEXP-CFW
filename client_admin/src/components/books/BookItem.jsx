@@ -1,6 +1,5 @@
 // src/components/books/BookItem.jsx
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Check, Trash2, FileText, RefreshCw } from "lucide-react";
 
@@ -18,116 +17,212 @@ const BookItem = ({ book, onUpdate, onDelete, onFinish }) => {
     setUpdating(false);
   };
 
-  // Spine gradient: primary→secondary for active, status-success for finished
-  const spineColor = book.isFinished ? "from-status-success to-status-success/60" : "from-primary to-secondary";
+  const accentColor = book.isFinished ? "var(--color-status-success, #34d399)" : "var(--color-primary)";
 
   return (
-    <motion.article
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18 }}
-      className={`relative flex rounded-xl overflow-hidden border transition-colors duration-300 ${
-        book.isFinished ? "border-status-success/20 bg-status-success/5" : "border-white/8 bg-surface/50"
-      }`}
-      style={{ backdropFilter: "blur(8px)" }}
+    <div
+      style={{
+        fontFamily: "var(--font-main)",
+        display: "flex",
+        gap: 0,
+        background: book.isFinished ? "rgba(52,211,153,0.05)" : "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 10,
+        overflow: "hidden",
+        transition: "border-color 0.15s, background 0.15s",
+      }}
     >
-      {/* ── Left progress spine ── */}
-      <div className="relative w-1 flex-shrink-0 bg-white/5">
-        <motion.div
-          className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${spineColor} rounded-tl-xl`}
-          initial={{ height: 0 }}
-          animate={{ height: `${progressPercent}%` }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-        />
-      </div>
-
-      {/* ── Cover image ── */}
-      <div className="relative flex-shrink-0 w-24 sm:w-32 self-stretch">
+      {/* ── Cover thumbnail ── */}
+      <div
+        style={{
+          width: 72,
+          height: 108,
+          flexShrink: 0,
+          borderRight: "1px solid rgba(255,255,255,0.07)",
+          position: "relative",
+          overflow: "hidden",
+          background: "rgba(0,0,0,0.25)",
+        }}
+      >
         {book.coverImageUrl ? (
           <img
             src={book.coverImageUrl}
             alt={book.title}
-            className="w-full h-full object-cover"
-            style={{ minHeight: "140px" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         ) : (
-          <div className="w-full h-full flex items-end justify-center pb-3 bg-white/5" style={{ minHeight: "140px" }}>
-            <span className="text-[10px] uppercase tracking-widest text-white/20">No Cover</span>
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+              gap: 3,
+            }}
+          >
+            <span style={{ fontSize: 22, opacity: 0.15 }}>📖</span>
           </div>
         )}
-        {/* Finished badge overlaid on cover */}
-        {book.isFinished && (
-          <div className="absolute top-2 right-2 rounded-full bg-status-success/90 p-1 shadow-lg">
-            <Check size={10} className="text-white" strokeWidth={3} />
-          </div>
-        )}
+
+        {/* Progress fill — bottom-up thermometer */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: `${progressPercent}%`,
+            background: `${accentColor}22`,
+            borderTop: `1px solid ${accentColor}44`,
+            transition: "height 0.6s ease-out",
+            pointerEvents: "none",
+          }}
+        />
       </div>
 
-      {/* ── Content ── */}
-      <div className="flex flex-col flex-grow px-4 py-4 gap-3 min-w-0">
-        {/* Title row */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3
-              className={`text-lg font-bold leading-tight truncate ${
-                book.isFinished ? "text-status-success/80" : "text-white"
-              }`}
+      {/* ── Main content ── */}
+      <div style={{ flex: 1, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+        {/* Row 1: title + badges */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 6, justifyContent: "space-between" }}>
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: book.isFinished ? "var(--color-status-success, #34d399)" : "var(--color-text-main, #e5e7eb)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                letterSpacing: "-0.01em",
+              }}
             >
+              {book.isFinished && <span style={{ marginRight: 5, fontSize: 11 }}>✓</span>}
               {book.title}
-            </h3>
-            <p className="text-xs text-white/40 mt-0.5 truncate">
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
               {book.author}
-              {book.year ? <span className="ml-2 text-white/25">· {book.year}</span> : null}
-            </p>
+              {book.year ? <span style={{ color: "rgba(255,255,255,0.2)", marginLeft: 8 }}>{book.year}</span> : null}
+            </div>
           </div>
 
-          {/* Meta pills */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Badges */}
+          <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
             {book.isOwned && (
-              <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border border-primary/30 text-primary/70">
-                Owned
+              <span
+                style={{
+                  fontSize: 9,
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  letterSpacing: "0.06em",
+                  color: "var(--color-primary)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(0,0,0,0.2)",
+                }}
+              >
+                OWNED
               </span>
             )}
             {book.userRating ? (
-              <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border border-white/15 text-white/40">
+              <span
+                style={{
+                  fontSize: 9,
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  color: "rgba(255,255,255,0.4)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(0,0,0,0.2)",
+                }}
+              >
                 {book.userRating}/10
               </span>
             ) : null}
+            <span
+              style={{
+                fontSize: 9,
+                padding: "2px 7px",
+                borderRadius: 4,
+                letterSpacing: "0.04em",
+                fontWeight: 700,
+                color: accentColor,
+                border: `1px solid ${accentColor}44`,
+                background: `${accentColor}12`,
+              }}
+            >
+              {book.isFinished ? "DONE" : "ACTIVE"}
+            </span>
           </div>
         </div>
 
-        {/* Progress track */}
+        {/* Row 2: slim progress bar */}
         <div>
-          <div className="relative h-1.5 rounded-full bg-white/8 overflow-hidden">
-            <motion.div
-              className={`absolute left-0 top-0 h-full rounded-full bg-gradient-to-r ${spineColor}`}
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercent}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
+          <div
+            style={{
+              height: 6,
+              borderRadius: 3,
+              background: "rgba(0,0,0,0.25)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: `${progressPercent}%`,
+                borderRadius: 3,
+                background: accentColor,
+                transition: "width 0.6s ease-out",
+              }}
             />
           </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[10px] text-white/30">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginTop: 4,
+              fontSize: 11,
+              color: "rgba(255,255,255,0.3)",
+            }}
+          >
+            <span>
               {book.pagesRead.toLocaleString()} / {book.totalPages.toLocaleString()} pages
             </span>
-            <span
-              className={`text-[10px] font-semibold tabular-nums ${
-                book.isFinished ? "text-status-success" : "text-primary"
-              }`}
-            >
-              {pct}%
-            </span>
+            <span style={{ color: accentColor, fontWeight: 600 }}>{pct}%</span>
           </div>
         </div>
 
-        {/* Synopsis snippet */}
-        {book.synopsis && <p className="text-[11px] text-white/30 leading-relaxed line-clamp-2">{book.synopsis}</p>}
+        {/* Synopsis */}
+        {book.synopsis && (
+          <p
+            style={{
+              fontSize: 11,
+              color: "rgba(255,255,255,0.28)",
+              lineHeight: 1.55,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              margin: 0,
+            }}
+          >
+            {book.synopsis}
+          </p>
+        )}
 
-        {/* Controls */}
-        <div className="flex flex-wrap items-center gap-2 mt-auto pt-1">
+        {/* Row 3: Controls */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            flexWrap: "wrap",
+            marginTop: 2,
+          }}
+        >
           {!book.isFinished && (
             <>
-              {/* Page input */}
-              <div className="flex items-center rounded-lg border border-white/10 bg-white/5 overflow-hidden">
+              {/* Page input group */}
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <input
                   type="number"
                   value={currentPage}
@@ -135,50 +230,67 @@ const BookItem = ({ book, onUpdate, onDelete, onFinish }) => {
                   min="0"
                   max={book.totalPages}
                   aria-label="Pages read"
-                  className="w-16 bg-transparent px-2 py-1.5 text-xs text-white tabular-nums outline-none"
+                  className="bk-page-input"
+                  style={{
+                    width: 60,
+                    fontSize: 12,
+                    padding: "5px 7px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(0,0,0,0.3)",
+                    color: "var(--color-text-main, #e5e7eb)",
+                    outline: "none",
+                    textAlign: "right",
+                    fontFamily: "var(--font-main)",
+                  }}
                 />
                 <button
                   onClick={handleProgressUpdate}
                   disabled={updating || Number(currentPage) === book.pagesRead}
-                  className="flex items-center gap-1 px-2 py-1.5 border-l border-white/10 text-[10px] text-primary/80 hover:text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
+                  className="bk-btn"
+                  style={{
+                    padding: "5px 9px",
+                    fontSize: 11,
+                    gap: 4,
+                    opacity: updating || Number(currentPage) === book.pagesRead ? 0.4 : 1,
+                  }}
                 >
-                  <RefreshCw size={10} className={updating ? "animate-spin" : ""} />
-                  Save
+                  <RefreshCw size={11} style={{ animation: updating ? "bk-spin 1s linear infinite" : "none" }} />
+                  Update
                 </button>
               </div>
 
-              {/* Finish */}
               <button
                 onClick={() => onFinish(book._id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-status-success/30 bg-status-success/10 text-[11px] text-status-success hover:bg-status-success/20 transition-colors"
+                className="bk-btn bk-btn-primary bk-ctrl-complete"
+                style={{ padding: "5px 10px", fontSize: 11, gap: 4 }}
               >
                 <Check size={11} strokeWidth={2.5} />
-                Mark Finished
+                Complete
               </button>
             </>
           )}
 
-          {/* Notes link */}
           <Link
             to={`/books/${book._id}/notes`}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/8 text-[11px] text-white/35 hover:text-white/70 hover:border-white/20 transition-colors"
+            className="bk-btn"
+            style={{ textDecoration: "none", padding: "5px 9px", fontSize: 11, gap: 4 }}
           >
             <FileText size={11} />
             Notes
           </Link>
 
-          {/* Delete — far right */}
           <button
             onClick={() => onDelete(book._id)}
             title="Remove book"
-            aria-label="Delete book"
-            className="ml-auto flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] text-white/20 hover:text-status-danger hover:bg-status-danger/10 transition-colors"
+            className="bk-btn bk-btn-danger"
+            style={{ marginLeft: "auto", padding: "5px 9px", fontSize: 11, gap: 4 }}
           >
             <Trash2 size={11} />
           </button>
         </div>
       </div>
-    </motion.article>
+    </div>
   );
 };
 

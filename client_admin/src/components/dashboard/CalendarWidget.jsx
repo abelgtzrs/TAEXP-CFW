@@ -201,19 +201,19 @@ const CalendarWidget = ({ compact = false }) => {
         <button
           type="button"
           onClick={handlePrevMonth}
-          className="rounded border border-gray-700/50 bg-black/10 p-1 text-text-secondary hover:border-primary/30 hover:text-white"
+          className="rounded border border-gray-700/50 bg-black/10 p-2 text-text-secondary hover:border-primary/30 hover:text-white"
         >
-          <ChevronLeft size={14} />
+          <ChevronLeft size={16} />
         </button>
-        <h2 className="flex-1 text-center text-sm font-semibold tracking-wide text-white">
-          {currentDate.toLocaleString("default", { month: "short", year: "numeric" })}
+        <h2 className="flex-1 text-center text-base font-semibold tracking-wide text-white">
+          {currentDate.toLocaleString("default", { month: "long", year: "numeric" })}
         </h2>
         <button
           type="button"
           onClick={handleNextMonth}
-          className="rounded border border-gray-700/50 bg-black/10 p-1 text-text-secondary hover:border-primary/30 hover:text-white"
+          className="rounded border border-gray-700/50 bg-black/10 p-2 text-text-secondary hover:border-primary/30 hover:text-white"
         >
-          <ChevronRight size={14} />
+          <ChevronRight size={16} />
         </button>
       </div>
     );
@@ -222,7 +222,7 @@ const CalendarWidget = ({ compact = false }) => {
   const renderDays = () => {
     const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     return (
-      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[9px] font-semibold text-text-secondary">
+      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-text-secondary">
         {weekdays.map((day) => (
           <div key={day}>{day}</div>
         ))}
@@ -266,14 +266,14 @@ const CalendarWidget = ({ compact = false }) => {
             type="button"
             key={dayKey}
             onClick={() => handleDayClick(cloneDay)}
-            className={`min-h-[4rem] rounded border px-2 py-1 text-left transition-colors
+            className={`min-h-[3.5rem] rounded border px-1.5 py-1 text-left transition-colors
               ${!isCurrentMonth ? "border-transparent text-text-tertiary/50" : "border-transparent bg-black/10 text-text-main"}
               ${isCurrentMonth ? "hover:border-primary/40" : ""}
               ${isToday ? "border-primary/50" : ""}
               ${isSelected ? "ring-1 ring-primary/60 border-primary/50" : ""}`}
           >
             <div
-              className={`mb-0.5 text-[11px] font-semibold ${isToday ? "bg-primary/15 text-white rounded px-1" : "text-text-secondary"}`}
+              className={`mb-0.5 text-xs font-semibold ${isToday ? "bg-primary/15 text-white rounded px-1" : "text-text-secondary"}`}
             >
               {cloneDay.getDate()}
             </div>
@@ -285,14 +285,14 @@ const CalendarWidget = ({ compact = false }) => {
                   return (
                     <CircleDollarSign
                       key={`bill-icon-${dayKey}-${bill._id}`}
-                      size={12}
+                      size={14}
                       strokeWidth={2.2}
                       className={`${getBillIconColor(bill.amount)} ${isPaid ? "opacity-30" : "opacity-90"}`}
                     />
                   );
                 })}
                 {billsForDay.length > 3 && (
-                  <span className="pl-0.5 text-[9px] text-text-tertiary">+{billsForDay.length - 3}</span>
+                  <span className="pl-0.5 text-[10px] text-text-tertiary">+{billsForDay.length - 3}</span>
                 )}
               </div>
             ) : null}
@@ -334,25 +334,27 @@ const CalendarWidget = ({ compact = false }) => {
               {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </h3>
             {billsForSelectedDay.length > 0 ? (
-              <span className="inline-flex items-center rounded-full border border-rose-400/30 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-rose-200">
+              <span className="inline-flex items-center rounded-full border border-rose-400/30 bg-rose-500/10 px-2 py-0.5 text-xs font-semibold text-rose-200">
                 {unpaidForSelectedDay.length} unpaid
               </span>
             ) : (
-              <span className="inline-flex items-center rounded-full border border-gray-600/40 bg-black/20 px-1.5 py-0.5 text-[9px] font-semibold text-text-secondary">
+              <span className="inline-flex items-center rounded-full border border-gray-600/40 bg-black/20 px-2 py-0.5 text-xs font-semibold text-text-secondary">
                 No bills
               </span>
             )}
           </div>
 
           {billsForSelectedDay.length > 0 && (
-            <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[10px]">
-              <div className="rounded border border-gray-700/40 bg-black/10 px-1.5 py-1">
-                <p className="uppercase text-text-secondary text-[8px]">Due</p>
-                <p className="mt-0.5 font-mono font-semibold text-white">{formatCurrency(selectedDayTotal)}</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="rounded border border-gray-700/40 bg-black/10 px-2 py-1.5">
+                <p className="text-[10px] uppercase tracking-wide text-text-secondary">Due</p>
+                <p className="mt-0.5 font-mono text-sm font-semibold text-white">{formatCurrency(selectedDayTotal)}</p>
               </div>
-              <div className="rounded border border-rose-400/25 bg-rose-900/10 px-1.5 py-1">
-                <p className="uppercase text-rose-200/70 text-[8px]">Unpaid</p>
-                <p className="mt-0.5 font-mono font-semibold text-rose-100">{formatCurrency(selectedDayUnpaidTotal)}</p>
+              <div className="rounded border border-rose-400/25 bg-rose-900/10 px-2 py-1.5">
+                <p className="text-[10px] uppercase tracking-wide text-rose-200/70">Unpaid</p>
+                <p className="mt-0.5 font-mono text-sm font-semibold text-rose-100">
+                  {formatCurrency(selectedDayUnpaidTotal)}
+                </p>
               </div>
             </div>
           )}
@@ -370,28 +372,28 @@ const CalendarWidget = ({ compact = false }) => {
               return (
                 <li
                   key={bill._id}
-                  className={`rounded border px-2 py-1.5 text-[10px] ${
+                  className={`rounded border px-3 py-2.5 text-xs ${
                     isPaid ? "border-emerald-700/40 bg-emerald-900/10" : "border-rose-400/35 bg-rose-900/12"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-1.5">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`h-2 w-2 rounded-full ${getBillColor(bill.amount)}`}></span>
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${getBillColor(bill.amount)}`}></span>
                         <p
-                          className={`truncate font-semibold ${isPaid ? "text-emerald-100/70 line-through" : "text-white"}`}
+                          className={`truncate text-sm font-semibold ${isPaid ? "text-emerald-100/70 line-through" : "text-white"}`}
                         >
                           {bill.name}
                         </p>
                       </div>
-                      <p className="mt-0.5 text-[9px] text-text-tertiary">
-                        d{bill.dueDay} • {bill.category || "general"}
+                      <p className="mt-0.5 text-[10px] text-text-tertiary">
+                        Day {bill.dueDay} · {bill.category || "general"}
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="flex shrink-0 items-center gap-1.5">
                       <span
-                        className={`rounded px-1.5 py-0.5 font-mono font-semibold text-[9px] ${
+                        className={`rounded px-2 py-0.5 font-mono text-xs font-semibold ${
                           isPaid ? "bg-emerald-500/15 text-emerald-100" : "bg-rose-500/25 text-rose-100"
                         }`}
                       >
@@ -407,14 +409,14 @@ const CalendarWidget = ({ compact = false }) => {
                             startEditBill(bill);
                           }
                         }}
-                        className="rounded px-1.5 py-0.5 border border-primary/40 text-[9px] text-primary hover:bg-primary/5"
+                        className="min-h-[32px] min-w-[32px] rounded border border-primary/40 px-2 py-1 text-xs text-primary hover:bg-primary/5"
                       >
                         {isEditing ? "✕" : "✎"}
                       </button>
                     </div>
                   </div>
 
-                  <label className="mt-1 flex cursor-pointer items-center gap-1.5 text-[9px] text-text-tertiary">
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-text-tertiary">
                     <input
                       type="checkbox"
                       checked={isPaid}
@@ -422,24 +424,28 @@ const CalendarWidget = ({ compact = false }) => {
                       onChange={async (e) => {
                         await handleTogglePaid(bill, e.target.checked);
                       }}
-                      className={`h-3 w-3 ${isPaid ? "accent-green-500" : "accent-rose-500"}`}
+                      className={`h-4 w-4 ${isPaid ? "accent-green-500" : "accent-rose-500"}`}
+                      style={{ minWidth: 16, minHeight: 16 }}
                     />
-                    {isPaid ? "Paid" : "Unpaid"}
+                    <span className={isPaid ? "text-emerald-300" : "text-rose-300"}>
+                      {isPaid ? "Paid" : "Mark as paid"}
+                    </span>
                   </label>
 
                   {isEditing && (
                     <div className="mt-1.5 grid grid-cols-2 gap-1 border-t border-gray-700/40 pt-1.5">
-                      <label className="col-span-2 text-[9px] text-text-secondary">
+                      <label className="col-span-2 text-xs text-text-secondary">
                         Name
                         <input
                           type="text"
                           value={editDraft.name}
                           onChange={(e) => setEditDraft((prev) => ({ ...prev, name: e.target.value }))}
-                          className="mt-0.5 w-full rounded border border-gray-600/50 bg-black/20 px-1.5 py-1 text-xs text-white outline-none focus:border-primary"
+                          className="mt-1 w-full rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
+                          style={{ fontSize: 16 }}
                         />
                       </label>
 
-                      <label className="text-[9px] text-text-secondary">
+                      <label className="text-xs text-text-secondary">
                         Amount
                         <input
                           type="number"
@@ -447,28 +453,31 @@ const CalendarWidget = ({ compact = false }) => {
                           step="0.01"
                           value={editDraft.amount}
                           onChange={(e) => setEditDraft((prev) => ({ ...prev, amount: e.target.value }))}
-                          className="mt-0.5 w-full rounded border border-gray-600/50 bg-black/20 px-1.5 py-1 text-xs text-white outline-none focus:border-primary"
+                          className="mt-1 w-full rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
+                          style={{ fontSize: 16 }}
                         />
                       </label>
 
-                      <label className="text-[9px] text-text-secondary">
-                        Day
+                      <label className="text-xs text-text-secondary">
+                        Due Day
                         <input
                           type="number"
                           min="1"
                           max="31"
                           value={editDraft.dueDay}
                           onChange={(e) => setEditDraft((prev) => ({ ...prev, dueDay: e.target.value }))}
-                          className="mt-0.5 w-full rounded border border-gray-600/50 bg-black/20 px-1.5 py-1 text-xs text-white outline-none focus:border-primary"
+                          className="mt-1 w-full rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
+                          style={{ fontSize: 16 }}
                         />
                       </label>
 
-                      <label className="col-span-2 text-[9px] text-text-secondary">
+                      <label className="col-span-2 text-xs text-text-secondary">
                         Category
                         <select
                           value={editDraft.category}
                           onChange={(e) => setEditDraft((prev) => ({ ...prev, category: e.target.value }))}
-                          className="mt-0.5 w-full rounded border border-gray-600/50 bg-black/20 px-1.5 py-1 text-xs text-white outline-none focus:border-primary"
+                          className="mt-1 w-full rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
+                          style={{ fontSize: 16 }}
                         >
                           <option value="bill">Bill</option>
                           <option value="debt">Debt</option>
@@ -477,44 +486,45 @@ const CalendarWidget = ({ compact = false }) => {
                         </select>
                       </label>
 
-                      <label className="col-span-2 text-[9px] text-text-secondary">
+                      <label className="col-span-2 text-xs text-text-secondary">
                         Notes
                         <textarea
                           rows={2}
                           value={editDraft.notes}
                           onChange={(e) => setEditDraft((prev) => ({ ...prev, notes: e.target.value }))}
-                          className="mt-0.5 w-full resize-none rounded border border-gray-600/50 bg-black/20 px-1.5 py-1 text-xs text-white outline-none focus:border-primary"
+                          className="mt-1 w-full resize-none rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
+                          style={{ fontSize: 16 }}
                         />
                       </label>
 
-                      <label className="flex items-center gap-1 text-[9px] text-text-secondary">
+                      <label className="flex items-center gap-2 text-xs text-text-secondary">
                         <input
                           type="checkbox"
                           checked={editDraft.autoPay}
                           onChange={(e) => setEditDraft((prev) => ({ ...prev, autoPay: e.target.checked }))}
-                          className="h-3 w-3 accent-green-500"
+                          className="h-4 w-4 accent-green-500"
                         />
-                        Auto
+                        Auto-pay
                       </label>
 
-                      <label className="flex items-center gap-1 text-[9px] text-text-secondary">
+                      <label className="flex items-center gap-2 text-xs text-text-secondary">
                         <input
                           type="checkbox"
                           checked={editDraft.isActive}
                           onChange={(e) => setEditDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
-                          className="h-3 w-3 accent-green-500"
+                          className="h-4 w-4 accent-green-500"
                         />
                         Active
                       </label>
 
-                      <div className="col-span-2 mt-1 flex justify-end gap-1">
+                      <div className="col-span-2 mt-2 flex justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => {
                             setEditingBillId(null);
                             setClickPopoverError("");
                           }}
-                          className="rounded border border-gray-600/50 px-1.5 py-0.5 text-[8px] text-text-secondary hover:bg-black/30"
+                          className="min-h-[36px] rounded border border-gray-600/50 px-3 py-1.5 text-xs text-text-secondary hover:bg-black/30"
                         >
                           Cancel
                         </button>
@@ -524,9 +534,9 @@ const CalendarWidget = ({ compact = false }) => {
                           onClick={async () => {
                             await handleSaveEdit(bill._id);
                           }}
-                          className="rounded border border-primary/40 bg-primary/15 px-1.5 py-0.5 text-[8px] font-semibold text-primary hover:bg-primary/25 disabled:opacity-50"
+                          className="min-h-[36px] rounded border border-primary/40 bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/25 disabled:opacity-50"
                         >
-                          {savingBillId === bill._id ? "…" : "Save"}
+                          {savingBillId === bill._id ? "Saving…" : "Save"}
                         </button>
                       </div>
                     </div>
@@ -552,19 +562,16 @@ const CalendarWidget = ({ compact = false }) => {
 
       <div className={`mt-2 rounded px-2 py-2 ${monthlyRemaining > 0 ? "bg-rose-900/8" : "bg-emerald-900/8"}`}>
         <div className="flex items-baseline justify-between gap-2">
-          <p className="text-[9px] uppercase tracking-widest text-text-secondary">Remaining</p>
-          <p className="text-base font-mono font-semibold text-white">{formatCurrency(monthlyRemaining)}</p>
+          <p className="text-xs uppercase tracking-widest text-text-secondary">Remaining this month</p>
+          <p className="text-xl font-mono font-semibold text-white">{formatCurrency(monthlyRemaining)}</p>
         </div>
-        <div className="mt-1.5 text-[9px] text-text-tertiary space-x-2">
-          <span>{remainingBillCount}p</span>
-          <span>|</span>
-          <span>{paidBillCount}✓</span>
+        <div className="mt-1.5 flex gap-3 text-xs text-text-tertiary">
+          <span>{paidBillCount} paid</span>
+          <span>·</span>
+          <span>{remainingBillCount} unpaid</span>
         </div>
         <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-gray-700/30">
-          <div
-            className="h-full bg-emerald-400 transition-all duration-300"
-            style={{ width: `${paidProgress}%` }}
-          />
+          <div className="h-full bg-emerald-400 transition-all duration-300" style={{ width: `${paidProgress}%` }} />
         </div>
       </div>
 

@@ -75,7 +75,7 @@ export function VolumesListScreen() {
   const c = theme.colors;
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: c.background }]}>
+    <SafeAreaView edges={["top", "left", "right"]} style={[s.root, { backgroundColor: c.background }]}>
       {/* Header */}
       <View style={[s.header, { borderBottomColor: c.border }]}>
         <Text style={[s.headerTitle, { color: c.textPrimary }]}>Greentext Volumes</Text>
