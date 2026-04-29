@@ -471,11 +471,7 @@ const BooksPage = () => {
             { label: "Authors", value: stats.uniqueAuthors, color: "var(--color-tertiary, #f59e0b)" },
           ],
         ].map((row, rowIdx) => (
-          <div
-            key={rowIdx}
-            className="bk-stats-grid"
-            style={rowIdx === 0 ? { borderBottom: "1px solid rgba(255,255,255,0.05)" } : undefined}
-          >
+          <div key={rowIdx} className="bk-stats-grid">
             {row.map(({ label, value, color }) => (
               <div key={label} className="bk-stat-cell">
                 <span className="bk-stat-value" style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1 }}>
