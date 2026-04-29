@@ -10,6 +10,7 @@ const HabitTrackerWidget = () => {
   const [habits, setHabits] = useState([]);
   const { setUser, user } = useAuth();
   const [notifications, setNotifications] = useState([]); // toast-style dopamine messages
+  const [completingId, setCompletingId] = useState(null);
 
   const pushNotification = (message) => {
     const id = Date.now() + Math.random();
@@ -37,10 +38,16 @@ const HabitTrackerWidget = () => {
   }, []);
 
   const handleCompleteHabit = async (habitId) => {
+    setCompletingId(habitId);
+    setTimeout(() => setCompletingId(null), 750);
+    // Optimistic update: mark as completed immediately
+    const todayISO = new Date().toISOString();
+    const prevHabits = habits;
+    setHabits((prev) => prev.map((h) => (h?._id === habitId ? { ...h, lastCompletedDate: todayISO } : h)));
     try {
       const prevTemu = user?.temuTokens || 0;
       const response = await api.post(`/habits/${habitId}/complete`);
-      // Merge to avoid accidental field loss causing disappearance
+      // Merge with server response to keep data in sync
       const returnedHabit = response.data.data || {};
       setHabits((prev) => prev.map((h) => (h?._id === habitId ? { ...h, ...returnedHabit } : h)));
 
@@ -66,6 +73,8 @@ const HabitTrackerWidget = () => {
         pushNotification("Habit logged ✅");
       }
     } catch (err) {
+      // Revert optimistic update on failure
+      setHabits(prevHabits);
       console.error("Failed to complete habit from widget:", err);
       pushNotification(err.response?.data?.message || "Completion failed ❌");
     }
@@ -103,6 +112,7 @@ const HabitTrackerWidget = () => {
             ];
             const bgColor = bgColors[index % bgColors.length];
 
+            const isCompleting = completingId === habit._id;
             return (
               <div
                 key={habit._id}
@@ -118,7 +128,7 @@ const HabitTrackerWidget = () => {
                     handleCompleteHabit(habit._id);
                   }
                 }}
-                className={`flex items-center justify-between text-sm py-2 px-3 rounded-lg border select-none transition-all duration-200 ${
+                className={`flex items-center justify-between text-sm py-2 px-3 rounded-lg border select-none transition-all duration-200 ${isCompleting ? "habit-completing" : ""} ${
                   completed
                     ? "bg-status-success/10 border-status-success/40 cursor-default"
                     : `${bgColor} border-gray-700/50 cursor-pointer hover:border-status-success/70`
@@ -136,7 +146,9 @@ const HabitTrackerWidget = () => {
                   {completed && (
                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Done</span>
                   )}
-                  <CheckSquare size={18} />
+                  <span className={isCompleting ? "habit-completing-check" : ""}>
+                    <CheckSquare size={18} />
+                  </span>
                 </div>
               </div>
             );

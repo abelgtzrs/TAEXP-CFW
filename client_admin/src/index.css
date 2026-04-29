@@ -16,7 +16,9 @@
   border: 1px solid #374151; /* gray-700, for structure */
   backdrop-filter: blur(var(--glass-blur, 8px));
   position: relative;
-  box-shadow: inset 0 0 15px rgba(14, 165, 233, 0.1), 0 0 15px rgba(14, 165, 233, 0.1); /* Inner and outer glow */
+  box-shadow:
+    inset 0 0 15px rgba(14, 165, 233, 0.1),
+    0 0 15px rgba(14, 165, 233, 0.1); /* Inner and outer glow */
   -webkit-backdrop-filter: blur(var(--glass-blur, 8px));
 }
 
@@ -127,6 +129,54 @@
     opacity: 0;
     transform: translate(-16px, -10px) scale(0.2);
   }
+}
+
+@keyframes habit-complete-flash {
+  0% {
+    outline: 2px solid transparent;
+    box-shadow: none;
+    transform: scale(1);
+  }
+  22% {
+    outline: 2px solid rgba(34, 197, 94, 0.65);
+    box-shadow:
+      0 0 0 4px rgba(34, 197, 94, 0.15),
+      0 0 16px rgba(34, 197, 94, 0.2);
+    transform: scale(1.025);
+  }
+  55% {
+    outline: 2px solid rgba(34, 197, 94, 0.2);
+    transform: scale(0.99);
+  }
+  100% {
+    outline: 2px solid transparent;
+    box-shadow: none;
+    transform: scale(1);
+  }
+}
+
+@keyframes habit-check-bounce {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  30% {
+    transform: scale(1.55) rotate(-12deg);
+  }
+  65% {
+    transform: scale(0.85) rotate(6deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.habit-completing {
+  animation: habit-complete-flash 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.habit-completing-check {
+  display: inline-block;
+  animation: habit-check-bounce 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .toast-pop {
