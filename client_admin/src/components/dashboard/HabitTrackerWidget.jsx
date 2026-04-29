@@ -118,13 +118,26 @@ const HabitTrackerWidget = () => {
                     handleCompleteHabit(habit._id);
                   }
                 }}
-                className={`flex items-center justify-between text-sm py-2 px-3 rounded-lg ${bgColor} border border-gray-700/50 cursor-pointer select-none ${
-                  completed ? "opacity-90" : "hover:border-status-success/70"
+                className={`flex items-center justify-between text-sm py-2 px-3 rounded-lg border select-none transition-all duration-200 ${
+                  completed
+                    ? "bg-status-success/10 border-status-success/40 cursor-default"
+                    : `${bgColor} border-gray-700/50 cursor-pointer hover:border-status-success/70`
                 }`}
                 aria-disabled={completed}
               >
-                <span className={completed ? "text-text-main line-through" : "text-text-secondary"}>{habit.name}</span>
-                <CheckSquare size={20} className={`${completed ? "text-status-success" : "text-gray-400"}`} />
+                <span
+                  className={
+                    completed ? "text-status-success line-through decoration-status-success/60" : "text-text-secondary"
+                  }
+                >
+                  {habit.name}
+                </span>
+                <div className={`flex items-center gap-1.5 ${completed ? "text-status-success" : "text-gray-500"}`}>
+                  {completed && (
+                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Done</span>
+                  )}
+                  <CheckSquare size={18} />
+                </div>
               </div>
             );
           })
@@ -162,7 +175,7 @@ const HabitTrackerWidget = () => {
             </div>
           ))}
         </div>,
-        document.body
+        document.body,
       )}
     </Widget>
   );

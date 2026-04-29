@@ -109,8 +109,8 @@ const DisplayedCollection = ({ title, items, baseField }) => {
       const spriteUrl = spriteGen5
         ? `${serverBaseUrl}${spriteGen5}`
         : spriteGen6
-        ? `${serverBaseUrl}${spriteGen6}`
-        : null;
+          ? `${serverBaseUrl}${spriteGen6}`
+          : null;
       return (
         <div>
           <div className="font-semibold text-slate-100">{baseItem.name}</div>
