@@ -743,7 +743,9 @@ const AdminLayout = () => {
           }}
         >
           <div className="flex-1 overflow-y-auto scrollbar-hide p-2 lg:p-3 min-h-0 pb-0 lg:pb-3">
-            <Outlet />
+            <div className="mx-auto w-full" style={{ maxWidth: 1600 }}>
+              <Outlet />
+            </div>
           </div>
         </main>
 
