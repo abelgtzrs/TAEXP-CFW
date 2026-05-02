@@ -1,7 +1,6 @@
-// --- FILE: client-admin/src/pages/ShopPage.jsx ---
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { Coins, Gem, Heart, X, ShoppingBag, AlertCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Coins, Gem, Heart, X, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import PullResultModal from "../components/shop/PullResultModal";
@@ -64,12 +63,12 @@ const ShopPage = () => {
     return map[cat] || cat;
   };
 
-  // Persist per-category recents (cap 5 per category)
+  // Persist per-category recents (cap 10 per category)
   useEffect(() => {
     try {
       const capped = {};
       for (const [cat, arr] of Object.entries(recentByCategory || {})) {
-        capped[cat] = (Array.isArray(arr) ? arr : []).slice(0, 5);
+        capped[cat] = (Array.isArray(arr) ? arr : []).slice(0, 10);
       }
       localStorage.setItem("tae.shop.recentByCategory.v1", JSON.stringify(capped));
     } catch {}
@@ -142,7 +141,7 @@ const ShopPage = () => {
         title: "Narrative currency for Persona unlocks",
       },
     ],
-    [user]
+    [user],
   );
 
   const visibleConfigs = useMemo(() => {
@@ -171,8 +170,8 @@ const ShopPage = () => {
         nested.items && Array.isArray(nested.items) && nested.items.length > 0
           ? nested.items
           : nested.item
-          ? [nested.item]
-          : [];
+            ? [nested.item]
+            : [];
       const ts = Date.now();
       const entries = pulledItems.map((it) => {
         let img = it.imageUrl;
@@ -191,7 +190,7 @@ const ShopPage = () => {
           const withoutDup = existing.filter((e) => e.id !== entry.id);
           existing.splice(0, existing.length, entry, ...withoutDup);
         }
-        next[cat] = existing.slice(0, 5);
+        next[cat] = existing.slice(0, 10);
         return next;
       });
 
@@ -215,76 +214,74 @@ const ShopPage = () => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-    >
-      <motion.h1
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="flex items-center gap-2 text-3xl font-bold text-primary mb-2"
-      >
-        <ShoppingBag className="h-8 w-8" aria-hidden="true" />
-        Storefront
-      </motion.h1>
-      <motion.p
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="text-text-secondary mb-6"
-      >
-        Burn tokens to execute an RNG pull across active banners. Duplicates are auto-refunded at 25% of cost.
-      </motion.p>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="pb-12">
+      {/* ── Header ── */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-text-main">Storefront</h1>
+        <p className="text-sm text-text-secondary mt-0.5">
+          Burn tokens. Execute an RNG pull. Duplicates auto-refund at 25%.
+        </p>
+      </div>
 
-      {/* Balances (compact chips) */}
+      {/* ── Wallet ── */}
       <BalancesChips balances={balances} />
 
-      {/* Controls */}
+      {/* ── Filter tabs ── */}
       <ShopFilter value={filterCurrency} onChange={setFilterCurrency} />
 
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-          className="mb-4 rounded-lg border px-4 py-3 flex items-start gap-3"
-          style={{ background: "rgba(255, 0, 0, 0.06)", borderColor: "#ef4444" }}
-          role="alert"
-          aria-live="polite"
-        >
-          <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" aria-hidden="true" />
-          <div className="flex-1 text-sm text-text-main">{error}</div>
-          <button
-            onClick={() => setError("")}
-            className="rounded p-1 hover:bg-[var(--color-background)]"
-            aria-label="Dismiss error"
+      {/* ── Error toast ── */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            key="err"
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            transition={{ duration: 0.2 }}
+            className="mb-5 rounded-xl border px-4 py-3 flex items-start gap-3"
+            style={{ background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.4)" }}
+            role="alert"
           >
-            <X className="h-4 w-4 text-text-secondary" />
-          </button>
-        </motion.div>
-      )}
+            <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
+            <span className="flex-1 text-sm text-text-main">{error}</span>
+            <button
+              onClick={() => setError("")}
+              className="rounded-lg p-1 hover:bg-red-500/10 transition"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4 text-text-secondary" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Compact panels combining banner + recents */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {visibleConfigs.map((cfg) => (
-          <CategoryPanel
+      {/* ── Banner grid ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {visibleConfigs.map((cfg, i) => (
+          <motion.div
             key={cfg.category}
-            config={cfg}
-            recentItems={recentByCategory[cfg.category] || []}
-            isAdmin={user?.role === "admin"}
-            onPull={handlePull}
-            isLoading={loadingCategory === cfg.category}
-            categoryLabel={categoryLabel}
-          />
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: i * 0.07 }}
+          >
+            <CategoryPanel
+              config={cfg}
+              recentItems={recentByCategory[cfg.category] || []}
+              isAdmin={user?.role === "admin"}
+              onPull={handlePull}
+              isLoading={loadingCategory === cfg.category}
+              categoryLabel={categoryLabel}
+            />
+          </motion.div>
         ))}
       </div>
 
-      {/* Meta note */}
-      <p className="mt-6 text-xs text-text-secondary">
-        Tip: Pull outcomes are probabilistic. We surface duplicate detection and issue a 25% credit to your balance on
-        duplicates.
+      {visibleConfigs.length === 0 && (
+        <div className="py-16 text-center text-text-secondary text-sm">No banners match the current filter.</div>
+      )}
+
+      <p className="mt-8 text-center text-xs text-text-secondary opacity-60">
+        Pull outcomes are probabilistic · Duplicates issue 25% credit
       </p>
 
       <PullResultModal result={lastPulledItem} onClose={() => setLastPulledItem(null)} />

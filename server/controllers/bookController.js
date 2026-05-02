@@ -83,6 +83,8 @@ exports.updateBook = async (req, res) => {
       // --- THIS IS THE FIX ---
       // Save the updated user document and capture the result.
       const updatedUser = await user.save();
+      // Populate activeAbelPersona so the client doesn't overwrite the theme with a raw ObjectId.
+      await updatedUser.populate({ path: "activeAbelPersona", model: "AbelPersonaBase" });
       // We must remove the password before sending it back.
       const userResponse = { ...updatedUser.toObject() };
       delete userResponse.password;

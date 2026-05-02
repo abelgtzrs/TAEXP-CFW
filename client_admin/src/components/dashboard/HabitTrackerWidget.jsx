@@ -48,7 +48,7 @@ const HabitTrackerWidget = () => {
       const prevTemu = user?.temuTokens || 0;
       const response = await api.post(`/habits/${habitId}/complete`);
       // Merge with server response to keep data in sync
-      const returnedHabit = response.data.data || {};
+      const returnedHabit = response.data.habitData || response.data.data || {};
       setHabits((prev) => prev.map((h) => (h?._id === habitId ? { ...h, ...returnedHabit } : h)));
 
       const updatedUserData = response.data.userData;

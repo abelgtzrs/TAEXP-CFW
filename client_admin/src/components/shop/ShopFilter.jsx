@@ -1,37 +1,34 @@
-import { Filter } from "lucide-react";
-
 const ShopFilter = ({ value, onChange }) => {
   const options = [
     { key: "all", label: "All" },
-    { key: "TT", label: "TT" },
-    { key: "GG", label: "GG" },
+    { key: "TT", label: "Temu Tokens" },
+    { key: "GG", label: "Gatilla Gold" },
     { key: "❤️", label: "Hearts" },
   ];
   return (
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-lg font-semibold text-text-main">Active Banners</h2>
-      <div className="flex items-center gap-2">
-        <div className="text-text-secondary text-sm">Filter</div>
-        <div
-          className="inline-flex items-center rounded-lg border overflow-hidden glass-surface"
-          style={{ borderColor: "var(--color-primary)" }}
-        >
-          {options.map((opt) => (
-            <button
-              key={opt.key}
-              onClick={() => onChange(opt.key)}
-              className={`px-3 py-1.5 text-sm transition-colors ${
-                value === opt.key ? "bg-primary text-white" : "text-text-main hover:bg-[var(--color-background)]"
-              }`}
-              aria-pressed={value === opt.key}
-              aria-label={`Filter banners: ${opt.label}`}
-            >
-              {opt.key === "all" ? <Filter className="inline h-4 w-4 mr-1 align-[-2px]" /> : null}
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+      {options.map((opt) => {
+        const active = value === opt.key;
+        return (
+          <button
+            key={opt.key}
+            onClick={() => onChange(opt.key)}
+            aria-pressed={active}
+            className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors duration-150"
+            style={
+              active
+                ? { background: "var(--color-primary)", color: "var(--color-bg)" }
+                : {
+                    background: "transparent",
+                    color: "var(--color-text-secondary)",
+                    border: "1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)",
+                  }
+            }
+          >
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 };

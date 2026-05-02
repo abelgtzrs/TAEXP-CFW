@@ -174,6 +174,9 @@ exports.completeHabit = async (req, res) => {
     // Save both documents. Using Promise.all is efficient.
     const [updatedHabit, updatedUser] = await Promise.all([habit.save(), user.save()]);
 
+    // Populate activeAbelPersona so the client doesn't overwrite the theme with a raw ObjectId.
+    await updatedUser.populate({ path: "activeAbelPersona", model: "AbelPersonaBase" });
+
     // Create a user object to send back, excluding the password
     const userResponse = { ...updatedUser.toObject() };
     delete userResponse.password;

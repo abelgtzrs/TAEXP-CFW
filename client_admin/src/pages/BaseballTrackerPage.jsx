@@ -143,8 +143,46 @@ const PlayerResult = ({ player, active, watched, onSelect, onToggleWatch }) => (
   </button>
 );
 
+const DIVISION_ORDER = {
+  "American League": ["AL East", "AL Central", "AL West"],
+  "National League": ["NL East", "NL Central", "NL West"],
+};
+
+const formatPct = (pct) => {
+  if (pct == null || pct === "") return "--";
+  const n = Number(pct);
+  if (Number.isNaN(n)) return "--";
+  return n.toFixed(3).replace(/^0\./, ".");
+};
+
+const formatGB = (gb) => {
+  if (!gb || gb === "-") return "—";
+  return gb;
+};
+
+const gameStatusStyle = (game) => {
+  if (game.isLive) return "text-emerald-300";
+  if (game.isFinal) return "text-slate-500";
+  return "text-sky-400";
+};
+
 const LeaguePanel = ({ league }) => {
   const topStanding = league.standings?.[0];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayCount = (league.latestGames || []).filter((g) => g.date === todayStr).length;
+
+  const divisionOrder = DIVISION_ORDER[league.league] || [];
+  const divisionGroups = (league.standings || []).reduce((acc, team) => {
+    const div = team.division || "Other";
+    if (!acc[div]) acc[div] = [];
+    acc[div].push(team);
+    return acc;
+  }, {});
+
+  const orderedDivisions = [
+    ...divisionOrder.filter((d) => divisionGroups[d]),
+    ...Object.keys(divisionGroups).filter((d) => !divisionOrder.includes(d)),
+  ];
 
   return (
     <section className="rounded-[26px] border border-white/10 bg-slate-950/80 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl">
@@ -162,8 +200,11 @@ const LeaguePanel = ({ league }) => {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <MetricTile label="Top Record" value={topStanding ? topStanding.record : "--"} accent />
-        <MetricTile label="Leader" value={topStanding?.abbreviation || "--"} />
-        <MetricTile label="Tracked Games" value={(league.latestGames || []).length} />
+        <MetricTile
+          label="Leader"
+          value={topStanding ? `${topStanding.abbreviation} ${formatPct(topStanding.pct)}` : "--"}
+        />
+        <MetricTile label="Today's Games" value={todayCount || (league.latestGames || []).length} />
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-2">
@@ -172,17 +213,33 @@ const LeaguePanel = ({ league }) => {
             <ShieldCheck size={12} className="text-amber-300" />
             Standings
           </div>
-          <div className="space-y-2">
-            {(league.standings || []).slice(0, 6).map((team, index) => (
-              <div
-                key={team.teamId}
-                className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-5 text-xs text-slate-500">{index + 1}</span>
-                  <span className="font-medium text-slate-100">{team.name}</span>
+
+          <div className="mb-1 grid grid-cols-[1.5rem_1fr_auto_auto_auto] gap-x-2 px-1 text-[10px] uppercase tracking-[0.24em] text-slate-600">
+            <span />
+            <span>Team</span>
+            <span className="text-right">W-L</span>
+            <span className="w-10 text-right">PCT</span>
+            <span className="w-8 text-right">GB</span>
+          </div>
+
+          <div className="space-y-3">
+            {orderedDivisions.map((division) => (
+              <div key={division}>
+                <div className="mb-1 px-1 text-[10px] uppercase tracking-[0.3em] text-slate-600">{division}</div>
+                <div className="space-y-1">
+                  {(divisionGroups[division] || []).map((team, i) => (
+                    <div
+                      key={team.teamId}
+                      className="grid grid-cols-[1.5rem_1fr_auto_auto_auto] items-center gap-x-2 rounded-xl border border-white/10 bg-black/20 px-3 py-1.5 text-sm"
+                    >
+                      <span className="text-xs text-slate-600">{i + 1}</span>
+                      <span className="truncate font-medium text-slate-100">{team.name}</span>
+                      <span className="text-right text-slate-300">{team.record}</span>
+                      <span className="w-10 text-right text-xs text-slate-400">{formatPct(team.pct)}</span>
+                      <span className="w-8 text-right text-xs text-slate-500">{formatGB(team.gamesBack)}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-slate-300">{team.record}</div>
               </div>
             ))}
           </div>
@@ -194,15 +251,17 @@ const LeaguePanel = ({ league }) => {
             Latest scores
           </div>
           <div className="space-y-2">
-            {(league.latestGames || []).slice(0, 6).map((game) => (
+            {(league.latestGames || []).map((game) => (
               <div key={game.gameId} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                <div className="flex items-center justify-between gap-3 text-xs text-slate-400">
-                  <span>{formatDate(game.date)}</span>
-                  <span className={game.isLive ? "text-emerald-300" : "text-slate-400"}>{game.status}</span>
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-slate-500">{formatDate(game.date)}</span>
+                  <span className={`font-medium ${gameStatusStyle(game)}`}>{game.status}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-3">
                   <span className="text-sm text-slate-200">{game.matchup}</span>
-                  <span className="text-sm font-semibold text-white">{game.score}</span>
+                  <span className={`text-sm font-semibold ${game.score === "TBD" ? "text-slate-500" : "text-white"}`}>
+                    {game.score}
+                  </span>
                 </div>
               </div>
             ))}

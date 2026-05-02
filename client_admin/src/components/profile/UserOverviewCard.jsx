@@ -1,15 +1,11 @@
-import Widget from "../ui/Widget";
-import { useAuth } from "../../context/AuthContext";
-import { Images, Flame, MapPin, Link as LinkIcon, Star } from "lucide-react";
+﻿import { useAuth } from "../../context/AuthContext";
+import { Flame, Images, MapPin, Link as LinkIcon, Pencil, CalendarDays } from "lucide-react";
 
 export default function UserOverviewCard({ onEdit }) {
   const { user } = useAuth();
   if (!user) return null;
 
-  const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
-  const avatarUrl = user?.profilePicture
-    ? `${serverBaseUrl}${user.profilePicture}`
-    : `https://api.dicebear.com/8.x/pixel-art/svg?seed=${user?.username || "user"}`;
+  const accent = user?.activeAbelPersona?.colors?.primary || "#22d3ee";
 
   const totalCollectibles =
     (user?.pokemonCollection?.length || 0) +
@@ -18,60 +14,128 @@ export default function UserOverviewCard({ onEdit }) {
     (user?.yugiohCards?.length || 0);
 
   const streak = user?.currentLoginStreak || 0;
+  const xp = user?.experience || 0;
+  const xpNext = user?.xpToNextLevel || 0;
+  const xpPct = xpNext > 0 ? Math.max(0, Math.min(100, (xp / xpNext) * 100)) : 0;
+  const joined = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    : null;
 
   return (
-    <Widget title="Profile">
-      <div className="flex items-start gap-3">
-        {/* Small avatar */}
-        <div className="w-16 h-16 rounded-full overflow-hidden border border-white/15 shadow">
-          <img src={avatarUrl} alt={`${user.username} avatar`} className="w-full h-full object-cover" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-base font-semibold text-white truncate">{user.username}</h3>
-            {user?.equippedTitle?.titleBase?.name && (
-              <span className="inline-flex items-center gap-1 text-emerald-300 text-xs">
-                <Star size={14} /> {user.equippedTitle.titleBase.name}
+    <div className="rounded-2xl overflow-hidden" style={{ boxShadow: `0 0 0 1px rgba(255,255,255,0.05)` }}>
+      {/* Accent line */}
+      <div className="h-px w-full" style={{ background: `linear-gradient(90deg, ${accent}80 0%, ${accent}10 60%, transparent 100%)` }} />
+
+      <div className="p-5 space-y-5">
+
+        {/* Bio */}
+        {user?.bio && (
+          <p className="text-xs text-text-secondary leading-relaxed line-clamp-3 pl-3 border-l-[2px]"
+            style={{ borderColor: `${accent}60` }}>
+            {user.bio}
+          </p>
+        )}
+
+        {/* XP section */}
+        {xpNext > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-black leading-none"
+                  style={{ background: `${accent}18`, color: accent, outline: `1px solid ${accent}28` }}
+                >
+                  {user.level}
+                </span>
+                <span className="text-[11px] font-semibold text-text-secondary tracking-wide uppercase">Level {user.level}</span>
+              </div>
+              <span className="text-[10px] font-mono text-text-tertiary tabular-nums">
+                {xp.toLocaleString()} <span className="opacity-50">/</span> {xpNext.toLocaleString()}
               </span>
-            )}
-          </div>
-          {user?.motto && <div className="text-xs text-slate-300/90 italic mt-0.5 truncate">“{user.motto}”</div>}
-          <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
-            <div className="inline-flex items-center gap-1 text-slate-200">
-              <Images size={14} /> {totalCollectibles}
             </div>
-            <div className="inline-flex items-center gap-1 text-amber-300">
-              <Flame size={14} /> {streak}
+            <div className="h-1 rounded-full bg-background overflow-hidden">
+              <div
+                className="h-full rounded-full transition-[width] duration-700 ease-out"
+                style={{
+                  width: `${xpPct}%`,
+                  background: `linear-gradient(90deg, ${accent}99, ${accent})`,
+                  boxShadow: `0 0 6px ${accent}55`,
+                }}
+              />
             </div>
-            <div className="inline-flex items-center gap-1 text-sky-300">Lv {user.level}</div>
           </div>
-          <div className="mt-2 text-xs text-slate-300 flex items-center gap-3 flex-wrap">
-            {user.location && (
-              <span className="inline-flex items-center gap-1">
-                <MapPin size={14} /> {user.location}
-              </span>
-            )}
-            {user.website && (
-              <a
-                className="inline-flex items-center gap-1 text-teal-300 hover:text-teal-200 truncate max-w-full"
-                href={user.website}
-                target="_blank"
-                rel="noreferrer"
+        )}
+
+        {/* Stats row */}
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { icon: <Flame size={12} />, value: streak, label: "day streak", tint: "#f59e0b" },
+            { icon: <Images size={12} />, value: totalCollectibles, label: "collectibles", tint: "#38bdf8" },
+          ].map(({ icon, value, label, tint }) => (
+            <div key={label} className="bg-background rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+              <span
+                className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center"
+                style={{ background: `${tint}14`, color: tint }}
               >
-                <LinkIcon size={14} /> {user.website}
-              </a>
+                {icon}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-text-main tabular-nums leading-none">{value}</p>
+                <p className="text-[10px] text-text-tertiary leading-none mt-0.5">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Meta */}
+        {(user?.location || user?.website || joined) && (
+          <div className="space-y-1.5">
+            {user?.location && (
+              <div className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                <MapPin size={11} className="shrink-0 opacity-50" />
+                <span className="truncate">{user.location}</span>
+              </div>
+            )}
+            {user?.website && (
+              <div className="flex items-center gap-1.5 text-[11px]">
+                <LinkIcon size={11} className="shrink-0 text-text-tertiary opacity-50" />
+                <a
+                  href={user.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="truncate font-medium transition-opacity hover:opacity-80"
+                  style={{ color: accent }}
+                >
+                  {user.website.replace(/^https?:\/\//, "")}
+                </a>
+              </div>
+            )}
+            {joined && (
+              <div className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                <CalendarDays size={11} className="shrink-0 opacity-50" />
+                <span>Since {joined}</span>
+              </div>
             )}
           </div>
-        </div>
-      </div>
-      <div className="mt-3">
+        )}
+
+        {/* Edit button */}
         <button
           onClick={onEdit}
-          className="w-full px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm"
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-semibold tracking-wide uppercase transition-all duration-150 active:scale-[0.98]"
+          style={{
+            background: `${accent}10`,
+            color: accent,
+            outline: `1px solid ${accent}25`,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = `${accent}1e`; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = `${accent}10`; }}
         >
+          <Pencil size={11} />
           Edit Profile
         </button>
+
       </div>
-    </Widget>
+    </div>
   );
 }
