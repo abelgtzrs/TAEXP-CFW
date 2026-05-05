@@ -48,8 +48,9 @@ const DashboardPage = () => {
   const [showStreakModal, setShowStreakModal] = useState(false);
   const dashboardWidthRef = useRef(null);
   const activeColumnCountRef = useRef(activeColumnCount);
-  const pendingColumnCountRef = useRef(null);
-  const pendingColumnCountHitsRef = useRef(0);
+  // Stable ref so the ResizeObserver effect never re-runs just because applyLayoutProfile
+  // got a new function identity after a LayoutContext re-render (which it does on every call).
+  const applyLayoutProfileRef = useRef(applyLayoutProfile);
   // Team popover moved to global Header; local state removed
 
   const visibleWidgetCount = useMemo(() => {
@@ -63,6 +64,10 @@ const DashboardPage = () => {
   useEffect(() => {
     activeColumnCountRef.current = activeColumnCount;
   }, [activeColumnCount]);
+
+  useEffect(() => {
+    applyLayoutProfileRef.current = applyLayoutProfile;
+  }, [applyLayoutProfile]);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -167,43 +172,23 @@ const DashboardPage = () => {
   }, []);
 
   // Automatically adapt widget column count to page width.
+  // IMPORTANT: applyLayoutProfile is intentionally accessed via ref (not listed as a dep)
+  // because calling it updates LayoutContext state, which gives it a new function identity,
+  // which would otherwise re-run this effect and restart the ResizeObserver — creating an
+  // oscillation loop where the observer fires immediately on every re-attach.
   useEffect(() => {
     const target = dashboardWidthRef.current;
     if (!target) return undefined;
 
     let frameId = null;
 
-    const resetPendingColumnChange = () => {
-      pendingColumnCountRef.current = null;
-      pendingColumnCountHitsRef.current = 0;
-    };
-
-    const applyCountForWidth = (width, { force = false } = {}) => {
+    const applyCountForWidth = (width) => {
       const widthBasedCount = getAutoColumnCountForWidth(width);
       const maxUsefulColumns = getMaxUsefulColumnsForVisibleWidgets(visibleWidgetCount);
       const nextCount = Math.min(widthBasedCount, maxUsefulColumns);
-
-      if (nextCount === activeColumnCountRef.current) {
-        resetPendingColumnChange();
-        return;
-      }
-
-      if (!force) {
-        if (pendingColumnCountRef.current !== nextCount) {
-          pendingColumnCountRef.current = nextCount;
-          pendingColumnCountHitsRef.current = 1;
-          return;
-        }
-
-        pendingColumnCountHitsRef.current += 1;
-        if (pendingColumnCountHitsRef.current < 2) {
-          return;
-        }
-      }
-
-      applyLayoutProfile(nextCount);
+      if (nextCount === activeColumnCountRef.current) return;
+      applyLayoutProfileRef.current(nextCount);
       activeColumnCountRef.current = nextCount;
-      resetPendingColumnChange();
     };
 
     const scheduleApply = (width) => {
@@ -212,12 +197,14 @@ const DashboardPage = () => {
     };
 
     const initialWidth = target.getBoundingClientRect().width || target.clientWidth || window.innerWidth;
-    applyCountForWidth(initialWidth, { force: true });
+    applyCountForWidth(initialWidth);
 
     if (typeof ResizeObserver !== "undefined") {
-      const observer = new ResizeObserver((entries) => {
-        const width = entries[0]?.contentRect?.width || target.clientWidth || window.innerWidth;
-        scheduleApply(width);
+      const observer = new ResizeObserver(() => {
+        // Use offsetWidth (border box) to match getBoundingClientRect().width used for
+        // the initial measurement. contentRect.width strips padding, which puts us below
+        // the 1600px threshold even when the element is at full 1600px width.
+        scheduleApply(target.offsetWidth || window.innerWidth);
       });
 
       observer.observe(target);
@@ -235,7 +222,7 @@ const DashboardPage = () => {
       if (frameId) cancelAnimationFrame(frameId);
       window.removeEventListener("resize", onResize);
     };
-  }, [applyLayoutProfile, getAutoColumnCountForWidth, visibleWidgetCount]);
+  }, [getAutoColumnCountForWidth, visibleWidgetCount]);
 
   return (
     <div

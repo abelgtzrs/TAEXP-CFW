@@ -2,13 +2,13 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
-import UserOverviewCard from "../components/profile/UserOverviewCard";
-import BadgeDisplay from "../components/profile/BadgeDisplay";
-import UserStatsWidget from "../components/profile/UserStatsWidget";
-import DisplayedCollection from "../components/profile/DisplayedCollection";
-import CompactDisplayedCollections from "../components/profile/CompactDisplayedCollections";
 import { Flame, Images, Star, Award, BarChart2, LayoutGrid, Settings } from "lucide-react";
-import ProfileEditPanel from "../components/profile/ProfileEditPanel";
+import { useAppearance, AVATAR_SHAPE_RADIUS, AVATAR_RING_PAD } from "../hooks/useAppearance";
+import OverviewTab from "./profile/OverviewTab";
+import CollectionsTab from "./profile/CollectionsTab";
+import BadgesTab from "./profile/BadgesTab";
+import StatsTab from "./profile/StatsTab";
+import EditTab from "./profile/EditTab";
 
 /**
  * ProfilePage - Redesigned user profile dashboard.
@@ -49,37 +49,6 @@ function ProfileSkeleton() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function SliderControl({ label, id, min, max, step, value, onChange, defaultValue, unit, accent }) {
-  return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <label htmlFor={id} className="text-xs text-white/50 w-28 shrink-0 font-medium">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="flex-1 min-w-[8rem] cursor-pointer"
-        style={{ accentColor: accent }}
-      />
-      <span className="text-xs font-mono text-white/50 w-14 text-right tabular-nums">
-        {value}{unit}
-      </span>
-      <button
-        type="button"
-        onClick={() => onChange(defaultValue)}
-        className="text-[11px] text-white/25 hover:text-white/55 transition-colors"
-      >
-        Reset
-      </button>
     </div>
   );
 }
@@ -161,9 +130,15 @@ const ProfilePage = () => {
     } catch {}
   }, [bannerHeightPx]);
 
+  const appearance = useAppearance();
+
   if (loading || !user) return <ProfileSkeleton />;
 
-  const accent = user?.activeAbelPersona?.colors?.primary || "#22d3ee";
+  const personaAccent = user?.activeAbelPersona?.colors?.primary || "#22d3ee";
+  const accent = appearance.accentOverride || personaAccent;
+  const avatarRadius = AVATAR_SHAPE_RADIUS[appearance.avatarShape] || "50%";
+  const ringPad = AVATAR_RING_PAD[appearance.avatarRing] || 3;
+  const glowAlpha = Math.round((appearance.avatarGlow / 100) * 80).toString(16).padStart(2, "0");
   const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
   const avatarUrl = user?.profilePicture
     ? `${serverBaseUrl}${user.profilePicture}`
@@ -223,20 +198,20 @@ const ProfilePage = () => {
           <div className="flex flex-col items-center sm:flex-row sm:items-end gap-3 sm:gap-4">
             {/* Avatar with persona accent ring */}
             <div
-              className="shrink-0 rounded-full p-[3px] relative"
+              className="shrink-0 relative"
               style={{
+                borderRadius: avatarRadius,
+                padding: ringPad,
                 background: `linear-gradient(135deg, ${accent}, ${accent}50)`,
-                boxShadow: `0 0 20px ${accent}45, 0 4px 20px rgba(0,0,0,0.55)`,
+                boxShadow: appearance.avatarGlow > 0 ? `0 0 20px ${accent}${glowAlpha}, 0 4px 20px rgba(0,0,0,0.55)` : "0 4px 20px rgba(0,0,0,0.55)",
               }}
             >
-              <div
-                className="rounded-full overflow-hidden"
-                style={{ padding: 2, background: "var(--color-bg)" }}
-              >
+              <div className="overflow-hidden" style={{ borderRadius: avatarRadius, padding: 2, background: "var(--color-bg)" }}>
                 <img
                   src={avatarUrl}
                   alt={`${user.username} avatar`}
-                  className="w-20 h-20 sm:w-[110px] sm:h-[110px] rounded-full object-cover block"
+                  style={{ borderRadius: avatarRadius }}
+                  className="w-20 h-20 sm:w-[110px] sm:h-[110px] object-cover block"
                 />
               </div>
               <div
@@ -275,9 +250,9 @@ const ProfilePage = () => {
               )}
 
               <div className="mt-2 flex items-center justify-center sm:justify-start gap-3 flex-wrap">
-                <StatChip icon={<Flame size={12} />} value={`${streak}d`} label="streak" color="text-amber-400" />
-                <StatChip icon={<Images size={12} />} value={totalCollectibles} label="items" color="text-sky-400" />
-                {earnedBadges.length > 0 && (
+                {appearance.showStreakChip && <StatChip icon={<Flame size={12} />} value={`${streak}d`} label="streak" color="text-amber-400" />}
+                {appearance.showItemsChip && <StatChip icon={<Images size={12} />} value={totalCollectibles} label="items" color="text-sky-400" />}
+                {appearance.showBadgesChip && earnedBadges.length > 0 && (
                   <StatChip
                     icon={<Award size={12} />}
                     value={earnedBadges.length}
@@ -326,119 +301,23 @@ const ProfilePage = () => {
       <div className="pt-5 pb-12">
         <AnimatePresence mode="wait" initial={false}>
           {activeTab === "overview" && (
-            <motion.div
+            <OverviewTab
               key="overview"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.18 }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start"
-            >
-              <div className="lg:col-span-1 space-y-4">
-                <UserOverviewCard onEdit={() => setActiveTab("edit")} />
-                <BadgeDisplay
-                  allBadges={allBadges}
-                  earnedBadges={earnedBadges}
-                  activeCollectionKey={user.activeBadgeCollectionKey || ""}
-                />
-              </div>
-              <div className="lg:col-span-2 space-y-4">
-                <CompactDisplayedCollections
-                  displayedPokemon={user.displayedPokemon || []}
-                  displayedSnoopyArt={user.displayedSnoopyArt || []}
-                  displayedHabboRares={user.displayedHabboRares || []}
-                  displayedYugiohCards={user.displayedYugiohCards || []}
-                />
-              </div>
-            </motion.div>
+              allBadges={allBadges}
+              earnedBadges={earnedBadges}
+              user={user}
+              onEditClick={() => setActiveTab("edit")}
+            />
           )}
-
           {activeTab === "collections" && (
-            <motion.div
-              key="collections"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.18 }}
-              className="space-y-4"
-            >
-              {collectionsState.loading && (
-                <div className="flex flex-col items-center justify-center py-16 gap-3">
-                  <div
-                    className="w-8 h-8 rounded-full border-2 border-white/15 animate-spin"
-                    style={{ borderTopColor: accent }}
-                  />
-                  <p className="text-xs text-white/35">Loading collections&hellip;</p>
-                </div>
-              )}
-              {collectionsState.error && (
-                <p className="text-red-400 text-sm text-center py-8">{collectionsState.error}</p>
-              )}
-              {!collectionsState.loading && !collectionsState.error && (
-                <>
-                  <DisplayedCollection title="Pok&eacute;mon" items={collectionsState.pokemon} baseField="basePokemon" />
-                  <DisplayedCollection title="Snoopy Art" items={collectionsState.snoopy} baseField="snoopyArtBase" />
-                  <DisplayedCollection title="Habbo Rares" items={collectionsState.habbo} baseField="habboRareBase" />
-                  <DisplayedCollection title="Yu-Gi-Oh!" items={collectionsState.yugioh} baseField="yugiohCardBase" />
-                </>
-              )}
-            </motion.div>
+            <CollectionsTab key="collections" collectionsState={collectionsState} accent={accent} />
           )}
-
           {activeTab === "badges" && (
-            <motion.div
-              key="badges"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.18 }}
-            >
-              <BadgeDisplay
-                allBadges={allBadges}
-                earnedBadges={earnedBadges}
-                activeCollectionKey={user.activeBadgeCollectionKey || ""}
-              />
-            </motion.div>
+            <BadgesTab key="badges" allBadges={allBadges} earnedBadges={earnedBadges} user={user} />
           )}
-
-          {activeTab === "stats" && (
-            <motion.div
-              key="stats"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.18 }}
-            >
-              <UserStatsWidget stats={dashboardStats} />
-            </motion.div>
-          )}
-
+          {activeTab === "stats" && <StatsTab key="stats" stats={dashboardStats} />}
           {activeTab === "edit" && (
-            <motion.div
-              key="edit"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.18 }}
-              className="max-w-2xl space-y-5"
-            >
-              <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5 space-y-4">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/30">Layout</p>
-                <SliderControl
-                  label="Banner height"
-                  id="bannerHeight"
-                  min={160}
-                  max={520}
-                  step={8}
-                  value={bannerHeightPx}
-                  onChange={setBannerHeightPx}
-                  defaultValue={260}
-                  unit="px"
-                  accent={accent}
-                />
-              </div>
-              <ProfileEditPanel />
-            </motion.div>
+            <EditTab key="edit" bannerHeightPx={bannerHeightPx} setBannerHeightPx={setBannerHeightPx} accent={accent} />
           )}
         </AnimatePresence>
       </div>
