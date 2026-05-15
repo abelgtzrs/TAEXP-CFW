@@ -9,6 +9,7 @@ const WorkoutLog = require("../models/userSpecific/WorkoutLog");
 const Volume = require("../models/Volume");
 const Task = require("../models/userSpecific/Task");
 const Budget = require("../models/Budget");
+const SpotifyLog = require("../models/SpotifyLogs");
 const mongoose = require("mongoose");
 
 // --- Daily Login Streak Utilities ---
@@ -503,13 +504,15 @@ const updateDisplayedItems = async (req, res) => {
 const getDashboardStats = async (req, res) => {
   try {
     const userId = req.user.id;
-    const userRole = req.user.role;
 
     // --- Basic Stats ---
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
+    const startOfYear = new Date(startOfToday.getFullYear(), 0, 1);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
     const [
       habitsCompletedToday,
@@ -520,6 +523,20 @@ const getDashboardStats = async (req, res) => {
       workoutsThisWeek,
       budgetAgg,
       user,
+      lifetimeTaskAgg,
+      taskSubtaskAgg,
+      spotifyTotalAgg,
+      spotifyTodayAgg,
+      spotifyWeekAgg,
+      spotifyMonthAgg,
+      spotifyYearAgg,
+      spotifyTopArtistAgg,
+      spotifyTopAlbumAgg,
+      spotifyTopTrackAgg,
+      workoutAgg,
+      workoutFeelingAgg,
+      bookAgg,
+      volumeAgg,
     ] = await Promise.all([
       Habit.countDocuments({ user: userId, lastCompletedDate: { $gte: startOfToday } }),
       Book.countDocuments({ user: userId, isFinished: true }),
@@ -528,12 +545,12 @@ const getDashboardStats = async (req, res) => {
       Task.countDocuments({ user: userId, status: { $in: ["todo", "in-progress"] } }),
       WorkoutLog.countDocuments({ user: userId, date: { $gte: oneWeekAgo } }),
       Budget.aggregate([
-        { $match: { user: new mongoose.Types.ObjectId(userId) } },
+        { $match: { user: userObjectId } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
       User.findById(userId)
         .select(
-          "currentLoginStreak longestLoginStreak pokemonCollection snoopyArtCollection habboRares yugiohCards yearlyGoals",
+          "currentLoginStreak longestLoginStreak pokemonCollection snoopyArtCollection habboRares yugiohCards yearlyGoals spotifyConnected",
         )
         .populate({
           path: "pokemonCollection",
@@ -555,6 +572,232 @@ const getDashboardStats = async (req, res) => {
           options: { sort: { createdAt: -1 } },
           populate: { path: "yugiohCardBase" },
         }),
+      Task.aggregate([
+        { $match: { user: userObjectId } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+            todo: { $sum: { $cond: [{ $eq: ["$status", "todo"] }, 1, 0] } },
+            inProgress: { $sum: { $cond: [{ $eq: ["$status", "in-progress"] }, 1, 0] } },
+            urgent: { $sum: { $cond: [{ $eq: ["$priority", "urgent"] }, 1, 0] } },
+            highPriority: { $sum: { $cond: [{ $in: ["$priority", ["high", "urgent"]] }, 1, 0] } },
+          },
+        },
+      ]),
+      Task.aggregate([
+        { $match: { user: userObjectId } },
+        {
+          $project: {
+            totalSubtasks: { $size: { $ifNull: ["$subTasks", []] } },
+            completedSubtasks: {
+              $size: {
+                $filter: {
+                  input: { $ifNull: ["$subTasks", []] },
+                  as: "subTask",
+                  cond: { $eq: ["$$subTask.isCompleted", true] },
+                },
+              },
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSubtasks: { $sum: "$totalSubtasks" },
+            completedSubtasks: { $sum: "$completedSubtasks" },
+          },
+        },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: userObjectId } },
+        {
+          $group: {
+            _id: null,
+            tracks: { $sum: 1 },
+            minutes: { $sum: { $divide: ["$durationMs", 60000] } },
+            firstPlayedAt: { $min: "$playedAt" },
+            lastPlayedAt: { $max: "$playedAt" },
+          },
+        },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: userObjectId, playedAt: { $gte: startOfToday } } },
+        { $group: { _id: null, tracks: { $sum: 1 }, minutes: { $sum: { $divide: ["$durationMs", 60000] } } } },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: userObjectId, playedAt: { $gte: oneWeekAgo } } },
+        { $group: { _id: null, tracks: { $sum: 1 }, minutes: { $sum: { $divide: ["$durationMs", 60000] } } } },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: userObjectId, playedAt: { $gte: startOfMonth } } },
+        { $group: { _id: null, tracks: { $sum: 1 }, minutes: { $sum: { $divide: ["$durationMs", 60000] } } } },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: userObjectId, playedAt: { $gte: startOfYear } } },
+        { $group: { _id: null, tracks: { $sum: 1 }, minutes: { $sum: { $divide: ["$durationMs", 60000] } } } },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: userObjectId } },
+        { $group: { _id: "$artistName", plays: { $sum: 1 }, minutes: { $sum: { $divide: ["$durationMs", 60000] } } } },
+        { $sort: { plays: -1 } },
+        { $limit: 5 },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: userObjectId } },
+        { $group: { _id: "$albumName", plays: { $sum: 1 }, minutes: { $sum: { $divide: ["$durationMs", 60000] } } } },
+        { $sort: { plays: -1 } },
+        { $limit: 5 },
+      ]),
+      SpotifyLog.aggregate([
+        { $match: { user: userObjectId } },
+        {
+          $group: {
+            _id: { track: "$trackName", artist: "$artistName" },
+            plays: { $sum: 1 },
+            minutes: { $sum: { $divide: ["$durationMs", 60000] } },
+          },
+        },
+        { $sort: { plays: -1 } },
+        { $limit: 5 },
+      ]),
+      WorkoutLog.aggregate([
+        { $match: { user: userObjectId } },
+        {
+          $project: {
+            duration: { $ifNull: ["$durationSessionMinutes", 0] },
+            exerciseCount: { $size: { $ifNull: ["$exercises", []] } },
+            totalSets: {
+              $reduce: {
+                input: { $ifNull: ["$exercises", []] },
+                initialValue: 0,
+                in: { $add: ["$$value", { $size: { $ifNull: ["$$this.sets", []] } }] },
+              },
+            },
+            totalReps: {
+              $reduce: {
+                input: { $ifNull: ["$exercises", []] },
+                initialValue: 0,
+                in: {
+                  $add: [
+                    "$$value",
+                    {
+                      $reduce: {
+                        input: { $ifNull: ["$$this.sets", []] },
+                        initialValue: 0,
+                        in: { $add: ["$$value", { $ifNull: ["$$this.reps", 0] }] },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            totalVolume: {
+              $reduce: {
+                input: { $ifNull: ["$exercises", []] },
+                initialValue: 0,
+                in: {
+                  $add: [
+                    "$$value",
+                    {
+                      $reduce: {
+                        input: { $ifNull: ["$$this.sets", []] },
+                        initialValue: 0,
+                        in: {
+                          $add: [
+                            "$$value",
+                            { $multiply: [{ $ifNull: ["$$this.reps", 0] }, { $ifNull: ["$$this.weight", 0] }] },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            totalCalories: {
+              $reduce: {
+                input: { $ifNull: ["$exercises", []] },
+                initialValue: 0,
+                in: { $add: ["$$value", { $ifNull: ["$$this.caloriesBurned", 0] }] },
+              },
+            },
+            totalDistance: {
+              $reduce: {
+                input: { $ifNull: ["$exercises", []] },
+                initialValue: 0,
+                in: { $add: ["$$value", { $ifNull: ["$$this.distance", 0] }] },
+              },
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            sessions: { $sum: 1 },
+            durationMinutes: { $sum: "$duration" },
+            exercises: { $sum: "$exerciseCount" },
+            sets: { $sum: "$totalSets" },
+            reps: { $sum: "$totalReps" },
+            volume: { $sum: "$totalVolume" },
+            calories: { $sum: "$totalCalories" },
+            distance: { $sum: "$totalDistance" },
+          },
+        },
+      ]),
+      WorkoutLog.aggregate([
+        { $match: { user: userObjectId, overallFeeling: { $exists: true, $ne: null } } },
+        { $group: { _id: "$overallFeeling", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+      Book.aggregate([
+        { $match: { user: userObjectId } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            finished: { $sum: { $cond: ["$isFinished", 1, 0] } },
+            active: { $sum: { $cond: ["$isFinished", 0, 1] } },
+            owned: { $sum: { $cond: ["$isOwned", 1, 0] } },
+            pagesRead: { $sum: { $ifNull: ["$pagesRead", 0] } },
+            totalPages: { $sum: { $ifNull: ["$totalPages", 0] } },
+            ratings: { $sum: { $cond: [{ $gt: ["$userRating", null] }, 1, 0] } },
+            ratingSum: { $sum: { $ifNull: ["$userRating", 0] } },
+            notes: { $sum: { $cond: [{ $gt: [{ $strLenCP: { $ifNull: ["$notes", ""] } }, 0] }, 1, 0] } },
+            pdfs: { $sum: { $cond: [{ $gt: [{ $strLenCP: { $ifNull: ["$pdfUrl", ""] } }, 0] }, 1, 0] } },
+          },
+        },
+      ]),
+      Volume.aggregate([
+        { $match: { createdBy: userObjectId } },
+        {
+          $project: {
+            status: 1,
+            favoriteCount: { $ifNull: ["$favoriteCount", 0] },
+            ratingCount: { $ifNull: ["$ratingCount", 0] },
+            averageRating: { $ifNull: ["$averageRating", 0] },
+            blessingCount: { $size: { $ifNull: ["$blessings", []] } },
+            bodyLineCount: { $size: { $ifNull: ["$bodyLines", []] } },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            published: { $sum: { $cond: [{ $eq: ["$status", "published"] }, 1, 0] } },
+            drafts: { $sum: { $cond: [{ $eq: ["$status", "draft"] }, 1, 0] } },
+            archived: { $sum: { $cond: [{ $eq: ["$status", "archived"] }, 1, 0] } },
+            favorites: { $sum: "$favoriteCount" },
+            ratings: { $sum: "$ratingCount" },
+            ratingPoints: { $sum: { $multiply: ["$averageRating", "$ratingCount"] } },
+            blessings: { $sum: "$blessingCount" },
+            bodyLines: { $sum: "$bodyLineCount" },
+            publishedBlessings: { $sum: { $cond: [{ $eq: ["$status", "published"] }, "$blessingCount", 0] } },
+            publishedBodyLines: { $sum: { $cond: [{ $eq: ["$status", "published"] }, "$bodyLineCount", 0] } },
+          },
+        },
+      ]),
     ]);
 
     // --- Recent Acquisitions Logic ---
@@ -617,17 +860,113 @@ const getDashboardStats = async (req, res) => {
       })
       .filter((item) => item && item.name);
 
-    // --- Admin-specific Stats ---
-    let volumesPublished = 0;
-    if (userRole === "admin") {
-      volumesPublished = await Volume.countDocuments({ createdBy: userId, status: "published" });
-    }
-
     const totalCollectibles =
       user.pokemonCollection.length +
       user.snoopyArtCollection.length +
       user.habboRares.length +
       user.yugiohCards.length;
+
+    const taskStats = {
+      total: lifetimeTaskAgg[0]?.total || 0,
+      completed: lifetimeTaskAgg[0]?.completed || 0,
+      todo: lifetimeTaskAgg[0]?.todo || 0,
+      inProgress: lifetimeTaskAgg[0]?.inProgress || 0,
+      pending: tasksPending,
+      urgent: lifetimeTaskAgg[0]?.urgent || 0,
+      highPriority: lifetimeTaskAgg[0]?.highPriority || 0,
+      completedToday: tasksCompletedToday,
+      totalSubtasks: taskSubtaskAgg[0]?.totalSubtasks || 0,
+      completedSubtasks: taskSubtaskAgg[0]?.completedSubtasks || 0,
+    };
+
+    const musicStats = {
+      connected: Boolean(user.spotifyConnected),
+      totalTracks: spotifyTotalAgg[0]?.tracks || 0,
+      totalMinutes: Math.round(spotifyTotalAgg[0]?.minutes || 0),
+      totalHours: Math.round(((spotifyTotalAgg[0]?.minutes || 0) / 60) * 100) / 100,
+      todayTracks: spotifyTodayAgg[0]?.tracks || 0,
+      todayMinutes: Math.round(spotifyTodayAgg[0]?.minutes || 0),
+      weekTracks: spotifyWeekAgg[0]?.tracks || 0,
+      weekMinutes: Math.round(spotifyWeekAgg[0]?.minutes || 0),
+      monthTracks: spotifyMonthAgg[0]?.tracks || 0,
+      monthMinutes: Math.round(spotifyMonthAgg[0]?.minutes || 0),
+      yearTracks: spotifyYearAgg[0]?.tracks || 0,
+      yearMinutes: Math.round(spotifyYearAgg[0]?.minutes || 0),
+      firstPlayedAt: spotifyTotalAgg[0]?.firstPlayedAt || null,
+      lastPlayedAt: spotifyTotalAgg[0]?.lastPlayedAt || null,
+      topArtist: spotifyTopArtistAgg[0]
+        ? {
+            name: spotifyTopArtistAgg[0]._id,
+            plays: spotifyTopArtistAgg[0].plays,
+            minutes: Math.round(spotifyTopArtistAgg[0].minutes || 0),
+          }
+        : null,
+      topArtists: spotifyTopArtistAgg.map((artist) => ({
+        name: artist._id || "Unknown Artist",
+        plays: artist.plays,
+        minutes: Math.round(artist.minutes || 0),
+      })),
+      topAlbums: spotifyTopAlbumAgg.map((album) => ({
+        name: album._id || "Unknown Album",
+        plays: album.plays,
+        minutes: Math.round(album.minutes || 0),
+      })),
+      topTracks: spotifyTopTrackAgg.map((track) => ({
+        name: track._id?.track || "Unknown Track",
+        artist: track._id?.artist || "Unknown Artist",
+        plays: track.plays,
+        minutes: Math.round(track.minutes || 0),
+      })),
+    };
+
+    const workoutTotals = workoutAgg[0] || {};
+    const workoutStats = {
+      sessions: workoutTotals.sessions || 0,
+      thisWeek: workoutsThisWeek,
+      durationMinutes: Math.round(workoutTotals.durationMinutes || 0),
+      durationHours: Math.round(((workoutTotals.durationMinutes || 0) / 60) * 100) / 100,
+      exercises: workoutTotals.exercises || 0,
+      sets: workoutTotals.sets || 0,
+      reps: workoutTotals.reps || 0,
+      volume: Math.round(workoutTotals.volume || 0),
+      calories: Math.round(workoutTotals.calories || 0),
+      distance: Math.round((workoutTotals.distance || 0) * 100) / 100,
+      averageDuration:
+        workoutTotals.sessions > 0 ? Math.round((workoutTotals.durationMinutes / workoutTotals.sessions) * 10) / 10 : 0,
+      feelings: workoutFeelingAgg.map((feeling) => ({ label: feeling._id, count: feeling.count })),
+    };
+
+    const bookTotals = bookAgg[0] || {};
+    const bookStats = {
+      total: bookTotals.total || 0,
+      finished: bookTotals.finished || 0,
+      active: bookTotals.active || 0,
+      owned: bookTotals.owned || 0,
+      pagesRead: bookTotals.pagesRead || 0,
+      totalPages: bookTotals.totalPages || 0,
+      pagesLeft: Math.max((bookTotals.totalPages || 0) - (bookTotals.pagesRead || 0), 0),
+      completionRate: bookTotals.totalPages > 0 ? Math.round(((bookTotals.pagesRead || 0) / bookTotals.totalPages) * 100) : 0,
+      ratings: bookTotals.ratings || 0,
+      averageRating: bookTotals.ratings > 0 ? Math.round((bookTotals.ratingSum / bookTotals.ratings) * 100) / 100 : 0,
+      notes: bookTotals.notes || 0,
+      pdfs: bookTotals.pdfs || 0,
+    };
+
+    const volumeTotals = volumeAgg[0] || {};
+    const volumeStats = {
+      total: volumeTotals.total || 0,
+      published: volumeTotals.published || 0,
+      drafts: volumeTotals.drafts || 0,
+      archived: volumeTotals.archived || 0,
+      favorites: volumeTotals.favorites || 0,
+      ratings: volumeTotals.ratings || 0,
+      averageRating:
+        volumeTotals.ratings > 0 ? Math.round((volumeTotals.ratingPoints / volumeTotals.ratings) * 100) / 100 : 0,
+      blessings: volumeTotals.blessings || 0,
+      bodyLines: volumeTotals.bodyLines || 0,
+      publishedBlessings: volumeTotals.publishedBlessings || 0,
+      publishedBodyLines: volumeTotals.publishedBodyLines || 0,
+    };
 
     const stats = {
       // For StatBoxRow
@@ -637,11 +976,16 @@ const getDashboardStats = async (req, res) => {
       activeStreaks: user.currentLoginStreak || 0,
       longestLoginStreak: user.longestLoginStreak || 0,
       totalWorkouts: totalWorkouts,
-      volumesPublished: volumesPublished,
+      volumesPublished: volumeStats.published,
       tasksCompletedToday: tasksCompletedToday,
       tasksPending: tasksPending,
       workoutsThisWeek: workoutsThisWeek,
       totalBudget: budgetAgg.length > 0 ? budgetAgg[0].total : 0,
+      taskStats,
+      musicStats,
+      volumeStats,
+      workoutStats,
+      bookStats,
 
       // For Widgets
       recentAcquisitions: recentAcquisitions,

@@ -8,7 +8,7 @@ import {
   STRENGTH_PRESET,
   CARDIO_PRESET,
   FLEX_PRESET,
-} from "./AdminExercisesPage.jsx";
+} from "../constants/exerciseOptions";
 
 const example = `{"date":"2025-09-15","exercises":[{"nameRaw":"Lat Pulldown","unit":"lb","sets":[{"setNumber":1,"reps":12,"weight":100},{"setNumber":2,"reps":12,"weight":115},{"setNumber":3,"reps":5,"weight":115},{"setNumber":4,"reps":10,"weight":115,"notes":"reverse grip"}]},{"nameRaw":"Low Row","unit":"lb","sets":[{"setNumber":1,"reps":10,"weight":100},{"setNumber":2,"reps":7,"weight":100},{"setNumber":3,"reps":10,"weight":85},{"setNumber":4,"reps":5,"weight":85}]},{"nameRaw":"Rear Delt Fly","unit":"lb","sets":[{"setNumber":1,"reps":8,"weight":50},{"setNumber":2,"reps":12,"weight":40},{"setNumber":3,"reps":8,"weight":40}]},{"nameRaw":"Barbell Curl","unit":"lb","sets":[{"setNumber":1,"reps":11,"weight":40}]},{"nameRaw":"Reverse Curl","unit":"lb","sets":[{"setNumber":1,"reps":3,"weight":40}]}]}
 {"date":"2025-09-18","exercises":[{"nameRaw":"Chest Press","unit":"lb","sets":[{"setNumber":1,"reps":15,"weight":100},{"setNumber":2,"reps":6,"weight":110},{"setNumber":3,"reps":7,"weight":100}]},{"nameRaw":"Tricep Pressdown","unit":"lb","sets":[{"setNumber":1,"reps":15,"weight":40},{"setNumber":2,"reps":8,"weight":45},{"setNumber":3,"reps":6,"weight":45},{"setNumber":4,"reps":6,"weight":40}]},{"nameRaw":"Pec Fly","unit":"lb","sets":[{"setNumber":1,"reps":15,"weight":90},{"setNumber":2,"reps":2,"weight":100},{"setNumber":3,"reps":3,"weight":90},{"setNumber":4,"reps":9,"weight":80}]},{"nameRaw":"Tricep Press","unit":"lb","sets":[{"setNumber":1,"reps":20,"weight":100},{"setNumber":2,"reps":10,"weight":130},{"setNumber":3,"reps":8,"weight":130}]}]}`;
