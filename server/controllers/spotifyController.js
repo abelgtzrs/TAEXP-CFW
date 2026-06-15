@@ -6,11 +6,93 @@ const SpotifyLog = require("../models/SpotifyLogs");
 const SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || "http://127.0.0.1:5000/api/spotify/callback";
+const SPOTIFY_REQUEST_TIMEOUT_MS = Number.parseInt(process.env.SPOTIFY_REQUEST_TIMEOUT_MS || "8000", 10);
+const CURRENTLY_PLAYING_CACHE_TTL_MS = 10000;
+const TRANSIENT_SPOTIFY_ERROR_CODES = new Set(["ECONNABORTED", "ECONNRESET", "ETIMEDOUT", "ENOTFOUND"]);
+const TRANSIENT_SPOTIFY_STATUS_CODES = new Set([408, 425, 500, 502, 503, 504]);
+const currentlyPlayingCache = new Map();
+const currentlyPlayingRequests = new Map();
 
 const hasSpotifyClientCredentials = () => Boolean(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET);
 
+const getPlainTextError = (value) => {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+
+  return normalized.length > 180 ? `${normalized.slice(0, 177)}...` : normalized;
+};
+
 const getSpotifyErrorMessage = (error) =>
-  error.response?.data?.error?.message || error.response?.data?.message || error.message || "Unknown Spotify error";
+  getPlainTextError(error.response?.data) ||
+  error.response?.data?.error?.message ||
+  error.response?.data?.message ||
+  error.message ||
+  "Unknown Spotify error";
+
+const logSpotifyError = (label, error) => {
+  const status = error.response?.status;
+  const code = error.code;
+  const message = getSpotifyErrorMessage(error);
+  const detail = [status ? `HTTP ${status}` : null, code || null, message || null].filter(Boolean).join(" | ");
+
+  console.error(`${label}: ${detail || "Unknown Spotify error"}`);
+};
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const shouldRetrySpotifyRequest = (error) =>
+  TRANSIENT_SPOTIFY_ERROR_CODES.has(error.code) || TRANSIENT_SPOTIFY_STATUS_CODES.has(error.response?.status);
+
+const buildSpotifyRequestConfig = (accessToken, options = {}) => {
+  const { headers, timeout, ...restOptions } = options;
+
+  return {
+    ...restOptions,
+    timeout: timeout ?? SPOTIFY_REQUEST_TIMEOUT_MS,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...headers,
+    },
+  };
+};
+
+const performSpotifyGet = async (accessToken, url, options = {}) => {
+  let lastError;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await axios.get(url, buildSpotifyRequestConfig(accessToken, options));
+    } catch (error) {
+      lastError = error;
+      if (!shouldRetrySpotifyRequest(error) || attempt === 1) {
+        throw error;
+      }
+      await wait(250 * (attempt + 1));
+    }
+  }
+
+  throw lastError;
+};
+
+const getCachedCurrentlyPlaying = (userId) => {
+  const key = String(userId);
+  const cached = currentlyPlayingCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    currentlyPlayingCache.delete(key);
+    return null;
+  }
+  return cached.payload;
+};
+
+const setCachedCurrentlyPlaying = (userId, payload) => {
+  currentlyPlayingCache.set(String(userId), {
+    payload,
+    expiresAt: Date.now() + CURRENTLY_PLAYING_CACHE_TTL_MS,
+  });
+};
 
 // Small helper to determine if the current access token is expired or about to expire
 const isAccessTokenExpired = (user) => {
@@ -37,6 +119,7 @@ const refreshSpotifyToken = async (user) => {
     const response = await axios({
       method: "post",
       url: SPOTIFY_TOKEN_URL,
+      timeout: SPOTIFY_REQUEST_TIMEOUT_MS,
       data: querystring.stringify({
         grant_type: "refresh_token",
         refresh_token: user.spotifyRefreshToken,
@@ -65,7 +148,7 @@ const refreshSpotifyToken = async (user) => {
 
     return updatedUser;
   } catch (error) {
-    console.error("Token refresh failed:", error.response?.data || error.message);
+    logSpotifyError("Token refresh failed", error);
     throw error;
   }
 };
@@ -100,6 +183,10 @@ const sendSpotifyErrorResponse = (res, error, fallbackMessage) => {
     return res.status(400).json({ success: false, message: "Spotify permission denied. Please re-authorize." });
   }
 
+  if (status && TRANSIENT_SPOTIFY_STATUS_CODES.has(status)) {
+    return res.status(502).json({ success: false, message: "Spotify is temporarily unavailable. Please try again soon." });
+  }
+
   if (status === 400 && /invalid_grant|refresh token/i.test(errMsg)) {
     return res
       .status(400)
@@ -112,7 +199,7 @@ const sendSpotifyErrorResponse = (res, error, fallbackMessage) => {
       .json({ success: false, message: "Spotify credentials are invalid on the server. Please contact support." });
   }
 
-  if (error.code && ["ENOTFOUND", "ECONNRESET", "ETIMEDOUT"].includes(error.code)) {
+  if (error.code && TRANSIENT_SPOTIFY_ERROR_CODES.has(error.code)) {
     return res
       .status(502)
       .json({ success: false, message: "Network error contacting Spotify. Please try again soon." });
@@ -131,10 +218,7 @@ const makeSpotifyRequest = async (user, url, options = {}) => {
       workingUser = await refreshSpotifyToken(workingUser);
     }
 
-    const response = await axios.get(url, {
-      headers: { Authorization: `Bearer ${workingUser.spotifyAccessToken}` },
-      ...options,
-    });
+    const response = await performSpotifyGet(workingUser.spotifyAccessToken, url, options);
     return response;
   } catch (error) {
     // If we get a 401, try refreshing the token and retry once
@@ -143,10 +227,7 @@ const makeSpotifyRequest = async (user, url, options = {}) => {
       const refreshedUser = await refreshSpotifyToken(user);
 
       // Retry with new token
-      const retryResponse = await axios.get(url, {
-        headers: { Authorization: `Bearer ${refreshedUser.spotifyAccessToken}` },
-        ...options,
-      });
+      const retryResponse = await performSpotifyGet(refreshedUser.spotifyAccessToken, url, options);
       return retryResponse;
     }
     throw error;
@@ -181,6 +262,7 @@ exports.handleSpotifyCallback = async (req, res) => {
     const response = await axios({
       method: "post",
       url: SPOTIFY_TOKEN_URL,
+      timeout: SPOTIFY_REQUEST_TIMEOUT_MS,
       data: querystring.stringify({
         grant_type: "authorization_code",
         code: code,
@@ -197,9 +279,7 @@ exports.handleSpotifyCallback = async (req, res) => {
     const { access_token, refresh_token, expires_in } = response.data;
 
     // Fetch the user's Spotify profile to get their Spotify ID
-    const profileResponse = await axios.get("https://api.spotify.com/v1/me", {
-      headers: { Authorization: `Bearer ${access_token}` },
-    });
+    const profileResponse = await performSpotifyGet(access_token, "https://api.spotify.com/v1/me");
 
     // Update the user in our database with the new tokens and info
     await User.findByIdAndUpdate(userId, {
@@ -217,7 +297,7 @@ exports.handleSpotifyCallback = async (req, res) => {
         : "http://localhost:5173/dashboard";
     res.redirect(dashboardUrl);
   } catch (err) {
-    console.error("Spotify callback error:", err.response ? err.response.data : err.message);
+    logSpotifyError("Spotify callback error", err);
     res.status(500).send("An error occurred during Spotify authentication.");
   }
 };
@@ -230,16 +310,47 @@ exports.getCurrentlyPlaying = async (req, res) => {
     return res.status(400).json({ success: false, message: "Spotify not connected." });
   }
 
-  try {
+  const cacheKey = String(user._id);
+  const cachedPayload = getCachedCurrentlyPlaying(cacheKey);
+  if (cachedPayload) {
+    return res.json(cachedPayload);
+  }
+
+  const inFlightRequest = currentlyPlayingRequests.get(cacheKey);
+  if (inFlightRequest) {
+    try {
+      const payload = await inFlightRequest;
+      return res.json(payload);
+    } catch (error) {
+      logSpotifyError("Error fetching currently playing", error);
+      return sendSpotifyErrorResponse(res, error, "Could not fetch from Spotify.");
+    }
+  }
+
+  const requestPromise = (async () => {
     const response = await makeSpotifyRequest(user, "https://api.spotify.com/v1/me/player/currently-playing");
 
     if (response.status === 204 || !response.data) {
-      return res.json({ success: true, data: { is_playing: false } });
+      const payload = { success: true, data: { is_playing: false } };
+      setCachedCurrentlyPlaying(cacheKey, payload);
+      return payload;
     }
-    res.json({ success: true, data: response.data });
+
+    const payload = { success: true, data: response.data };
+    setCachedCurrentlyPlaying(cacheKey, payload);
+    return payload;
+  })();
+
+  currentlyPlayingRequests.set(cacheKey, requestPromise);
+
+  try {
+    const payload = await requestPromise;
+    return res.json(payload);
   } catch (error) {
-    console.error("Error fetching currently playing:", error.response?.data || error.message || error);
+    logSpotifyError("Error fetching currently playing", error);
     return sendSpotifyErrorResponse(res, error, "Could not fetch from Spotify.");
+  } finally {
+    currentlyPlayingRequests.delete(cacheKey);
   }
 };
 
@@ -359,7 +470,7 @@ exports.syncRecentTracks = async (req, res) => {
         .json({ success: false, message: "Spotify session missing. Please reconnect your Spotify account." });
     }
 
-    console.error("Sync error:", error.response?.data || error.message || error);
+    logSpotifyError("Sync error", error);
     return sendSpotifyErrorResponse(res, error, "Could not sync from Spotify.");
   }
 };

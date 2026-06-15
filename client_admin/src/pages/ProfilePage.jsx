@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import api, { getAssetUrl } from "../services/api";
 import { Flame, Images, Star, Award, BarChart2, LayoutGrid, Settings } from "lucide-react";
 import { useAppearance, AVATAR_SHAPE_RADIUS, AVATAR_RING_PAD } from "../hooks/useAppearance";
 import OverviewTab from "./profile/OverviewTab";
@@ -139,11 +139,10 @@ const ProfilePage = () => {
   const avatarRadius = AVATAR_SHAPE_RADIUS[appearance.avatarShape] || "50%";
   const ringPad = AVATAR_RING_PAD[appearance.avatarRing] || 3;
   const glowAlpha = Math.round((appearance.avatarGlow / 100) * 80).toString(16).padStart(2, "0");
-  const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
   const avatarUrl = user?.profilePicture
-    ? `${serverBaseUrl}${user.profilePicture}`
+    ? getAssetUrl(user.profilePicture)
     : `https://api.dicebear.com/8.x/pixel-art/svg?seed=${user?.username || "user"}`;
-  const bannerUrl = user?.bannerImage ? `${serverBaseUrl}${user.bannerImage}` : null;
+  const bannerUrl = getAssetUrl(user?.bannerImage, null);
   const totalCollectibles =
     (user?.pokemonCollection?.length || 0) +
     (user?.snoopyArtCollection?.length || 0) +

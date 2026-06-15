@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import api from "../../services/api";
+import api, { getAssetUrl } from "../../services/api";
 import StyledButton from "../ui/StyledButton";
 
 export default function ProfileEditPanel() {
@@ -54,10 +54,9 @@ export default function ProfileEditPanel() {
     loadCollections();
   }, []);
 
-  const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
-  const bannerUrl = user?.bannerImage ? `${serverBaseUrl}${user.bannerImage}` : null;
+  const bannerUrl = getAssetUrl(user?.bannerImage, null);
   const avatarUrl = user?.profilePicture
-    ? `${serverBaseUrl}${user.profilePicture}`
+    ? getAssetUrl(user.profilePicture)
     : `https://api.dicebear.com/8.x/pixel-art/svg?seed=${user?.username || "user"}`;
 
   const pushBannerSettings = async (updates) => {

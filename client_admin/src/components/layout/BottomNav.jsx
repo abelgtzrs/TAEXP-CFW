@@ -123,8 +123,6 @@ const BottomNav = ({ onMenuClick }) => {
       lastT: performance.now(),
       velocity: 0,
     };
-    el.setPointerCapture(e.pointerId);
-    e.preventDefault();
   }, []);
 
   const onPointerMove = useCallback((e) => {

@@ -2,7 +2,7 @@
 import Widget from "../ui/Widget";
 import { Camera, MapPin, Globe, MessageSquare, Zap, Pencil, Check, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, memo } from "react";
-import api from "../../services/api";
+import api, { getAssetUrl } from "../../services/api";
 
 const AvatarUploader = memo(function AvatarUploader({ src, username, onPick, uploading }) {
   return (
@@ -103,8 +103,6 @@ const UserInfoCard = () => {
   const [motto, setMotto] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
-
   useEffect(() => {
     setBio(user?.bio || "");
     setLocation(user?.location || "");
@@ -164,7 +162,7 @@ const UserInfoCard = () => {
   };
 
   const avatarSrc = user.profilePicture
-    ? `${serverBaseUrl}${user.profilePicture}`
+    ? getAssetUrl(user.profilePicture)
     : `https://api.dicebear.com/8.x/pixel-art/svg?seed=${user?.username || "user"}`;
 
   return (

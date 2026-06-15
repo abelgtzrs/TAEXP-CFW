@@ -15,6 +15,15 @@ const mongoose = require("mongoose");
 // --- Daily Login Streak Utilities ---
 const isSameDay = (a, b) => a && b && new Date(a).toDateString() === new Date(b).toDateString();
 
+const getPublicUploadUrl = (req, uploadPath) => {
+  const host = req.get("host") || "";
+  if (!host || /^localhost(:|$)|^127\.0\.0\.1(:|$)/i.test(host)) return uploadPath;
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const protocol =
+    (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(",")[0] || req.protocol;
+  return `${protocol}://${host}${uploadPath}`;
+};
+
 // Return whether today has been counted and current streaks
 const getStreakStatus = async (req, res) => {
   try {
@@ -185,7 +194,7 @@ const updateProfilePicture = async (req, res) => {
 const updateProfileBanner = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded." });
-    const bannerUrl = `/uploads/banners/${req.file.filename}`;
+    const bannerUrl = getPublicUploadUrl(req, `/uploads/banners/${req.file.filename}`);
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { bannerImage: bannerUrl },

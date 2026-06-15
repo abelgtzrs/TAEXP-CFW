@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { adminUserService } from "../services/adminUserService";
-import api from "../services/api";
+import api, { getAssetUrl } from "../services/api";
 import {
   FiRefreshCcw,
   FiEdit2,
@@ -194,8 +194,7 @@ const AdminUserManagementPage = () => {
 
   // Helper to resolve avatar URL
   const getAvatarUrl = (u) => {
-    const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
-    return u.profilePicture ? `${serverBaseUrl}${u.profilePicture}` : null;
+    return getAssetUrl(u.profilePicture, null);
   };
 
   const requestSort = (key) => {

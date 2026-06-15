@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
-import api from "../../services/api";
+import api, { getAssetUrl } from "../../services/api";
 import { listPersonas } from "../../services/personaService";
 import {
   User, Image as ImageIcon, Camera, Palette, Award, Layers, Upload, RotateCcw, Check, X,
@@ -210,17 +210,24 @@ function BannerSection({ user, setUser, accent, bannerHeightPx, setBannerHeightP
   const [posX, setPosX] = useState(user?.bannerPositionX ?? 50);
   const [posY, setPosY] = useState(user?.bannerPositionY ?? 50);
   const [uploading, setUploading] = useState(false);
+  const [pendingBanner, setPendingBanner] = useState(null);
   const bannerInputRef = useRef(null);
   const debounceRef = useRef(null);
 
-  const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
-  const bannerUrl = user?.bannerImage ? `${serverBaseUrl}${user.bannerImage}` : null;
+  const bannerUrl = getAssetUrl(user?.bannerImage, null);
+  const previewUrl = pendingBanner?.previewUrl || bannerUrl;
 
   useEffect(() => {
     setLocalFit(user?.bannerFitMode || "cover");
     setPosX(user?.bannerPositionX ?? 50);
     setPosY(user?.bannerPositionY ?? 50);
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingBanner?.previewUrl) URL.revokeObjectURL(pendingBanner.previewUrl);
+    };
+  }, [pendingBanner]);
 
   const pushBannerSettings = async (updates) => {
     try {
@@ -249,17 +256,27 @@ function BannerSection({ user, setUser, accent, bannerHeightPx, setBannerHeightP
     debouncedPush({ bannerPositionY: val });
   };
 
-  const handleBannerChange = async (e) => {
+  const handleBannerChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    setPendingBanner((current) => {
+      if (current?.previewUrl) URL.revokeObjectURL(current.previewUrl);
+      return { file, previewUrl };
+    });
+  };
+
+  const saveBanner = async () => {
+    if (!pendingBanner?.file) return;
     const formData = new FormData();
-    formData.append("profileBanner", file);
+    formData.append("profileBanner", pendingBanner.file);
     try {
       setUploading(true);
       const { data } = await api.put("/users/me/profile-banner", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setUser(data.data);
+      setPendingBanner(null);
     } catch (err) {
       console.error("Error uploading banner:", err);
       alert("Failed to upload banner image.");
@@ -277,11 +294,11 @@ function BannerSection({ user, setUser, accent, bannerHeightPx, setBannerHeightP
           className="relative w-full overflow-hidden rounded-xl border border-white/[0.07]"
           style={{ height: Math.round(bannerHeightPx * 0.38 + 48) }}
         >
-          {bannerUrl ? (
+          {previewUrl ? (
             <div
               className="absolute inset-0"
               style={{
-                backgroundImage: `url(${bannerUrl})`,
+                backgroundImage: `url(${previewUrl})`,
                 backgroundRepeat: "no-repeat",
                 backgroundSize: localFit,
                 backgroundPosition: `${posX}% ${posY}%`,
@@ -311,9 +328,14 @@ function BannerSection({ user, setUser, accent, bannerHeightPx, setBannerHeightP
         {/* Upload + fit */}
         <div className="flex flex-wrap items-center gap-3">
           <UploadBtn onClick={() => bannerInputRef.current?.click()} loading={uploading} accent={accent}>
-            Upload Banner
+            Choose Banner
           </UploadBtn>
           <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
+          {pendingBanner && (
+            <SaveBtn onClick={saveBanner} loading={uploading} accent={accent}>
+              Save Banner
+            </SaveBtn>
+          )}
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-white/28">Fit</span>
             <select
@@ -373,9 +395,8 @@ function BannerSection({ user, setUser, accent, bannerHeightPx, setBannerHeightP
 function AvatarSection({ user, setUser, accent }) {
   const [uploading, setUploading] = useState(false);
   const avatarInputRef = useRef(null);
-  const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
   const avatarUrl = user?.profilePicture
-    ? `${serverBaseUrl}${user.profilePicture}`
+    ? getAssetUrl(user.profilePicture)
     : `https://api.dicebear.com/8.x/pixel-art/svg?seed=${user?.username || "user"}`;
 
   const handleAvatarChange = async (e) => {

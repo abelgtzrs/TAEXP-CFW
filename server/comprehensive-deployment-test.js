@@ -86,19 +86,19 @@ const runDiagnostics = async () => {
   const staticDirectories = [
     {
       path: path.join(__dirname, "public"),
-      subdirs: ["uploads", "uploads/avatars", "pokemon", "habborares"],
+      subdirs: ["uploads", "uploads/avatars", "uploads/banners", "pokemon", "habborares"],
     },
     {
       path: path.join(__dirname, "../public"),
-      subdirs: ["uploads", "uploads/avatars", "pokemon", "habborares"],
+      subdirs: ["uploads", "uploads/avatars", "uploads/banners", "pokemon", "habborares"],
     },
     {
       path: path.join(__dirname, "../client_admin/dist"),
-      subdirs: ["uploads", "uploads/avatars", "pokemon", "habborares"],
+      subdirs: ["uploads", "uploads/avatars", "uploads/banners", "pokemon", "habborares"],
     },
     {
       path: path.join(__dirname, "../client_public/dist"),
-      subdirs: ["uploads", "uploads/avatars", "pokemon", "habborares"],
+      subdirs: ["uploads", "uploads/avatars", "uploads/banners", "pokemon", "habborares"],
     },
   ];
 
@@ -204,7 +204,7 @@ const runDiagnostics = async () => {
     console.log("");
     console.log("Troubleshooting notes:");
     console.log("• Finance data: All finance models now properly registered");
-    console.log("• Profile pictures: Avatar upload directories created and configured");
+    console.log("• Profile media: Avatar and banner upload directories created and configured");
     console.log("• Spotify: Environment variables configured, URLs updated for production");
     console.log("• Static files: All necessary directories created with proper serving");
   } else {

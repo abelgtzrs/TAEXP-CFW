@@ -6,11 +6,17 @@ import axios from "axios";
 const resolveApiBase = () => {
   // import.meta is always defined in ESM; env may be undefined outside Vite
   const viteBase = import.meta?.env?.VITE_API_BASE_URL;
-  const procBase = typeof process !== "undefined" ? process.env?.VITE_API_BASE_URL : undefined;
+  const procBase = globalThis.process?.env?.VITE_API_BASE_URL;
   const raw = viteBase || procBase || "http://localhost:5000/api";
   // If user already ended with /api, keep; else append /api
   if (/\/api\/?$/.test(raw)) return raw.replace(/\/$/, "");
   return raw.replace(/\/$/, "") + "/api";
+};
+
+export const getAssetUrl = (assetPath, fallback = "") => {
+  if (!assetPath) return fallback;
+  if (/^(https?:)?\/\//i.test(assetPath) || /^(data|blob):/i.test(assetPath)) return assetPath;
+  return `${resolveApiBase().replace(/\/api$/, "")}${assetPath.startsWith("/") ? assetPath : `/${assetPath}`}`;
 };
 
 // Create an Axios instance with a base URL.

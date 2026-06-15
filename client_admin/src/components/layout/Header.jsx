@@ -18,7 +18,7 @@ import {
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../../context/AuthContext";
-import api from "../../services/api";
+import api, { getAssetUrl } from "../../services/api";
 import { Link } from "react-router-dom";
 import ClockWidget from "../dashboard/ClockWidget";
 import CalendarWidget from "../dashboard/CalendarWidget";
@@ -740,7 +740,7 @@ const Header = ({ forcedHeight }) => {
               <img
                 src={
                   user?.profilePicture
-                    ? `${serverBaseUrl}${user.profilePicture}`
+                    ? getAssetUrl(user.profilePicture)
                     : `https://api.dicebear.com/8.x/pixel-art/svg?seed=${user?.username || "user"}`
                 }
                 alt="User Avatar"

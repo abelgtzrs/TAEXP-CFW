@@ -74,7 +74,8 @@ const SpotifyWidget = () => {
             }
           }
         } catch (error) {
-          console.error("Error fetching Spotify status:", error);
+          const message = error?.response?.data?.message || "Spotify is temporarily unavailable.";
+          console.warn("Spotify status fetch failed:", message);
         }
       };
 
