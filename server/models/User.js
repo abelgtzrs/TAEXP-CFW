@@ -30,7 +30,11 @@ const UserSchema = new mongoose.Schema({
   },
   // Profile banner fields
   bannerImage: {
-    type: String, // URL path like /uploads/banners/<file>
+    type: String,
+    default: null,
+  },
+  bannerImageName: {
+    type: String,
     default: null,
   },
   bannerFitMode: {

@@ -11,18 +11,10 @@ const Task = require("../models/userSpecific/Task");
 const Budget = require("../models/Budget");
 const SpotifyLog = require("../models/SpotifyLogs");
 const mongoose = require("mongoose");
+const fs = require("fs");
 
 // --- Daily Login Streak Utilities ---
 const isSameDay = (a, b) => a && b && new Date(a).toDateString() === new Date(b).toDateString();
-
-const getPublicUploadUrl = (req, uploadPath) => {
-  const host = req.get("host") || "";
-  if (!host || /^localhost(:|$)|^127\.0\.0\.1(:|$)/i.test(host)) return uploadPath;
-  const forwardedProto = req.headers["x-forwarded-proto"];
-  const protocol =
-    (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(",")[0] || "https";
-  return `${protocol}://${host}${uploadPath}`;
-};
 
 // Return whether today has been counted and current streaks
 const getStreakStatus = async (req, res) => {
@@ -194,10 +186,11 @@ const updateProfilePicture = async (req, res) => {
 const updateProfileBanner = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded." });
-    const bannerUrl = getPublicUploadUrl(req, `/uploads/banners/${req.file.filename}`);
+    // ponytail: store banner in Mongo so localhost/prod share it; move to object storage if image size matters.
+    const bannerUrl = `data:${req.file.mimetype};base64,${fs.readFileSync(req.file.path).toString("base64")}`;
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { bannerImage: bannerUrl },
+      { bannerImage: bannerUrl, bannerImageName: req.file.originalname },
       { new: true, runValidators: true },
     )
       .select("-password")
@@ -1070,7 +1063,7 @@ const getAllUsersAdmin = async (req, res) => {
   try {
     const users = await User.find({})
       .select(
-        "email username role level experience temuTokens gatillaGold wendyHearts currentLoginStreak longestLoginStreak createdAt profilePicture lastLoginDate bio location website motto bannerImage",
+        "email username role level experience temuTokens gatillaGold wendyHearts currentLoginStreak longestLoginStreak createdAt profilePicture lastLoginDate bio location website motto bannerImage bannerImageName",
       )
       .sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: users });
@@ -1098,6 +1091,7 @@ const updateUserAdmin = async (req, res) => {
       "website",
       "motto",
       "bannerImage",
+      "bannerImageName",
     ]; // safe updatable fields
     const updates = {};
 
@@ -1122,7 +1116,7 @@ const updateUserAdmin = async (req, res) => {
       return res.status(400).json({ success: false, message: "No valid fields supplied" });
     }
     const user = await User.findByIdAndUpdate(id, updates, { new: true, runValidators: true }).select(
-      "email username role level experience temuTokens gatillaGold wendyHearts currentLoginStreak longestLoginStreak createdAt profilePicture lastLoginDate bio location website motto bannerImage",
+      "email username role level experience temuTokens gatillaGold wendyHearts currentLoginStreak longestLoginStreak createdAt profilePicture lastLoginDate bio location website motto bannerImage bannerImageName",
     );
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     res.status(200).json({ success: true, data: user });

@@ -216,7 +216,8 @@ function BannerSection({ user, setUser, accent, bannerHeightPx, setBannerHeightP
 
   const bannerUrl = getAssetUrl(user?.bannerImage, null);
   const previewUrl = pendingBanner?.previewUrl || bannerUrl;
-  const bannerFileName = pendingBanner?.file?.name || user?.bannerImage?.split("/").pop()?.split("?")[0] || "";
+  const bannerFileName =
+    pendingBanner?.file?.name || user?.bannerImageName || user?.bannerImage?.split("/").pop()?.split("?")[0] || "";
 
   useEffect(() => {
     setLocalFit(user?.bannerFitMode || "cover");
