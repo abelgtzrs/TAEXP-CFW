@@ -20,7 +20,7 @@ const getPublicUploadUrl = (req, uploadPath) => {
   if (!host || /^localhost(:|$)|^127\.0\.0\.1(:|$)/i.test(host)) return uploadPath;
   const forwardedProto = req.headers["x-forwarded-proto"];
   const protocol =
-    (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(",")[0] || req.protocol;
+    (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)?.split(",")[0] || "https";
   return `${protocol}://${host}${uploadPath}`;
 };
 

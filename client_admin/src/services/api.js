@@ -15,6 +15,9 @@ const resolveApiBase = () => {
 
 export const getAssetUrl = (assetPath, fallback = "") => {
   if (!assetPath) return fallback;
+  if (/^http:\/\//i.test(assetPath) && globalThis.location?.protocol === "https:") {
+    return assetPath.replace(/^http:/i, "https:");
+  }
   if (/^(https?:)?\/\//i.test(assetPath) || /^(data|blob):/i.test(assetPath)) return assetPath;
   return `${resolveApiBase().replace(/\/api$/, "")}${assetPath.startsWith("/") ? assetPath : `/${assetPath}`}`;
 };
