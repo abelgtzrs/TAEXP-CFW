@@ -216,6 +216,7 @@ function BannerSection({ user, setUser, accent, bannerHeightPx, setBannerHeightP
 
   const bannerUrl = getAssetUrl(user?.bannerImage, null);
   const previewUrl = pendingBanner?.previewUrl || bannerUrl;
+  const bannerFileName = pendingBanner?.file?.name || user?.bannerImage?.split("/").pop()?.split("?")[0] || "";
 
   useEffect(() => {
     setLocalFit(user?.bannerFitMode || "cover");
@@ -336,6 +337,7 @@ function BannerSection({ user, setUser, accent, bannerHeightPx, setBannerHeightP
               Save Banner
             </SaveBtn>
           )}
+          {bannerFileName && <span className="text-xs text-white/38 truncate max-w-[220px]">{bannerFileName}</span>}
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-white/28">Fit</span>
             <select
