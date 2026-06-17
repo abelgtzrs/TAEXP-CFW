@@ -351,6 +351,13 @@ const UserSchema = new mongoose.Schema({
       current: { type: Number, default: 0 },
       icon: { type: String, default: "target" }, // optional icon name
       color: { type: String, default: "#10b981" }, // hex color
+      growthLog: [
+        {
+          amount: { type: Number, required: true },
+          total: { type: Number, required: true },
+          addedAt: { type: Date, default: Date.now },
+        },
+      ],
     },
   ],
   createdAt: {

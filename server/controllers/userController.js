@@ -345,15 +345,37 @@ const updateYearlyGoals = async (req, res) => {
     const { goals } = req.body;
     if (!Array.isArray(goals)) return res.status(400).json({ success: false, message: "Goals must be an array" });
 
-    // Basic validation
-    const validGoals = goals.map((g) => ({
-      name: g.name || "New Goal",
-      metric: g.metric || "count",
-      target: Number(g.target) || 100,
-      current: Number(g.current) || 0,
-      icon: g.icon || "target",
-      color: g.color || "#10b981",
-    }));
+    const existingUser = await User.findById(req.user.id).select("yearlyGoals");
+    if (!existingUser) return res.status(404).json({ success: false, message: "User not found" });
+
+    const existingGoals = existingUser.yearlyGoals || [];
+    const validGoals = goals.map((g, index) => {
+      const id = g._id && mongoose.Types.ObjectId.isValid(g._id) ? g._id : undefined;
+      const previous =
+        (id && existingGoals.find((goal) => goal._id.toString() === id.toString())) || existingGoals[index] || null;
+      const current = Number(g.current) || 0;
+      const previousCurrent = previous ? Number(previous.current) || 0 : 0;
+      const growthLog = previous?.growthLog ? previous.growthLog.map((entry) => entry.toObject()) : [];
+
+      if (current > previousCurrent) {
+        growthLog.push({
+          amount: current - previousCurrent,
+          total: current,
+          addedAt: new Date(),
+        });
+      }
+
+      return {
+        ...(id ? { _id: id } : {}),
+        name: g.name || "New Goal",
+        metric: g.metric || "count",
+        target: Number(g.target) || 100,
+        current,
+        icon: g.icon || "target",
+        color: g.color || "#10b981",
+        growthLog,
+      };
+    });
 
     const user = await User.findByIdAndUpdate(
       req.user.id,

@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Edit2, Save, X, Trophy, Target, TrendingUp, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Edit2, Save, Trophy, Target } from "lucide-react";
 import api from "../services/api";
 import PageHeader from "../components/ui/PageHeader";
-import StyledInput from "../components/ui/StyledInput";
 import { emitToast } from "../utils/toastBus";
 
 const YearlyGoalsPage = () => {
@@ -64,7 +62,17 @@ const YearlyGoalsPage = () => {
         emitToast({ title: "Goal Reached!", message: `You completed ${updated[index].name}!`, type: "success" });
     }
 
-    await api.put("/users/me/goals", { goals: updated });
+    try {
+      const res = await api.put("/users/me/goals", { goals: updated });
+      setGoals(res.data.data || updated);
+    } catch (err) {
+      console.error("Failed to update goal progress", err);
+      emitToast({
+        title: "Error",
+        message: "Could not save progress.",
+        type: "error",
+      });
+    }
   };
 
   const handleDelete = async (index) => {
@@ -185,14 +193,33 @@ const YearlyGoalsPage = () => {
   );
 };
 
+const formatGrowthDate = (value) => {
+  if (!value) return "";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+};
+
 const GoalCard = ({ goal, isEditing, onEdit, onCancelEdit, onSaveEdit, onDelete, onUpdateProgress }) => {
   const [editState, setEditState] = useState(goal);
+  const [amountToAdd, setAmountToAdd] = useState("");
   const percentage = Math.min(100, Math.round((goal.current / goal.target) * 100));
   const isCompleted = percentage >= 100;
+  const recentGrowth = (goal.growthLog || []).slice(-3).reverse();
 
   useEffect(() => {
     setEditState(goal);
   }, [goal]);
+
+  const addProgress = () => {
+    const amount = Number(amountToAdd || 1);
+    if (Number.isNaN(amount) || amount <= 0) return;
+    onUpdateProgress(Number(goal.current) + amount);
+    setAmountToAdd("");
+  };
 
   if (isEditing) {
     return (
@@ -258,7 +285,7 @@ const GoalCard = ({ goal, isEditing, onEdit, onCancelEdit, onSaveEdit, onDelete,
   }
 
   return (
-    <div className="bg-surface border border-white/5 hover:border-white/10 rounded-xl p-6 shadow-md relative group flex flex-col h-[200px] transition-colors">
+    <div className="bg-surface border border-white/5 hover:border-white/10 rounded-xl p-6 shadow-md relative group flex flex-col min-h-[260px] transition-colors">
         <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCompleted ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
@@ -283,24 +310,49 @@ const GoalCard = ({ goal, isEditing, onEdit, onCancelEdit, onSaveEdit, onDelete,
                 )}
             </div>
             <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden">
-                <motion.div
+                <div
                     className={`h-full ${isCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-cyan-400'}`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${percentage}%` }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    style={{ width: `${percentage}%` }}
                 />
             </div>
+        </div>
+
+        <div className="mt-4 border-t border-white/10 pt-3 min-h-[54px]">
+            {recentGrowth.length > 0 ? (
+                <div className="space-y-1">
+                    {recentGrowth.map((entry, index) => (
+                        <div key={`${entry.addedAt}-${index}`} className="flex items-center justify-between text-[11px] text-slate-400">
+                            <span className="text-emerald-400 font-medium">+{entry.amount} {goal.metric}</span>
+                            <span>{formatGrowthDate(entry.addedAt)}</span>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-[11px] text-slate-500">No growth logged yet.</div>
+            )}
         </div>
         
         {/* Quick Increment Overlay (Optional) */}
         {!isCompleted && (
-            <div className="absolute bottom-6 right-6 flex gap-1 transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+            <div className="absolute bottom-20 right-6 flex items-center gap-1 transform translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                <input
+                    type="number"
+                    min="1"
+                    value={amountToAdd}
+                    onChange={(e) => setAmountToAdd(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") addProgress();
+                    }}
+                    className="w-16 h-8 rounded bg-black/50 border border-white/10 px-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    placeholder="Amt"
+                    title="Amount to add"
+                />
                 <button 
-                    onClick={() => onUpdateProgress(goal.current + 1)}
-                    className="w-8 h-8 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-white border border-white/10"
-                    title="Add 1"
+                    onClick={addProgress}
+                    className="h-8 rounded bg-white/10 hover:bg-white/20 px-3 flex items-center justify-center text-white border border-white/10 text-xs font-medium"
+                    title="Add amount"
                 >
-                    +1
+                    Add
                 </button>
             </div>
         )}

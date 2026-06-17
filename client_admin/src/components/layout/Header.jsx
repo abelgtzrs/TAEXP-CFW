@@ -107,7 +107,8 @@ const Header = ({ forcedHeight }) => {
       setGoalProgress(Math.round((totalPct / updatedGoals.length) * 100));
 
       try {
-        await api.put("/users/me/goals", { goals: updatedGoals });
+        const res = await api.put("/users/me/goals", { goals: updatedGoals });
+        setGoals(res.data.data || updatedGoals);
       } catch (err) {
         console.error("Failed to update goal increment", err);
       }
@@ -633,10 +634,10 @@ const Header = ({ forcedHeight }) => {
                               >
                                 <input
                                   type="number"
-                                  className="w-12 bg-transparent text-white text-right focus:outline-none text-sm appearance-none font-bold placeholder-white/20"
+                                  className="w-16 bg-transparent text-white text-right focus:outline-none text-sm appearance-none font-bold placeholder-white/20"
                                   value={customIncrement.val}
                                   onChange={(e) => setCustomIncrement((prev) => ({ ...prev, val: e.target.value }))}
-                                  placeholder="#"
+                                  placeholder="Amt"
                                   autoFocus
                                   onClick={(e) => e.stopPropagation()}
                                   onKeyDown={(e) => {
@@ -690,7 +691,7 @@ const Header = ({ forcedHeight }) => {
                                         setCustomIncrement({ index: i, val: "" });
                                       }}
                                       className="w-7 h-7 flex items-center justify-center rounded-md bg-white/5 border border-white/10 hover:bg-blue-500 hover:text-white hover:border-blue-400 transition-all text-slate-400 shadow-sm"
-                                      title="Add Custom Amount"
+                                      title="Add specific amount"
                                     >
                                       <Hash size={14} />
                                     </button>

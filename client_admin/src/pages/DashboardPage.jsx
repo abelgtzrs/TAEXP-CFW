@@ -293,6 +293,7 @@ const DashboardPage = () => {
             <LeftColumns
               extraProps={{
                 goals: stats.goals,
+                allGoals: stats.allGoals,
                 loading,
                 acquisitions: stats.recentAcquisitions,
                 products: stats.topProducts,
