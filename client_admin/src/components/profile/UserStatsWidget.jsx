@@ -52,19 +52,19 @@ const hexToRgb = (hex) => {
 };
 
 const aeroShell =
-  "relative overflow-hidden rounded-lg border border-sky-200/30 bg-[linear-gradient(180deg,rgba(255,255,255,var(--aero-white-top)),rgba(var(--aero-rgb),var(--aero-shell-mid))_42%,rgba(8,47,73,var(--aero-shell-low)))] font-['Segoe_UI',Tahoma,Geneva,Verdana,sans-serif] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_18px_38px_rgba(8,47,73,0.22)] backdrop-blur-md";
+  "relative overflow-hidden rounded-lg border border-white/10 bg-[radial-gradient(circle_at_12%_0%,rgba(var(--aero-rgb),var(--aero-shell-mid)),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(2,6,23,var(--aero-shell-low)))] font-sans shadow-[0_24px_80px_rgba(2,6,23,0.42)] backdrop-blur-xl";
 const aeroPanel =
-  "rounded-lg border border-sky-200/25 bg-[linear-gradient(180deg,rgba(255,255,255,var(--aero-white-panel)),rgba(var(--aero-rgb),var(--aero-panel-mid))_48%,rgba(3,7,18,var(--aero-panel-low)))] shadow-[inset_0_1px_0_rgba(255,255,255,0.32),inset_0_-1px_0_rgba(var(--aero-rgb),0.18),0_10px_26px_rgba(8,47,73,0.18)] backdrop-blur";
+  "rounded-lg border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,var(--aero-panel-mid)),rgba(2,6,23,var(--aero-panel-low)))] shadow-[0_14px_34px_rgba(2,6,23,0.28)] backdrop-blur-xl";
 const aeroPanelInteractive =
-  "rounded-lg border text-left transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_26px_rgba(8,47,73,0.16)] backdrop-blur";
+  "rounded-lg border text-left transition-all shadow-[0_12px_30px_rgba(2,6,23,0.22)] backdrop-blur-xl";
 const aeroCell =
-  "rounded-md border border-white/20 bg-[linear-gradient(180deg,rgba(255,255,255,var(--aero-white-cell)),rgba(var(--aero-rgb),var(--aero-cell-mid))_50%,rgba(3,7,18,var(--aero-cell-low)))] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]";
+  "rounded-md border border-white/10 bg-[linear-gradient(180deg,rgba(30,41,59,var(--aero-cell-mid)),rgba(15,23,42,var(--aero-cell-low)))]";
 const aeroIcon =
-  "inline-flex shrink-0 items-center justify-center rounded-md border border-white/25 bg-[linear-gradient(180deg,rgba(255,255,255,var(--aero-white-icon)),rgba(var(--aero-rgb),var(--aero-icon-mid))_52%,rgba(3,7,18,var(--aero-icon-low)))] shadow-[inset_0_1px_0_rgba(255,255,255,0.44),0_4px_12px_rgba(8,47,73,0.2)]";
-const aeroText = "text-sky-50";
-const aeroMuted = "text-sky-100/70";
-const aeroFine = "text-sky-100/55";
-const aeroStatRow = "border-b border-sky-100/10 py-2 last:border-b-0";
+  "inline-flex shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[linear-gradient(135deg,rgba(var(--aero-rgb),var(--aero-icon-mid)),rgba(255,255,255,0.06))] shadow-[0_8px_18px_rgba(2,6,23,0.22)]";
+const aeroText = "text-slate-50";
+const aeroMuted = "text-slate-300/80";
+const aeroFine = "text-slate-400";
+const aeroStatRow = "border-b border-white/10 py-2 last:border-b-0";
 
 const getGoalProgress = (goal) => {
   const target = toNumber(goal?.target);
@@ -80,12 +80,12 @@ const getStatus = (score, reverse = false) => {
 };
 
 const ProgressBar = ({ value, color = "#60a5fa" }) => (
-  <div className="h-2 w-full overflow-hidden rounded-full border border-white/20 bg-sky-950/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]">
+  <div className="h-2 w-full overflow-hidden rounded-full border border-white/10 bg-slate-950/55">
     <div
-      className="h-full rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_0_10px_rgba(56,189,248,0.35)]"
+      className="h-full rounded-full shadow-[0_0_18px_rgba(var(--aero-rgb),0.28)]"
       style={{
         width: `${clamp(value)}%`,
-        background: `linear-gradient(180deg, rgba(255,255,255,0.58), ${color} 42%, rgba(8,47,73,0.78))`,
+        background: `linear-gradient(90deg, ${color}, rgba(var(--aero-rgb),0.86))`,
       }}
     />
   </div>
@@ -102,8 +102,8 @@ const ViewButton = ({ active, children, icon, onClick, title }) => {
       aria-pressed={active}
       className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold transition-colors ${
         active
-          ? "border-sky-100/55 bg-[linear-gradient(180deg,rgba(255,255,255,0.34),rgba(var(--aero-rgb),0.22)_52%,rgba(12,74,110,0.38))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_0_14px_rgba(var(--aero-rgb),0.24)]"
-          : "border-sky-100/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(var(--aero-rgb),0.07)_54%,rgba(3,7,18,0.14))] text-sky-100/70 hover:border-sky-100/35 hover:text-white"
+          ? "border-white/15 bg-[rgba(var(--aero-rgb),0.24)] text-white shadow-[0_10px_24px_rgba(var(--aero-rgb),0.18)]"
+          : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
       }`}
     >
       <Icon size={13} />
@@ -129,7 +129,7 @@ const StatInfoPopover = ({ info, onClose, popoverRef }) => {
         <button
           type="button"
           onClick={onClose}
-          className="h-7 w-7 rounded-md border border-white/20 bg-white/10 text-sm font-bold text-sky-50/80 hover:bg-white/20"
+          className="h-7 w-7 rounded-md border border-white/10 bg-white/[0.06] text-sm font-bold text-slate-200 hover:bg-white/[0.12]"
           aria-label="Close statistic details"
         >
           x
@@ -149,7 +149,7 @@ const StatInfoPopover = ({ info, onClose, popoverRef }) => {
           {info.calculation && (
             <>
               <p className={`text-[10px] font-bold uppercase tracking-wide ${aeroFine}`}>Calculation</p>
-              <p className="mt-1 text-sm leading-relaxed text-sky-50/85">{info.calculation}</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-100/85">{info.calculation}</p>
             </>
           )}
           {info.inputs?.length > 0 && (
@@ -216,9 +216,9 @@ const OverallCard = ({ group, onInfo }) => {
         ))}
       </div>
       {group.topItems?.length > 0 && (
-        <div className="mt-4 border-t border-sky-100/20 pt-3">
+        <div className="mt-4 border-t border-white/10 pt-3">
           <p className={`mb-2 text-[10px] font-bold uppercase tracking-wide ${aeroFine}`}>{group.topLabel}</p>
-          <div className="divide-y divide-sky-100/10">
+          <div className="divide-y divide-white/10">
             {group.topItems.slice(0, 4).map((item, index) => (
               <button
                 key={`${item.label}-${index}`}
@@ -239,7 +239,7 @@ const OverallCard = ({ group, onInfo }) => {
                   <p className={`truncate text-xs font-semibold ${aeroText}`}>{item.label}</p>
                   {item.subLabel && <p className={`truncate text-[11px] ${aeroMuted}`}>{item.subLabel}</p>}
                 </div>
-                <p className="shrink-0 font-mono text-xs font-bold text-sky-50/80">{item.value}</p>
+                <p className="shrink-0 font-mono text-xs font-bold text-slate-100/80">{item.value}</p>
               </button>
             ))}
           </div>
@@ -297,17 +297,17 @@ const RankedList = ({ list, onInfo }) => {
               }
               className={`${aeroCell} grid w-full grid-cols-[24px_1fr_auto] items-center gap-3 px-3 py-2 text-left hover:border-white/35`}
             >
-              <span className="font-mono text-xs text-sky-100/50">{index + 1}</span>
+              <span className="font-mono text-xs text-slate-400">{index + 1}</span>
               <div className="min-w-0">
                 <p className={`truncate text-sm font-semibold ${aeroText}`}>{item.label}</p>
                 {item.subLabel && <p className={`truncate text-xs ${aeroMuted}`}>{item.subLabel}</p>}
               </div>
-              <p className="font-mono text-xs font-bold text-sky-50/80">{item.value}</p>
+              <p className="font-mono text-xs font-bold text-slate-100/80">{item.value}</p>
             </button>
           ))}
         </div>
       ) : (
-        <div className="rounded-md border border-dashed border-sky-100/25 bg-sky-950/20 px-3 py-6 text-center text-sm text-sky-100/65">
+        <div className="rounded-md border border-dashed border-white/15 bg-white/[0.03] px-3 py-6 text-center text-sm text-slate-300/75">
           No synced data yet
         </div>
       )}
@@ -333,8 +333,8 @@ const SummaryCard = ({ item, active, onClick }) => {
       onClick={onClick}
       className={`${aeroPanelInteractive} p-4 ${
         active
-          ? "border-sky-100/55 bg-[linear-gradient(180deg,rgba(255,255,255,0.24),rgba(56,189,248,0.14)_52%,rgba(8,47,73,0.24))] ring-1 ring-sky-200/20"
-          : "border-sky-100/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(14,165,233,0.06)_50%,rgba(3,7,18,0.18))] hover:border-sky-100/35 hover:bg-sky-400/10"
+          ? "border-white/20 bg-[linear-gradient(180deg,rgba(var(--aero-rgb),0.18),rgba(15,23,42,0.82))] ring-1 ring-white/10"
+          : "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.08]"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -355,7 +355,7 @@ const SummaryCard = ({ item, active, onClick }) => {
       </div>
       <div className="mt-4 flex items-center gap-3">
         <ProgressBar value={item.score} color={item.color} />
-        <span className="w-10 text-right font-mono text-xs text-sky-100/65">{Math.round(item.score)}</span>
+        <span className="w-10 text-right font-mono text-xs text-slate-400">{Math.round(item.score)}</span>
       </div>
     </button>
   );
@@ -389,13 +389,13 @@ const DetailPanel = ({ item }) => (
       <div className={`${aeroCell} p-3`}>
         <div className="mb-2 flex items-center justify-between gap-3">
           <p className={`text-[10px] font-bold uppercase tracking-wide ${aeroFine}`}>Progress</p>
-          <p className="font-mono text-xs text-sky-100/65">{formatPercent(item.score)}</p>
+          <p className="font-mono text-xs text-slate-400">{formatPercent(item.score)}</p>
         </div>
         <ProgressBar value={item.score} color={item.color} />
       </div>
       <div className={`${aeroCell} p-3`}>
         <p className={`text-[10px] font-bold uppercase tracking-wide ${aeroFine}`}>Calculation</p>
-        <p className="mt-2 text-sm leading-relaxed text-sky-50/85">{item.calculation}</p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-100/85">{item.calculation}</p>
         <p className={`mt-2 font-mono text-[10px] uppercase tracking-wide ${aeroFine}`}>
           Uses: {item.inputs.join(", ")}
         </p>
@@ -412,7 +412,7 @@ const BreakdownRow = ({ item, onSelect }) => {
     <button
       type="button"
       onClick={onSelect}
-      className={`${aeroPanelInteractive} grid gap-3 border-sky-100/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(14,165,233,0.06)_50%,rgba(3,7,18,0.18))] p-3 hover:border-sky-100/35 hover:bg-sky-400/10 md:grid-cols-[1fr_120px_1.3fr_24px]`}
+      className={`${aeroPanelInteractive} grid gap-3 border-white/10 bg-white/[0.04] p-3 hover:border-white/20 hover:bg-white/[0.08] md:grid-cols-[1fr_120px_1.3fr_24px]`}
     >
       <div className="flex min-w-0 items-center gap-3">
         <span className={`${aeroIcon} h-9 w-9`} style={{ color: item.color }}>
@@ -431,9 +431,9 @@ const BreakdownRow = ({ item, onSelect }) => {
       </div>
       <div className="flex items-center gap-3">
         <ProgressBar value={item.score} color={item.color} />
-        <span className="w-9 text-right font-mono text-xs text-sky-100/60">{Math.round(item.score)}</span>
+        <span className="w-9 text-right font-mono text-xs text-slate-400">{Math.round(item.score)}</span>
       </div>
-      <ChevronRight size={16} className="hidden self-center text-sky-100/45 md:block" />
+      <ChevronRight size={16} className="hidden self-center text-slate-500 md:block" />
     </button>
   );
 };
@@ -476,33 +476,33 @@ const DataSourceView = ({ normalized, derived, acquisitionTypes, onInfo }) => (
           <BarChart3 size={13} />
           Derived Values
         </div>
-        <span className="rounded-full border border-sky-100/20 bg-white/10 px-2 py-0.5 font-mono text-[10px] text-sky-100/55">
+        <span className="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] text-slate-400">
           current payload
         </span>
       </div>
-      <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-md border border-sky-100/15 bg-sky-950/35 p-3 font-mono text-xs leading-relaxed text-sky-50/85 shadow-[inset_0_1px_6px_rgba(0,0,0,0.25)]">
+      <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-md border border-white/10 bg-slate-950/55 p-3 font-mono text-xs leading-relaxed text-slate-100/85">
         {JSON.stringify({ derived, acquisitionTypes }, null, 2)}
       </pre>
     </div>
   </div>
 );
 
-const AeroSettingsView = ({ settings, onChange }) => (
+const AppearanceSettingsView = ({ settings, onChange }) => (
   <div className={`${aeroPanel} w-[min(92vw,390px)] p-4`}>
     <div className="flex flex-col gap-4">
       <div>
         <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wide ${aeroFine}`}>
           <SlidersHorizontal size={14} />
-          Aero appearance
+          Modern appearance
         </div>
-        <h4 className={`mt-2 text-xl font-black ${aeroText}`}>Glass settings</h4>
+        <h4 className={`mt-2 text-xl font-black ${aeroText}`}>Panel settings</h4>
         <p className={`mt-2 max-w-2xl text-sm leading-relaxed ${aeroMuted}`}>
-          Adjust the tint and transparency used by the profile statistics panels. These settings are saved in this
+          Adjust the accent and opacity used by the profile statistics panels. These settings are saved in this
           browser.
         </p>
       </div>
       <div className={`${aeroCell} w-full p-3`}>
-        <p className={`text-[10px] font-bold uppercase tracking-wide ${aeroFine}`}>Current tint</p>
+        <p className={`text-[10px] font-bold uppercase tracking-wide ${aeroFine}`}>Current accent</p>
         <div className="mt-3 flex items-center gap-3">
           <span
             className="h-10 w-10 rounded-md border border-white/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_8px_18px_rgba(8,47,73,0.2)]"
@@ -519,22 +519,22 @@ const AeroSettingsView = ({ settings, onChange }) => (
     <div className="mt-5 grid gap-4">
       <div className={`${aeroCell} p-4`}>
         <div className="flex items-center justify-between gap-3">
-          <label htmlFor="aero-transparency" className={`text-sm font-bold ${aeroText}`}>
-            Glass opacity
+          <label htmlFor="stats-panel-opacity" className={`text-sm font-bold ${aeroText}`}>
+            Panel opacity
           </label>
-          <span className="rounded-md border border-white/20 bg-white/10 px-2 py-1 font-mono text-xs text-sky-50/80">
+          <span className="rounded-md border border-white/10 bg-white/[0.06] px-2 py-1 font-mono text-xs text-slate-100/80">
             {settings.transparency}%
           </span>
         </div>
         <input
-          id="aero-transparency"
+          id="stats-panel-opacity"
           type="range"
           min="25"
           max="95"
           step="5"
           value={settings.transparency}
           onChange={(event) => onChange({ transparency: Number(event.target.value) })}
-          className="mt-4 w-full accent-sky-300"
+          className="mt-4 w-full accent-sky-400"
         />
         <div className={`mt-2 flex justify-between text-[10px] uppercase tracking-wide ${aeroFine}`}>
           <span>Clearer</span>
@@ -546,14 +546,14 @@ const AeroSettingsView = ({ settings, onChange }) => (
         <div className="flex items-center justify-between gap-3">
           <div className={`flex items-center gap-2 text-sm font-bold ${aeroText}`}>
             <Palette size={15} />
-            Glass color
+            Accent color
           </div>
           <input
             type="color"
             value={settings.color}
             onChange={(event) => onChange({ color: event.target.value })}
             className="h-8 w-12 cursor-pointer rounded border border-white/25 bg-transparent"
-            aria-label="Custom Aero glass color"
+            aria-label="Custom profile stats accent color"
           />
         </div>
         <div className="mt-4 grid grid-cols-5 gap-2">
@@ -565,7 +565,7 @@ const AeroSettingsView = ({ settings, onChange }) => (
                 type="button"
                 onClick={() => onChange({ color: preset.value })}
                 title={preset.label}
-                aria-label={`${preset.label} Aero color`}
+                aria-label={`${preset.label} profile stats accent`}
                 className={`h-10 rounded-md border transition-all ${
                   active
                     ? "border-white/70 shadow-[0_0_0_2px_rgba(255,255,255,0.18)]"
@@ -649,16 +649,16 @@ const UserStatsWidget = ({ stats = {} }) => {
   const aeroVariables = {
     "--aero-rgb": aeroRgb,
     "--aero-white-top": (0.06 + aeroAlpha * 0.18).toFixed(3),
-    "--aero-shell-mid": (aeroAlpha * 0.18).toFixed(3),
-    "--aero-shell-low": (aeroAlpha * 0.36).toFixed(3),
+    "--aero-shell-mid": (0.08 + aeroAlpha * 0.16).toFixed(3),
+    "--aero-shell-low": (0.76 + aeroAlpha * 0.18).toFixed(3),
     "--aero-white-panel": (0.05 + aeroAlpha * 0.17).toFixed(3),
-    "--aero-panel-mid": (aeroAlpha * 0.2).toFixed(3),
-    "--aero-panel-low": (aeroAlpha * 0.3).toFixed(3),
+    "--aero-panel-mid": (0.56 + aeroAlpha * 0.26).toFixed(3),
+    "--aero-panel-low": (0.66 + aeroAlpha * 0.24).toFixed(3),
     "--aero-white-cell": (0.05 + aeroAlpha * 0.18).toFixed(3),
-    "--aero-cell-mid": (aeroAlpha * 0.16).toFixed(3),
-    "--aero-cell-low": (aeroAlpha * 0.24).toFixed(3),
+    "--aero-cell-mid": (0.34 + aeroAlpha * 0.24).toFixed(3),
+    "--aero-cell-low": (0.42 + aeroAlpha * 0.24).toFixed(3),
     "--aero-white-icon": (0.1 + aeroAlpha * 0.24).toFixed(3),
-    "--aero-icon-mid": (aeroAlpha * 0.22).toFixed(3),
+    "--aero-icon-mid": (0.14 + aeroAlpha * 0.2).toFixed(3),
     "--aero-icon-low": (aeroAlpha * 0.32).toFixed(3),
   };
 
@@ -1298,14 +1298,14 @@ const UserStatsWidget = ({ stats = {} }) => {
                 active={settingsOpen}
                 icon={SlidersHorizontal}
                 onClick={() => setSettingsOpen((open) => !open)}
-                title="Aero settings"
+                title="Display settings"
               >
                 Settings
               </ViewButton>
               {settingsOpen && (
                 <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 origin-top-right">
-                  <div className="rounded-lg border border-white/25 bg-sky-950/35 p-1 shadow-[0_18px_42px_rgba(3,7,18,0.45)] backdrop-blur-md">
-                    <AeroSettingsView settings={aeroSettings} onChange={updateAeroSettings} />
+                  <div className="rounded-lg border border-white/10 bg-slate-950/80 p-1 shadow-[0_18px_42px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+                    <AppearanceSettingsView settings={aeroSettings} onChange={updateAeroSettings} />
                   </div>
                 </div>
               )}
@@ -1324,7 +1324,7 @@ const UserStatsWidget = ({ stats = {} }) => {
                     Based on tasks, music, volumes, streaks, workouts, reading, collections, goals, and budget data.
                   </p>
                 </div>
-                <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-full border border-sky-100/25 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(56,189,248,0.10)_52%,rgba(8,47,73,0.22))] text-sky-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_8px_20px_rgba(8,47,73,0.25)] sm:flex">
+                <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(var(--aero-rgb),0.16)] text-slate-100 shadow-[0_18px_34px_rgba(var(--aero-rgb),0.14)] sm:flex">
                   <BarChart3 size={26} />
                 </div>
               </div>
@@ -1361,7 +1361,7 @@ const UserStatsWidget = ({ stats = {} }) => {
             </div>
           </div>
 
-          <OverallSection groups={model.overallGroups} />
+          <OverallSection groups={model.overallGroups} onInfo={openStatPopover} />
 
           <div className="space-y-3">
             <div>
@@ -1370,7 +1370,7 @@ const UserStatsWidget = ({ stats = {} }) => {
                 Ranked from synced Spotify listening history stored in the app.
               </p>
             </div>
-            <RankedListsSection lists={model.rankedLists} />
+            <RankedListsSection lists={model.rankedLists} onInfo={openStatPopover} />
           </div>
 
           {activeView === "overview" && (
@@ -1402,10 +1402,12 @@ const UserStatsWidget = ({ stats = {} }) => {
               normalized={model.normalized}
               derived={model.derived}
               acquisitionTypes={model.acquisitionTypes}
+              onInfo={openStatPopover}
             />
           )}
         </div>
       </Widget>
+      <StatInfoPopover info={statPopover} onClose={() => setStatPopover(null)} popoverRef={statPopoverRef} />
     </div>
   );
 };
