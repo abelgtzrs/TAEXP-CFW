@@ -417,7 +417,7 @@ const SpotifyStatsPage = () => {
     loadData();
   }, []);
 
-  // Auto-sync effect - runs every 5 minutes when enabled
+  // Auto-sync effect - runs every 30 minutes when enabled
   useEffect(() => {
     if (!autoSync) return;
 
@@ -425,8 +425,8 @@ const SpotifyStatsPage = () => {
       () => {
         handleSync(true); // true indicates this is an auto-sync
       },
-      5 * 60 * 1000,
-    ); // 5 minutes
+      30 * 60 * 1000,
+    ); // 30 minutes
 
     return () => clearInterval(autoSyncInterval);
   }, [autoSync, pagination.currentPage]);

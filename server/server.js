@@ -57,7 +57,7 @@ dotenv.config();
 const app = express();
 connectDB();
 
-const SPOTIFY_AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+const SPOTIFY_AUTO_SYNC_INTERVAL_MS = 30 * 60 * 1000;
 let spotifyAutoSyncRunning = false;
 
 const runSpotifyAutoSync = async () => {

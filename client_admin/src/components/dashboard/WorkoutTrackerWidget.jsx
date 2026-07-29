@@ -1,10 +1,23 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
 import Widget from "../ui/Widget";
-import StyledButton from "../ui/StyledButton";
 import WorkoutLogItem from "../workouts/WorkoutLogItem";
-import { Dumbbell, CalendarDays, Plus, BarChart3, History } from "lucide-react";
+import {
+  Dumbbell,
+  CalendarDays,
+  Plus,
+  BarChart3,
+  History,
+  ArrowRight,
+  Zap,
+  Layers,
+  Timer,
+  Flame,
+  TrendingUp,
+  ChevronRight,
+} from "lucide-react";
 
 const WorkoutTrackerWidget = () => {
   const navigate = useNavigate();
@@ -62,11 +75,16 @@ const WorkoutTrackerWidget = () => {
 
   return (
     <Widget title="Workout Status" className="overflow-hidden" padding="p-4 sm:p-5">
-      <div className="space-y-4">
+      <div className="space-y-5">
         <section>
-          <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em]">
-            <span className="text-text-secondary">Quick start</span>
-            <span className="text-text-tertiary">{templates.length} templates</span>
+          <div className="mb-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-secondary">
+              <Zap className="h-3 w-3 text-primary" />
+              <span>Quick Start</span>
+            </div>
+            <span className="rounded-full bg-white/5 px-2 py-0.5 text-[9px] font-medium text-text-tertiary">
+              {templates.length} template{templates.length === 1 ? "" : "s"}
+            </span>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative min-w-0 flex-1">
@@ -74,7 +92,7 @@ const WorkoutTrackerWidget = () => {
                 value={selectedTemplateId}
                 onChange={(e) => setSelectedTemplateId(e.target.value)}
                 disabled={templates.length === 0}
-                className="h-9 w-full appearance-none border border-gray-700/70 bg-transparent px-3 pr-8 text-sm text-text-main outline-none transition-colors focus:border-primary disabled:opacity-50"
+                className="h-10 w-full appearance-none rounded-lg border border-white/10 bg-black/20 px-3 pr-9 text-sm text-text-main outline-none transition-colors focus:border-primary/60 focus:ring-1 focus:ring-primary/40 disabled:opacity-50"
               >
                 {templates.length === 0 && <option value="">No templates yet</option>}
                 {templates.map((tpl) => (
@@ -83,67 +101,76 @@ const WorkoutTrackerWidget = () => {
                   </option>
                 ))}
               </select>
-              <Dumbbell className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary" />
+              <Dumbbell className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary/70" />
             </div>
-            <StyledButton
+            <button
               onClick={startTemplate}
               disabled={!selectedTemplateId}
-              className="h-9 border border-primary bg-primary px-4 text-[11px] font-semibold uppercase tracking-wide text-white hover:opacity-90"
+              className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-[11px] font-semibold uppercase tracking-wide text-white shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:shadow-none"
             >
-              Start
-            </StyledButton>
+              <span>Start</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
             <button
               onClick={startBlank}
-              className="flex h-9 w-9 items-center justify-center border border-gray-700/70 text-text-secondary transition-colors hover:border-primary hover:text-primary"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-text-secondary transition-colors hover:border-primary/50 hover:text-primary"
               title="Start a blank workout"
               aria-label="Start a blank workout"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
             </button>
           </div>
         </section>
 
         {lastLog ? (
-          <section className="border-y border-gray-700/70 py-3">
+          <section className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-secondary">
-                  Latest session
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                  <Dumbbell className="h-4 w-4" />
                 </div>
-                <h4 className="mt-1 truncate text-base font-semibold leading-tight text-text-main">
-                  {lastLog.workoutName}
-                </h4>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-secondary">
+                    Latest session
+                  </div>
+                  <h4 className="truncate text-base font-semibold leading-tight text-text-main">
+                    {lastLog.workoutName}
+                  </h4>
+                </div>
               </div>
               {lastMeta?.date && (
                 <div
-                  className="flex shrink-0 items-center gap-1 text-[10px] text-text-secondary"
+                  className="flex shrink-0 items-center gap-1 rounded-full bg-black/20 px-2 py-1 text-[10px] text-text-secondary"
                   title={lastMeta.date.toLocaleDateString()}
                 >
-                  <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                  <CalendarDays className="h-3 w-3 text-primary" />
                   <span>{lastMeta.daysAgo === 0 ? "Today" : `${lastMeta.daysAgo}d ago`}</span>
                 </div>
               )}
             </div>
-            <div className="mt-3 grid grid-cols-3 divide-x divide-gray-700/70 border-t border-gray-700/70 pt-3">
-              <SessionMetric label="Exercises" value={lastMeta?.totalExercises ?? 0} />
-              <SessionMetric label="Sets" value={lastMeta?.totalSets ?? 0} />
-              <SessionMetric label="Minutes" value={lastMeta?.duration ?? "--"} />
+            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/5 pt-3">
+              <SessionMetric icon={Dumbbell} label="Exercises" value={lastMeta?.totalExercises ?? 0} />
+              <SessionMetric icon={Layers} label="Sets" value={lastMeta?.totalSets ?? 0} />
+              <SessionMetric icon={Timer} label="Minutes" value={lastMeta?.duration ?? "--"} />
             </div>
           </section>
         ) : (
-          <section className="border-y border-gray-700/70 py-3 text-sm text-text-tertiary">
-            No workouts logged yet.
+          <section className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/10 py-6 text-center">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-text-tertiary">
+              <Dumbbell className="h-4 w-4" />
+            </div>
+            <p className="text-sm text-text-tertiary">No workouts logged yet.</p>
           </section>
         )}
 
-        <div className="flex items-end justify-between border-b border-gray-700/70">
-          <div className="flex gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex gap-1 rounded-lg border border-white/5 bg-black/20 p-1">
             <button
               onClick={() => setTab("stats")}
-              className={`-mb-px flex items-center gap-1.5 border-b-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] transition-colors ${
                 tab === "stats"
-                  ? "border-primary text-text-main"
-                  : "border-transparent text-text-secondary hover:text-text-main"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-text-secondary hover:text-text-main"
               }`}
               aria-pressed={tab === "stats"}
             >
@@ -152,10 +179,10 @@ const WorkoutTrackerWidget = () => {
             </button>
             <button
               onClick={() => setTab("history")}
-              className={`-mb-px flex items-center gap-1.5 border-b-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] transition-colors ${
                 tab === "history"
-                  ? "border-primary text-text-main"
-                  : "border-transparent text-text-secondary hover:text-text-main"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-text-secondary hover:text-text-main"
               }`}
               aria-pressed={tab === "history"}
             >
@@ -164,7 +191,7 @@ const WorkoutTrackerWidget = () => {
             </button>
           </div>
           {tab === "stats" && weekly && (
-            <div className="mb-1 grid grid-cols-4 border border-gray-700/70">
+            <div className="flex gap-1 rounded-lg border border-white/5 bg-black/20 p-1">
               {[
                 { k: "week", label: "7D" },
                 { k: "month", label: "30D" },
@@ -174,10 +201,10 @@ const WorkoutTrackerWidget = () => {
                 <button
                   key={opt.k}
                   onClick={() => setTimeframe(opt.k)}
-                  className={`h-6 px-1.5 text-[9px] font-semibold transition-colors ${
+                  className={`rounded-md px-2 py-1 text-[9px] font-semibold transition-colors ${
                     timeframe === opt.k
-                      ? "bg-primary text-white"
-                      : "text-text-secondary hover:bg-white/5 hover:text-text-main"
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-text-secondary hover:text-text-main"
                   }`}
                   aria-label={`Show ${opt.k} workout statistics`}
                   aria-pressed={timeframe === opt.k}
@@ -189,8 +216,15 @@ const WorkoutTrackerWidget = () => {
           )}
         </div>
 
+        <AnimatePresence mode="wait">
         {tab === "stats" && weekly && (
-          <section>
+          <motion.section
+            key={`stats-${timeframe}`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+          >
             {(() => {
               const logs = weekly.rawLogs || [];
               const today = new Date();
@@ -314,14 +348,24 @@ const WorkoutTrackerWidget = () => {
                 </>
               );
             })()}
-          </section>
+          </motion.section>
         )}
 
         {tab === "history" && (
-          <div className="space-y-2">
+          <motion.div
+            key="history"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-2"
+          >
             {(weekly?.rawLogs || []).length === 0 ? (
-              <div className="border-l-2 border-gray-700/70 py-2 pl-3 text-sm text-text-tertiary">
-                No workout history yet.
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/10 py-6 text-center">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-text-tertiary">
+                  <History className="h-4 w-4" />
+                </div>
+                <p className="text-sm text-text-tertiary">No workout history yet.</p>
               </div>
             ) : (
               <>
@@ -330,14 +374,16 @@ const WorkoutTrackerWidget = () => {
                 ))}
                 <button
                   onClick={() => navigate("/workouts")}
-                  className="w-full border-t border-gray-700/70 py-3 text-[11px] font-semibold uppercase tracking-wide text-text-secondary transition-colors hover:text-text-main"
+                  className="flex w-full items-center justify-center gap-1 rounded-lg border border-white/5 bg-black/20 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-text-secondary transition-colors hover:border-primary/40 hover:text-primary"
                 >
-                  View All History
+                  <span>View All History</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               </>
             )}
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
     </Widget>
   );
@@ -346,10 +392,16 @@ const WorkoutTrackerWidget = () => {
 export default WorkoutTrackerWidget;
 
 // Small presentational helpers
-const StatChip = ({ label, value }) => (
-  <div className="min-w-0 px-2 first:pl-0 last:pr-0" title={label}>
-    <span className="block truncate text-[8px] font-semibold uppercase tracking-[0.1em] text-text-secondary">{label}</span>
-    <span className="mt-1 block text-lg font-semibold leading-none text-text-main">{value}</span>
+const StatChip = ({ icon: Icon, label, value }) => (
+  <div
+    className="min-w-0 rounded-lg border border-white/5 bg-white/[0.03] px-2 py-2 text-center"
+    title={label}
+  >
+    <div className="flex items-center justify-center gap-1 text-[8px] font-semibold uppercase tracking-[0.1em] text-text-secondary">
+      {Icon && <Icon className="h-2.5 w-2.5 text-primary/70" />}
+      <span className="truncate">{label}</span>
+    </div>
+    <span className="mt-1 block truncate text-lg font-semibold leading-none text-text-main">{value}</span>
   </div>
 );
 
@@ -358,20 +410,23 @@ const StatsSummary = ({ summary }) => {
   const averageMinutes = summary.workouts ? Math.round(summary.minutes / summary.workouts) : 0;
 
   return (
-    <div className="mb-3 grid grid-cols-5 divide-x divide-gray-700/70 border-b border-gray-700/70 pb-3">
-      <StatChip label="Workouts" value={summary.workouts} />
-      <StatChip label="Sets" value={summary.sets} />
-      <StatChip label="Minutes" value={summary.minutes} />
-      <StatChip label="Avg sets" value={averageSets} />
-      <StatChip label="Avg min" value={averageMinutes} />
+    <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
+      <StatChip icon={Flame} label="Workouts" value={summary.workouts} />
+      <StatChip icon={Layers} label="Sets" value={summary.sets} />
+      <StatChip icon={Timer} label="Minutes" value={summary.minutes} />
+      <StatChip icon={BarChart3} label="Avg sets" value={averageSets} />
+      <StatChip icon={TrendingUp} label="Avg min" value={averageMinutes} />
     </div>
   );
 };
 
-const SessionMetric = ({ label, value }) => (
-  <div className="px-3 first:pl-0 last:pr-0">
-    <span className="block text-[9px] font-semibold uppercase tracking-[0.12em] text-text-secondary">{label}</span>
-    <span className="mt-1 block text-lg font-semibold leading-none text-text-main">{value}</span>
+const SessionMetric = ({ icon: Icon, label, value }) => (
+  <div className="rounded-lg bg-black/20 px-2 py-2 text-center">
+    <div className="flex items-center justify-center gap-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
+      {Icon && <Icon className="h-2.5 w-2.5 text-primary/70" />}
+      <span>{label}</span>
+    </div>
+    <span className="mt-1 block truncate text-lg font-semibold leading-none text-text-main">{value}</span>
   </div>
 );
 
@@ -382,7 +437,7 @@ const MiniBar = ({ labels, data, max }) => (
       <span>Sets per period</span>
     </div>
     <div
-      className="flex h-[4.75rem] min-w-0 items-end gap-1.5 border-t border-gray-700/70 pt-3"
+      className="flex h-[4.75rem] min-w-0 items-end gap-1.5 rounded-lg border border-white/5 bg-white/[0.02] px-2 pb-2 pt-3"
       style={{ width: `${Math.max(100, data.length * 18)}px` }}
     >
       {data.map((v, i) => {
@@ -393,8 +448,13 @@ const MiniBar = ({ labels, data, max }) => (
             className="flex min-w-0 flex-1 flex-col items-center gap-1"
             title={`${labels[i]}: ${v || 0} sets`}
           >
-            <div className="flex h-12 w-full items-end bg-white/5">
-              <div className="w-full bg-primary/90" style={{ height: `${Math.max(4, h)}%` }}></div>
+            <div className="flex h-12 w-full items-end overflow-hidden rounded-sm bg-white/5">
+              <motion.div
+                className="w-full rounded-t-sm bg-gradient-to-t from-primary/70 to-primary"
+                initial={{ height: 0 }}
+                animate={{ height: `${Math.max(4, h)}%` }}
+                transition={{ duration: 0.5, delay: Math.min(i * 0.02, 0.4), ease: "easeOut" }}
+              />
             </div>
             <div className="w-full truncate text-center text-[9px] font-medium text-text-secondary">{labels[i]}</div>
           </div>

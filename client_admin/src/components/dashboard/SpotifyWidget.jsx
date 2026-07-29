@@ -85,14 +85,14 @@ const SpotifyWidget = () => {
     }
   }, [user?.spotifyConnected]);
 
-  // Auto-sync effect - runs every 5 minutes in the widget
+  // Auto-sync effect - runs every 30 minutes in the widget
   useEffect(() => {
     if (!user?.spotifyConnected) return;
 
-    // Auto-sync every 5 minutes
+    // Auto-sync every 30 minutes
     const autoSyncInterval = setInterval(() => {
       handleSync(true);
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 30 * 60 * 1000); // 30 minutes
 
     // Initial auto-sync after 1 minute
     const initialSyncTimeout = setTimeout(() => {
