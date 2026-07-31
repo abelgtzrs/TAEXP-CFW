@@ -33,6 +33,7 @@ import {
   FileText,
   Smartphone,
   Terminal as TerminalIcon,
+  Film,
 } from "lucide-react";
 
 import { STANDARD_THEME_STORAGE_KEY, STANDARD_ISSUE_DEFAULT } from "../../constants/standardTheme";
@@ -555,6 +556,9 @@ const AdminLayout = () => {
                 Media
               </p>
               <ul className="space-y-0.1">
+                <NavItem to="/media" icon={Film} isCollapsed={isSidebarCollapsed}>
+                  Movies &amp; Games
+                </NavItem>
                 <NavItem to="/spotify-stats" icon={Music} isCollapsed={isSidebarCollapsed}>
                   Spotify Analytics
                 </NavItem>

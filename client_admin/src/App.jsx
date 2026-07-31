@@ -46,6 +46,7 @@ import TerminalPage from "./pages/TerminalPage";
 import BottomNavOrderPage from "./pages/BottomNavOrderPage";
 import YearlyGoalsPage from "./pages/YearlyGoalsPage"; // Import goal page
 import DashboardLayoutEditorPage from "./pages/DashboardLayoutEditorPage";
+import MediaPage from "./pages/MediaPage";
 
 function App() {
   useTheme();
@@ -73,6 +74,7 @@ function App() {
           <Route path="/finance" element={<FinancePage />} />
           <Route path="/finance/rich" element={<RichFinancePage />} />
           <Route path="/spotify-stats" element={<SpotifyStatsPage />} />
+          <Route path="/media" element={<MediaPage />} />
           <Route path="/football-tracker" element={<FootballTrackerPage />} />
           <Route path="/baseball-tracker" element={<BaseballTrackerPage />} />
           <Route path="/daily-drafts" element={<DailyDraftsPage />} />

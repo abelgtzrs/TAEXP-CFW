@@ -10,7 +10,7 @@ const CollectionsTab = ({ collectionsState, accent }) => (
     className="space-y-4"
   >
     {collectionsState.loading && (
-      <div className="flex flex-col items-center justify-center py-16 gap-3">
+      <div className="flex flex-col items-center justify-center py-4 gap-1">
         <div
           className="w-8 h-8 rounded-full border-2 border-white/15 animate-spin"
           style={{ borderTopColor: accent }}
@@ -18,10 +18,18 @@ const CollectionsTab = ({ collectionsState, accent }) => (
         <p className="text-xs text-white/35">Loading collections&hellip;</p>
       </div>
     )}
-    {collectionsState.error && <p className="text-red-400 text-sm text-center py-8">{collectionsState.error}</p>}
+    {collectionsState.error && <p className="text-red-400 text-sm text-center py-2">{collectionsState.error}</p>}
     {!collectionsState.loading && !collectionsState.error && (
       <>
-        <DisplayedCollection title="Pok&eacute;mon" items={collectionsState.pokemon} baseField="basePokemon" />
+        <DisplayedCollection
+          title="Pok&eacute;mon"
+          items={collectionsState.pokemon}
+          baseField="basePokemon"
+          compact
+          columns={10}
+          sortable
+          spriteToggle
+        />
         <DisplayedCollection title="Snoopy Art" items={collectionsState.snoopy} baseField="snoopyArtBase" />
         <DisplayedCollection title="Habbo Rares" items={collectionsState.habbo} baseField="habboRareBase" />
         <DisplayedCollection title="Yu-Gi-Oh!" items={collectionsState.yugioh} baseField="yugiohCardBase" />

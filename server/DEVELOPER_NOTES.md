@@ -23,6 +23,7 @@ Create `server/.env` (see `.env.example`):
 - `PORT` (default 5000)
 - `FRONTEND_URL` (for redirects)
 - Optional Spotify creds: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`
+- Optional Media Tracker creds: `TMDB_API_KEY` (movie search), `RAWG_API_KEY` (game search)
 
 ## Scripts I actually use
 

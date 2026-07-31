@@ -1,15 +1,58 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import Widget from "../ui/Widget";
 
-const DisplayedCollection = ({ title, items, baseField }) => {
-  // --- THIS IS THE FIX ---
+const DisplayedCollection = ({
+  title,
+  items,
+  baseField,
+  compact = false,
+  columns = 10,
+  sortable = false,
+  spriteToggle = false,
+}) => {
+  const [sortBy, setSortBy] = useState("obtained");
+  const [spriteGen, setSpriteGen] = useState("gen6");
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [effectiveColumns, setEffectiveColumns] = useState(columns);
+  const gridWrapperRef = useRef(null);
+
+  // Shrink the column count as the widget narrows, capped at the `columns` prop
+  useEffect(() => {
+    const node = gridWrapperRef.current;
+    if (!node) return undefined;
+
+    const minItemWidth = compact ? 64 : 84;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect?.width;
+      if (!width) return;
+      const fit = Math.floor(width / minItemWidth);
+      setEffectiveColumns(Math.max(2, Math.min(columns, fit || columns)));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [columns, compact]);
+
   // We ensure that 'items' is treated as an array, even if it's undefined or null.
   // We also create a new array to avoid modifying the original.
   // Normalize: remove null/undefined entries that could create leading blanks
-  const displayItems = Array.isArray(items) ? items.filter((it) => it && it[baseField]) : [];
+  const filteredItems = Array.isArray(items) ? items.filter((it) => it && it[baseField]) : [];
+
+  const sortedItems = sortable
+    ? [...filteredItems].sort((a, b) => {
+        const baseA = a[baseField];
+        const baseB = b[baseField];
+        if (sortBy === "name") return (baseA?.name || "").localeCompare(baseB?.name || "");
+        if (sortBy === "dex") return (baseA?.speciesId ?? 0) - (baseB?.speciesId ?? 0);
+        // Default: most recently obtained first
+        return new Date(b.obtainedAt || 0) - new Date(a.obtainedAt || 0);
+      })
+    : filteredItems;
+
+  const displayItems = [...sortedItems];
 
   // Fill the rest of the grid with nulls for consistent spacing.
-  while (displayItems.length < 6) {
+  while (displayItems.length < effectiveColumns) {
     displayItems.push(null);
   }
 
@@ -22,9 +65,11 @@ const DisplayedCollection = ({ title, items, baseField }) => {
 
     // Pokemon has a complex structure with forms and sprite fields
     if (baseField === "basePokemon") {
-      // Try to get sprite from the first form (default form)
+      // Try to get sprite from the first form (default form), honoring the selected generation
       const firstForm = baseItem.forms?.[0];
-      const pokemonSprite = firstForm?.spriteGen6Animated || firstForm?.spriteGen5Animated || null;
+      const primarySprite = spriteGen === "gen5" ? firstForm?.spriteGen5Animated : firstForm?.spriteGen6Animated;
+      const fallbackSprite = spriteGen === "gen5" ? firstForm?.spriteGen6Animated : firstForm?.spriteGen5Animated;
+      const pokemonSprite = primarySprite || fallbackSprite || null;
       return pokemonSprite ? `${serverBaseUrl}${pokemonSprite}` : null;
     }
 
@@ -96,6 +141,14 @@ const DisplayedCollection = ({ title, items, baseField }) => {
     return "";
   };
 
+  // Legendary Pokemon get a shining, glowing name label
+  const getNameGlowClasses = (baseItem) => {
+    if (baseField === "basePokemon" && baseItem?.isLegendary) {
+      return "text-amber-300 font-semibold drop-shadow-[0_0_6px_rgba(251,191,36,0.85)] animate-pulse";
+    }
+    return "";
+  };
+
   // Helper to render a small tooltip content based on collection type
   const renderTooltip = (item, baseItem) => {
     if (!item || !baseItem) return null;
@@ -103,14 +156,7 @@ const DisplayedCollection = ({ title, items, baseField }) => {
     if (baseField === "basePokemon") {
       const types = baseItem.baseTypes?.join(", ") || baseItem.forms?.[0]?.types?.join(", ") || "";
       const variant = item.variant || "Normal";
-      const firstForm = baseItem.forms?.[0];
-      const spriteGen5 = firstForm?.spriteGen5Animated;
-      const spriteGen6 = firstForm?.spriteGen6Animated;
-      const spriteUrl = spriteGen5
-        ? `${serverBaseUrl}${spriteGen5}`
-        : spriteGen6
-          ? `${serverBaseUrl}${spriteGen6}`
-          : null;
+      const spriteUrl = getImageUrl(baseItem, "basePokemon");
       return (
         <div>
           <div className="font-semibold text-slate-100">{baseItem.name}</div>
@@ -179,103 +225,151 @@ const DisplayedCollection = ({ title, items, baseField }) => {
     hideTimer.current = setTimeout(() => setHoveredKey(null), 80);
   };
 
-  // NEW: chunk items into rows of 6 so we can render names under matching columns
+  // Chunk items into rows so we can render names under matching columns
   const rows = [];
-  for (let i = 0; i < displayItems.length; i += 6) {
-    rows.push(displayItems.slice(i, i + 6));
+  for (let i = 0; i < displayItems.length; i += effectiveColumns) {
+    rows.push(displayItems.slice(i, i + effectiveColumns));
   }
 
-  return (
-    <Widget title={title}>
-      {rows.map((rowItems, rowIdx) => (
-        <div key={`row-${rowIdx}`} className={rowIdx < rows.length - 1 ? "mb-6" : ""}>
-          {/* Image grid for this row */}
-          <div className="grid grid-cols-6 gap-4">
-            {rowItems.map((item, index) => {
-              const baseItem = item ? item[baseField] : null;
-              const imageUrl = getImageUrl(baseItem, baseField);
-              const glowClasses = getGlowClasses(item, baseItem);
-              const cellKey = item?._id || `cell-${rowIdx}-${index}`;
-              const isOpen = hoveredKey === cellKey;
-              return (
-                <div
-                  key={cellKey}
-                  className="relative text-center overflow-visible"
-                  onMouseEnter={() => handleEnter(cellKey)}
-                  onMouseLeave={handleLeave}
-                >
-                  {baseItem ? (
-                    <div className="w-full aspect-square flex items-center justify-center rounded-md bg-transparent">
-                      {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt={baseItem.name}
-                          className="max-w-full max-h-full object-contain rounded-md"
-                          onError={(e) => {
-                            // Helpful diagnostics in console when an image fails
-                            console.warn("Collection image failed to load", {
-                              title,
-                              baseField,
-                              itemName: baseItem?.name,
-                              src: e.currentTarget?.src,
-                            });
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full rounded-md flex items-center justify-center text-xs text-gray-500">
-                          [IMG]
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-full aspect-square flex items-center justify-center text-gray-600 text-3xl">
-                      +
-                    </div>
-                  )}
+  const gridStyle = { gridTemplateColumns: `repeat(${effectiveColumns}, minmax(0, 1fr))` };
+  const rowGapClass = compact ? "mb-3" : "mb-6";
+  const cellGapClass = compact ? "gap-2" : "gap-4";
 
-                  {/* Tooltip above card; only visible when card hovered or tooltip hovered */}
-                  {baseItem && (
+  const titleChildren = (
+    <div className="flex items-center gap-2">
+      {sortable && (
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="bg-gray-800 border border-gray-700 text-s text-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent"
+        >
+          <option value="obtained">Sort: Obtained</option>
+          <option value="name">Sort: Name</option>
+          <option value="dex">Sort: Dex #</option>
+        </select>
+      )}
+      {spriteToggle && (
+        <button
+          type="button"
+          onClick={() => setSpriteGen((g) => (g === "gen6" ? "gen5" : "gen6"))}
+          className="text-xs px-2 py-1 rounded border border-gray-700 text-gray-300 hover:bg-gray-800"
+        >
+          Sprite: {spriteGen === "gen6" ? "Gen VI" : "Gen V"}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => setIsExpanded((e) => !e)}
+        className="p-1 rounded border border-gray-700 text-gray-300 hover:bg-gray-800"
+        aria-label={isExpanded ? "Collapse section" : "Expand section"}
+      >
+        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+    </div>
+  );
+
+  return (
+    <Widget title={title} titleChildren={titleChildren} padding={isExpanded ? (compact ? "p-4" : "p-6") : "p-0"}>
+      <div ref={gridWrapperRef}>
+        {isExpanded &&
+          rows.map((rowItems, rowIdx) => (
+            <div key={`row-${rowIdx}`} className={rowIdx < rows.length - 1 ? rowGapClass : ""}>
+              {/* Image grid for this row */}
+              <div className={`grid ${cellGapClass}`} style={gridStyle}>
+                {rowItems.map((item, index) => {
+                  const baseItem = item ? item[baseField] : null;
+                  const imageUrl = getImageUrl(baseItem, baseField);
+                  const glowClasses = getGlowClasses(item, baseItem);
+                  const cellKey = item?._id || `cell-${rowIdx}-${index}`;
+                  const isOpen = hoveredKey === cellKey;
+                  return (
                     <div
-                      className={`absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-2 ${
-                        baseField === "yugiohCardBase" ? "w-80" : "w-56"
-                      } rounded-md bg-slate-900/95 p-2 text-xs transition duration-200 shadow-xl ${glowClasses} ${
-                        isOpen
-                          ? "opacity-100 translate-y-0 pointer-events-auto"
-                          : "opacity-0 translate-y-1 pointer-events-none"
-                      }`}
+                      key={cellKey}
+                      className="relative text-center overflow-visible"
                       onMouseEnter={() => handleEnter(cellKey)}
                       onMouseLeave={handleLeave}
                     >
-                      {renderTooltip(item, baseItem)}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                      {baseItem ? (
+                        <div className="w-full aspect-square flex items-center justify-center rounded-md bg-transparent">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={baseItem.name}
+                              className="max-w-full max-h-full object-contain rounded-md"
+                              onError={(e) => {
+                                // Helpful diagnostics in console when an image fails
+                                console.warn("Collection image failed to load", {
+                                  title,
+                                  baseField,
+                                  itemName: baseItem?.name,
+                                  src: e.currentTarget?.src,
+                                });
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full rounded-md flex items-center justify-center text-xs text-gray-500">
+                              [IMG]
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          className={`w-full aspect-square flex items-center justify-center text-gray-600 ${compact ? "text-lg" : "text-3xl"}`}
+                        >
+                          +
+                        </div>
+                      )}
 
-          {/* Names grid aligned to the same 6 columns */}
-          <div className="mt-2 grid grid-cols-6 gap-4 text-xs text-gray-300">
-            {rowItems.map((item, index) => {
-              const baseItem = item ? item[baseField] : null;
-              return (
-                <div key={item?._id || `name-${rowIdx}-${index}`} className="min-h-8 flex items-center justify-center">
-                  {baseItem ? (
-                    <span
-                      className="block w-full text-center whitespace-normal break-words leading-snug"
-                      title={baseItem.name}
+                      {/* Tooltip above card; only visible when card hovered or tooltip hovered */}
+                      {baseItem && (
+                        <div
+                          className={`absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-2 ${
+                            baseField === "yugiohCardBase" ? "w-80" : "w-56"
+                          } rounded-md bg-slate-900/95 p-2 text-xs transition duration-200 shadow-xl ${glowClasses} ${
+                            isOpen
+                              ? "opacity-100 translate-y-0 pointer-events-auto"
+                              : "opacity-0 translate-y-1 pointer-events-none"
+                          }`}
+                          onMouseEnter={() => handleEnter(cellKey)}
+                          onMouseLeave={handleLeave}
+                        >
+                          {renderTooltip(item, baseItem)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Names grid aligned to the same columns */}
+              <div
+                className={`${compact ? "mt-1" : "mt-2"} grid ${cellGapClass} text-gray-300 ${compact ? "text-xs" : "text-sm"}`}
+                style={gridStyle}
+              >
+                {rowItems.map((item, index) => {
+                  const baseItem = item ? item[baseField] : null;
+                  return (
+                    <div
+                      key={item?._id || `name-${rowIdx}-${index}`}
+                      className={`${compact ? "min-h-4" : "min-h-8"} flex items-center justify-center`}
                     >
-                      {baseItem.name}
-                    </span>
-                  ) : (
-                    <span className="block w-full" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+                      {baseItem ? (
+                        <span
+                          className={`block w-full text-center whitespace-normal break-words leading-snug ${getNameGlowClasses(baseItem)}`}
+                          title={baseItem.name}
+                        >
+                          {baseItem.name}
+                        </span>
+                      ) : (
+                        <span className="block w-full" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+      </div>
     </Widget>
   );
 };

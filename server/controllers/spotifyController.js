@@ -18,16 +18,22 @@ const hasSpotifyClientCredentials = () => Boolean(process.env.SPOTIFY_CLIENT_ID 
 const getPlainTextError = (value) => {
   if (typeof value !== "string") return null;
 
-  const normalized = value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const normalized = value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!normalized) return null;
 
   return normalized.length > 180 ? `${normalized.slice(0, 177)}...` : normalized;
 };
 
 const getSpotifyErrorMessage = (error) =>
-  getPlainTextError(error.response?.data) ||
+  // Token endpoint errors are flat ({ error, error_description }), Web API errors are nested ({ error: { message } })
+  error.response?.data?.error_description ||
   error.response?.data?.error?.message ||
+  (typeof error.response?.data?.error === "string" ? error.response.data.error : null) ||
   error.response?.data?.message ||
+  getPlainTextError(error.response?.data) ||
   error.message ||
   "Unknown Spotify error";
 
@@ -184,7 +190,9 @@ const sendSpotifyErrorResponse = (res, error, fallbackMessage) => {
   }
 
   if (status && TRANSIENT_SPOTIFY_STATUS_CODES.has(status)) {
-    return res.status(502).json({ success: false, message: "Spotify is temporarily unavailable. Please try again soon." });
+    return res
+      .status(502)
+      .json({ success: false, message: "Spotify is temporarily unavailable. Please try again soon." });
   }
 
   if (status === 400 && /invalid_grant|refresh token/i.test(errMsg)) {
