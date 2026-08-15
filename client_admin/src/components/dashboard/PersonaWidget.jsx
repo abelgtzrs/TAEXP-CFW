@@ -62,7 +62,7 @@ const PersonaWidget = () => {
       setIsOpen(false);
     } catch (error) {
       console.error("Failed to set active persona:", error);
-      alert("Could not set active persona.");
+      alert("Could not set active Archetype.");
     }
   };
 
@@ -126,7 +126,7 @@ const PersonaWidget = () => {
   );
 
   return (
-    <Widget title="Active Persona">
+    <Widget title="Active Archetype">
       <div className="relative">
         {/* Dropdown Button */}
         <button

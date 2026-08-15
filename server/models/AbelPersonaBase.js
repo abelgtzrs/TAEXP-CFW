@@ -5,14 +5,14 @@ const AbelPersonaBaseSchema = new mongoose.Schema(
     personaId: {
       // Unique identifier, e.g., "stoic_abel", "sage_abel"
       type: String,
-      required: [true, "Please provide a unique Persona ID"],
+      required: [true, "Please provide a unique Archetype ID"],
       unique: true,
       trim: true,
     },
     name: {
       // Display name, e.g., "Stoic Abel", "Sage Abel"
       type: String,
-      required: [true, "Please provide the Persona name"],
+      required: [true, "Please provide the Archetype name"],
       trim: true,
     },
     description: {

@@ -131,7 +131,7 @@ router.post("/me/test/unlock-personas", async (req, res) => {
       unlockedAbelPersonas: personaIds,
     });
 
-    res.json({ success: true, message: `Unlocked ${personaIds.length} personas for testing` });
+    res.json({ success: true, message: `Unlocked ${personaIds.length} Archetypes for testing` });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

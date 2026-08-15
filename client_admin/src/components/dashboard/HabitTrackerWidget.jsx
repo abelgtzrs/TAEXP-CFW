@@ -4,18 +4,17 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import Widget from "../ui/Widget";
-import { CheckSquare } from "lucide-react";
+import { CheckSquare, Fan, Flame, XCircle } from "lucide-react";
 
 const HabitTrackerWidget = () => {
   const [habits, setHabits] = useState([]);
   const { setUser, user } = useAuth();
-  const [notifications, setNotifications] = useState([]); // toast-style dopamine messages
+  const [notifications, setNotifications] = useState([]);
   const [completingId, setCompletingId] = useState(null);
 
-  const pushNotification = (message) => {
+  const pushNotification = (message, { type = "success", reward = null } = {}) => {
     const id = Date.now() + Math.random();
-    setNotifications((prev) => [...prev, { id, message, fading: false }]);
-    // Start fade then remove
+    setNotifications((prev) => [...prev, { id, message, type, reward, fading: false }]);
     setTimeout(() => {
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, fading: true } : n)));
     }, 2600);
@@ -40,14 +39,12 @@ const HabitTrackerWidget = () => {
   const handleCompleteHabit = async (habitId) => {
     setCompletingId(habitId);
     setTimeout(() => setCompletingId(null), 750);
-    // Optimistic update: mark as completed immediately
     const todayISO = new Date().toISOString();
     const prevHabits = habits;
     setHabits((prev) => prev.map((h) => (h?._id === habitId ? { ...h, lastCompletedDate: todayISO } : h)));
     try {
       const prevTemu = user?.temuTokens || 0;
       const response = await api.post(`/habits/${habitId}/complete`);
-      // Merge with server response to keep data in sync
       const returnedHabit = response.data.habitData || response.data.data || {};
       setHabits((prev) => prev.map((h) => (h?._id === habitId ? { ...h, ...returnedHabit } : h)));
 
@@ -56,27 +53,17 @@ const HabitTrackerWidget = () => {
         setUser((prevUser) => ({ ...prevUser, ...updatedUserData }));
         const newTemu = updatedUserData.temuTokens;
         if (typeof newTemu === "number" && newTemu > prevTemu) {
-          const gained = newTemu - prevTemu;
-          const phrases = [
-            `Momentum! +${gained} Temu ⚡`,
-            `Streak fuel: +${gained} Temu 🔥`,
-            `Level up! +${gained} Temu ✨`,
-            `Habit crushed! +${gained} Temu 💪`,
-            `Dopamine boost! +${gained} Temu 🧠`,
-            `Vault credit: +${gained} Temu 💎`,
-          ];
-          pushNotification(phrases[Math.floor(Math.random() * phrases.length)]);
+          pushNotification("Objective complete", { reward: newTemu - prevTemu });
         } else {
-          pushNotification("Habit logged ✅");
+          pushNotification("Objective complete");
         }
       } else {
-        pushNotification("Habit logged ✅");
+        pushNotification("Objective complete");
       }
     } catch (err) {
-      // Revert optimistic update on failure
       setHabits(prevHabits);
       console.error("Failed to complete habit from widget:", err);
-      pushNotification(err.response?.data?.message || "Completion failed ❌");
+      pushNotification(err.response?.data?.message || "Could not complete objective", { type: "error" });
     }
   };
 
@@ -89,7 +76,6 @@ const HabitTrackerWidget = () => {
     return today.toDateString() === lastCompletion.toDateString();
   };
 
-  // Show up to 10 habits, completed or not
   const shownHabits = habits.filter(Boolean).slice(0, 10);
 
   return (
@@ -135,13 +121,24 @@ const HabitTrackerWidget = () => {
                 }`}
                 aria-disabled={completed}
               >
-                <span
-                  className={
-                    completed ? "text-status-success line-through decoration-status-success/60" : "text-text-secondary"
-                  }
-                >
-                  {habit.name}
-                </span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span
+                    className={`truncate ${
+                      completed ? "text-status-success line-through decoration-status-success/60" : "text-text-secondary"
+                    }`}
+                  >
+                    {habit.name}
+                  </span>
+                  {habit.streak > 0 && (
+                    <span
+                      className="flex-none flex items-center gap-0.5 text-[10px] font-bold text-orange-400"
+                      title={`Longest streak: ${habit.longestStreak || 0} days`}
+                    >
+                      <Flame size={11} />
+                      {habit.streak}
+                    </span>
+                  )}
+                </div>
                 <div className={`flex items-center gap-1.5 ${completed ? "text-status-success" : "text-gray-500"}`}>
                   {completed && (
                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Done</span>
@@ -160,32 +157,59 @@ const HabitTrackerWidget = () => {
       <Link to="/habits" className="text-sm text-primary hover:underline mt-4 block text-right">
         View All Habits &rarr;
       </Link>
-      {/* Global portal for notifications positioned below header and left of right sidebar */}
       {createPortal(
         <div
           aria-live="polite"
           className="fixed z-[60] flex flex-col gap-2 pointer-events-none"
           style={{
-            top: 52, // just below header (48px height + small offset)
-            right: "var(--right-sidebar-width)", // align to left edge of right sidebar
-            maxWidth: 240,
+            top: 52,
+            right: "var(--right-sidebar-width)",
+            width: 220,
           }}
         >
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              className={`group toast-pop ${
-                n.fading ? "toast-fading" : ""
-              } toast-glow relative px-3 py-2 rounded-md border shadow-xl backdrop-blur-md bg-surface/90 border-primary/40 text-text-main text-xs font-semibold flex items-center gap-2 tracking-wide`}
-              style={{
-                boxShadow: "0 4px 14px -2px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.05)",
-              }}
-            >
-              <div className="toast-accent w-1 h-5 rounded-full" />
-              <span className="flex-1">{n.message}</span>
-              <span className="text-[9px] text-text-tertiary opacity-60">HABIT</span>
-            </div>
-          ))}
+          {notifications.map((n) => {
+            const isError = n.type === "error";
+            return (
+              <div
+                key={n.id}
+                className={`habit-toast-pop ${n.fading ? "toast-fading" : ""} ${
+                  isError ? "" : "habit-toast-glow"
+                } relative flex flex-col gap-1.5 px-3 py-2.5 rounded-xl border shadow-xl backdrop-blur-md overflow-hidden ${
+                  isError
+                    ? "bg-status-error/10 border-status-error/40 text-status-error"
+                    : "bg-surface/95 border-status-success/40 text-text-main"
+                }`}
+                style={{
+                  boxShadow: isError
+                    ? "0 6px 18px -4px rgba(239,68,68,0.35), 0 0 0 1px rgba(255,255,255,0.04)"
+                    : "0 6px 18px -4px rgba(34,197,94,0.35), 0 0 0 1px rgba(255,255,255,0.05)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`flex-none w-6 h-6 rounded-full flex items-center justify-center ${
+                      isError
+                        ? "bg-status-error/15 text-status-error"
+                        : "habit-toast-icon bg-status-success/15 text-status-success"
+                    }`}
+                  >
+                    {isError ? <XCircle size={14} /> : <Fan size={13} />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold leading-tight">{n.message}</p>
+                  </div>
+                  {n.reward != null && (
+                    <span className="flex-none text-[10px] font-bold text-amber-300 bg-amber-400/10 border border-amber-400/30 rounded-full px-1.5 py-0.5">
+                      +{n.reward} TT
+                    </span>
+                  )}
+                </div>
+                {!isError && (
+                  <div className="habit-toast-bar absolute left-0 bottom-0 h-0.5 w-full bg-status-success/70" />
+                )}
+              </div>
+            );
+          })}
         </div>,
         document.body,
       )}

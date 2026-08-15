@@ -6,7 +6,7 @@ exports.listPersonas = async (req, res) => {
     const personas = await AbelPersonaBase.find({}).sort({ name: 1 });
     res.json({ success: true, data: personas });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch personas" });
+    res.status(500).json({ success: false, message: "Failed to fetch Archetypes" });
   }
 };
 
@@ -37,9 +37,9 @@ exports.updatePersona = async (req, res) => {
     }
 
     const updated = await AbelPersonaBase.findByIdAndUpdate(id, allowed, { new: true, runValidators: true });
-    if (!updated) return res.status(404).json({ success: false, message: "Persona not found" });
+    if (!updated) return res.status(404).json({ success: false, message: "Archetype not found" });
     res.json({ success: true, data: updated });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message || "Failed to update persona" });
+    res.status(400).json({ success: false, message: err.message || "Failed to update Archetype" });
   }
 };

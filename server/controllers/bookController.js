@@ -2,6 +2,7 @@
 
 const Book = require("../models/userSpecific/Book"); // Import the Book model.
 const User = require("../models/User"); // Import User model for rewards.
+const { awardExperience } = require("../accountProgression");
 
 // @desc    Create a new book entry for the logged-in user
 // @route   POST /api/books
@@ -72,13 +73,7 @@ exports.updateBook = async (req, res) => {
       const WENDY_HEARTS_AWARD = 25;
 
       user.wendyHearts = (user.wendyHearts || 0) + WENDY_HEARTS_AWARD;
-      user.experience = (user.experience || 0) + BOOK_FINISH_XP;
-
-      if (user.experience >= user.xpToNextLevel) {
-        user.level += 1;
-        user.experience -= user.xpToNextLevel;
-        user.xpToNextLevel = Math.floor(user.xpToNextLevel * 1.25);
-      }
+      const xpReward = awardExperience(user, BOOK_FINISH_XP);
 
       // --- THIS IS THE FIX ---
       // Save the updated user document and capture the result.
@@ -92,7 +87,7 @@ exports.updateBook = async (req, res) => {
       // Return a special success response INCLUDING the updated user data.
       return res.status(200).json({
         success: true,
-        message: `Book finished! +${BOOK_FINISH_XP} XP, +${WENDY_HEARTS_AWARD} Wendy Hearts!`,
+        message: `Book finished! +${xpReward.xpAwarded} XP, +${WENDY_HEARTS_AWARD} Wendy Hearts!`,
         data: updatedBook,
         userData: userResponse, // The frontend will use this to update its global state.
       });

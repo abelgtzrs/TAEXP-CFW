@@ -11,10 +11,12 @@ const UserYugiohCard = require("../models/userSpecific/userYugiohCard");
 const HabboRareBase = require("../models/HabboRareBase");
 const UserHabboRare = require("../models/userSpecific/userHabboRare");
 const AbelPersonaBase = require("../models/AbelPersonaBase");
+const { SHOP_PRICES, getPullPricing } = require("../shopPricing");
+const { GATILLA_UPGRADES, getAccountUpgradesForUser } = require("../gatillaUpgrades");
 
 const GACHA_CONFIG = {
   pokemon: {
-    cost: 5,
+    cost: SHOP_PRICES.pokemon,
     currency: "temuTokens",
     BaseModel: PokemonBase,
     UserCollectibleModel: UserPokemon,
@@ -22,7 +24,7 @@ const GACHA_CONFIG = {
     baseModelRefField: "basePokemon",
   },
   yugioh: {
-    cost: 5,
+    cost: SHOP_PRICES.yugioh,
     currency: "temuTokens",
     BaseModel: YugiohCardBase,
     UserCollectibleModel: UserYugiohCard,
@@ -30,32 +32,31 @@ const GACHA_CONFIG = {
     baseModelRefField: "yugiohCardBase",
   },
   snoopy: {
-    cost: 20,
-    currency: "gatillaGold",
+    cost: SHOP_PRICES.snoopy,
+    currency: "temuTokens",
     BaseModel: SnoopyArtBase,
     UserCollectibleModel: UserSnoopyArt,
     userCollectionField: "snoopyArtCollection",
     baseModelRefField: "snoopyArtBase",
   },
   habbo: {
-    cost: 20,
-    currency: "gatillaGold",
+    cost: SHOP_PRICES.habbo,
+    currency: "temuTokens",
     BaseModel: HabboRareBase,
     UserCollectibleModel: UserHabboRare,
     userCollectionField: "habboRares",
     baseModelRefField: "habboRareBase",
   },
   abelpersona: {
-    cost: 10,
-    currency: "wendyHearts",
+    cost: SHOP_PRICES.abelpersona,
+    currency: "temuTokens",
     BaseModel: AbelPersonaBase,
     isDirectUnlock: true,
     userCollectionField: "unlockedAbelPersonas",
   },
 };
 
-// --- NEW HELPER FUNCTION FOR YU-GI-OH! PULLS ---
-const pullYugiohPack = async () => {
+const pullYugiohCards = async (quantity) => {
   const rarityRates = [
     { rarity: "Common", weight: 0.5 },
     { rarity: "Rare", weight: 0.3 },
@@ -66,7 +67,7 @@ const pullYugiohPack = async () => {
   ];
 
   const pulledCards = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < quantity; i++) {
     // Step 1: Roll for rarity
     const roll = Math.random();
     let cumulativeWeight = 0;
@@ -141,26 +142,31 @@ exports.pullFromGacha = async (req, res) => {
     const { category } = req.params;
     const userId = req.user.id;
 
-    const config = GACHA_CONFIG[category.toLowerCase()];
+    const categoryKey = category.toLowerCase();
+    const config = GACHA_CONFIG[categoryKey];
     if (!config) {
       return res.status(404).json({ success: false, message: "Gacha category not found." });
     }
 
+    const pricing = getPullPricing(categoryKey, req.body?.quantity);
+    if (!pricing) {
+      return res.status(400).json({ success: false, message: "Yu-Gi-Oh! pulls must contain 1 or 3 cards." });
+    }
+
     const user = await User.findById(userId);
 
-    if (user[config.currency] < config.cost) {
+    if (user[config.currency] < pricing.cost) {
       return res
         .status(400)
-        .json({ success: false, message: `Insufficient funds. Requires ${config.cost} ${config.currency}.` });
+        .json({ success: false, message: `Insufficient funds. Requires ${pricing.cost} Temu Tokens.` });
     }
 
     let pulledItems = [];
     let message = "";
 
-    if (category.toLowerCase() === "yugioh") {
-      pulledItems = await pullYugiohPack(); // Uncommented this line
-      message = `You opened a pack and found 6 cards!`;
-    } else if (category.toLowerCase() === "abelpersona") {
+    if (categoryKey === "yugioh") {
+      pulledItems = await pullYugiohCards(pricing.quantity);
+    } else if (categoryKey === "abelpersona") {
       // Use weighted pulls for Abel Personas
       const item = await pullAbelPersona();
       if (item) {
@@ -185,10 +191,10 @@ exports.pullFromGacha = async (req, res) => {
     // We now handle the awarding logic based on the config.
 
     // Deduct currency first
-    user[config.currency] -= config.cost;
+    user[config.currency] -= pricing.cost;
     let alreadyOwned = false; // Declare at the top level
 
-    if (category.toLowerCase() === "yugioh") {
+    if (categoryKey === "yugioh") {
       // Special handling for yugioh packs (multiple cards)
       let newCards = 0;
       for (const card of pulledItems) {
@@ -206,7 +212,7 @@ exports.pullFromGacha = async (req, res) => {
           newCards++;
         }
       }
-      message = `You opened a pack and found ${newCards} new cards out of 6!`;
+      message = `You drew ${newCards} new ${newCards === 1 ? "card" : "cards"} out of ${pricing.quantity}.`;
     } else {
       const pulledItem = pulledItems[0]; // For single pulls
 
@@ -216,7 +222,7 @@ exports.pullFromGacha = async (req, res) => {
           alreadyOwned = true;
         } else {
           user[config.userCollectionField].push(pulledItem._id);
-          message = `Congratulations! You unlocked Persona: ${pulledItem.name}`;
+          message = `Congratulations! You unlocked Archetype: ${pulledItem.name}`;
         }
       } else {
         // Logic for instanced collectibles (Pokémon, Snoopys, etc.)
@@ -226,7 +232,7 @@ exports.pullFromGacha = async (req, res) => {
         });
 
         // This logic needs refinement based on whether duplicates are allowed per category
-        if (existingItem && (category === "snoopy" || category === "habbo")) {
+        if (existingItem && (categoryKey === "snoopy" || categoryKey === "habbo")) {
           alreadyOwned = true;
         } else {
           const newUserCollectible = await config.UserCollectibleModel.create({
@@ -239,9 +245,9 @@ exports.pullFromGacha = async (req, res) => {
       }
 
       if (alreadyOwned) {
-        const refund = Math.floor(config.cost / 4);
+        const refund = Math.floor(pricing.cost / 4);
         user[config.currency] += refund; // Add the refund back
-        message = `You pulled a duplicate! ${refund} ${config.currency} have been refunded.`;
+        message = `You pulled a duplicate! ${refund} Temu Tokens have been refunded.`;
       }
     }
 
@@ -250,10 +256,87 @@ exports.pullFromGacha = async (req, res) => {
     res.status(201).json({
       success: true,
       message: message,
-      data: { items: pulledItems, isDuplicate: alreadyOwned },
+      data: {
+        items: pulledItems,
+        isDuplicate: alreadyOwned,
+        balance: user[config.currency],
+        currency: config.currency,
+        cost: pricing.cost,
+      },
     });
   } catch (error) {
     console.error("Gacha Pull Error:", error);
     res.status(500).json({ success: false, message: "Server Error during gacha pull.", error: error.message });
+  }
+};
+
+const toUserResponse = (user) => {
+  const userResponse = { ...user.toObject() };
+  delete userResponse.password;
+  return userResponse;
+};
+
+exports.getAccountUpgrades = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+    res.status(200).json({ success: true, data: getAccountUpgradesForUser(user) });
+  } catch (error) {
+    console.error("Get Account Upgrades Error:", error);
+    res.status(500).json({ success: false, message: "Server Error loading account upgrades." });
+  }
+};
+
+exports.buyAccountUpgrade = async (req, res) => {
+  try {
+    const upgrade = GATILLA_UPGRADES[req.params.upgradeKey];
+    if (!upgrade) return res.status(404).json({ success: false, message: "Account upgrade not found." });
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+    const currentTier = Number(user.accountUpgrades?.xpBoostTier || 0);
+    const nextTier = upgrade.tiers[currentTier];
+
+    if (!nextTier) return res.status(400).json({ success: false, message: "Training Momentum is already maxed." });
+    if ((user.level || 1) < nextTier.levelRequired) {
+      return res.status(400).json({ success: false, message: `Requires level ${nextTier.levelRequired}.` });
+    }
+    if ((user.gatillaGold || 0) < nextTier.cost) {
+      return res.status(400).json({ success: false, message: `Requires ${nextTier.cost} Gatilla Gold.` });
+    }
+
+    const tierMatch =
+      currentTier === 0
+        ? [{ "accountUpgrades.xpBoostTier": 0 }, { "accountUpgrades.xpBoostTier": { $exists: false } }]
+        : [{ "accountUpgrades.xpBoostTier": currentTier }];
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: req.user.id,
+        gatillaGold: { $gte: nextTier.cost },
+        level: { $gte: nextTier.levelRequired },
+        $or: tierMatch,
+      },
+      {
+        $inc: { gatillaGold: -nextTier.cost },
+        $set: { "accountUpgrades.xpBoostTier": currentTier + 1 },
+      },
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedUser) {
+      return res.status(409).json({ success: false, message: "Upgrade changed. Refresh and try again." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Training Momentum upgraded to Tier ${currentTier + 1}.`,
+      data: getAccountUpgradesForUser(updatedUser),
+      userData: toUserResponse(updatedUser),
+    });
+  } catch (error) {
+    console.error("Buy Account Upgrade Error:", error);
+    res.status(500).json({ success: false, message: "Server Error buying account upgrade." });
   }
 };

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import GachaCard from "./GachaCard";
 
-const BannersGrid = ({ configs, isAdmin, loadingCategory, onPull }) => {
+const BannersGrid = ({ configs, loadingCategory, onPull }) => {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -10,7 +10,6 @@ const BannersGrid = ({ configs, isAdmin, loadingCategory, onPull }) => {
       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
     >
       {configs.map((config, index) => {
-        if (config.category === "abelpersona" && !isAdmin) return null;
         return (
           <motion.div
             key={config.category}

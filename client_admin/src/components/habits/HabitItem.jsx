@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { Trash2, Flame, Trophy } from "lucide-react";
 
 const HabitItem = ({ habit, onComplete, onDelete }) => {
   // Helper function to check if the habit was already completed today
@@ -8,6 +8,8 @@ const HabitItem = ({ habit, onComplete, onDelete }) => {
   };
 
   const completed = isCompletedToday();
+  const streak = habit.streak || 0;
+  const longestStreak = habit.longestStreak || 0;
 
   return (
     <div
@@ -21,9 +23,16 @@ const HabitItem = ({ habit, onComplete, onDelete }) => {
         <h3 className={`text-lg font-medium ${completed ? "text-green-300 line-through" : "text-text-main"}`}>
           {habit.name}
         </h3>
-        <p className="text-sm text-text-secondary">
-          Current Streak: <span className="text-primary font-bold">{habit.streak} days 🔥</span>
-        </p>
+        <div className="flex items-center gap-3 mt-1">
+          <span className="flex items-center gap-1 text-sm text-text-secondary">
+            <Flame size={14} className="text-orange-400" />
+            <span className="text-primary font-bold">{streak}</span> day streak
+          </span>
+          <span className="flex items-center gap-1 text-xs text-text-tertiary" title="Longest streak">
+            <Trophy size={13} className="text-amber-400" />
+            Best: <span className="font-semibold text-amber-300">{longestStreak}</span>
+          </span>
+        </div>
         {habit.description && <p className="text-xs text-text-secondary mt-1">{habit.description}</p>}
       </div>
       <div className="flex items-center gap-2">

@@ -215,6 +215,57 @@
   animation: toast-sparkle 2.2s ease-out infinite;
 }
 
+/* --- Habit Completed Toast --- */
+@keyframes habit-toast-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes habit-toast-icon-pop {
+  0% {
+    transform: scale(0.4) rotate(-15deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.2) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+@keyframes habit-toast-drain {
+  0% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+.habit-toast-pop {
+  animation: habit-toast-enter 0.5s cubic-bezier(0.16, 0.8, 0.3, 1);
+  transform-origin: top right;
+}
+.habit-toast-glow {
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15) inset;
+}
+.habit-toast-icon {
+  animation: habit-toast-icon-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+}
+.habit-toast-bar {
+  transform-origin: left;
+  animation: habit-toast-drain 2.6s linear forwards;
+}
+
 /* Global Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;

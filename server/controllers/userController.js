@@ -399,7 +399,7 @@ const setActivePersona = async (req, res) => {
     // Security check: ensure the user has unlocked this persona before activating.
     // We also allow `null` to be passed to deactivate a persona.
     if (personaId && !user.unlockedAbelPersonas.includes(personaId)) {
-      return res.status(403).json({ success: false, message: "Persona not unlocked." });
+      return res.status(403).json({ success: false, message: "Archetype not unlocked." });
     }
 
     // Set the active persona field to the new ID or null.
@@ -1016,7 +1016,7 @@ const getDashboardStats = async (req, res) => {
 
       // Mock data for now, to be replaced later
       topProducts: [
-        { name: "Abel Persona: Stoic", units: 210 },
+        { name: "Archetype: Stoic", units: 210 },
         { name: "Snoopy: Joe Cool", units: 198 },
         { name: "Pokémon: Eevee", units: 188 },
         { name: "Habbo Rare: Throne", units: 130 },

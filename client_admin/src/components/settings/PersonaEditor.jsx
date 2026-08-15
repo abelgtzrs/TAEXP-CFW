@@ -233,7 +233,7 @@ const PersonaEditor = ({ className = "" }) => {
       setUser(response.data.data);
     } catch (error) {
       console.error("Failed to set active persona:", error);
-      alert("Could not set active persona.");
+      alert("Could not set active Archetype.");
     }
   };
 
@@ -293,14 +293,14 @@ const PersonaEditor = ({ className = "" }) => {
       }
     } catch (e) {
       console.error("Failed to update persona", e);
-      alert("Failed to update persona");
+      alert("Failed to update Archetype");
     }
   };
 
   return (
     <div className={className}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Widget title="Personas" className="lg:col-span-1">
+        <Widget title="Archetypes" className="lg:col-span-1">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs text-text-secondary">
               Owned {ownedCount} / {personas.length}
@@ -450,18 +450,18 @@ const PersonaEditor = ({ className = "" }) => {
         {/* Editor */}
         <Widget title="Editor" className="lg:col-span-1">
           {!editing ? (
-            <div className="text-sm text-text-secondary">Select a persona from the left to edit.</div>
+            <div className="text-sm text-text-secondary">Select an Archetype from the left to edit.</div>
           ) : (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <label className="text-xs">
-                  Persona ID
+                  Archetype ID
                   <input
                     type="text"
                     className="mt-1 w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-sm opacity-60 cursor-not-allowed"
                     value={editing.personaId || ""}
                     readOnly
-                    title="Persona ID is immutable"
+                    title="Archetype ID is immutable"
                   />
                 </label>
                 <label className="text-xs">
@@ -627,7 +627,7 @@ const PersonaEditor = ({ className = "" }) => {
           {editing ? (
             <PersonaPreview persona={editing} />
           ) : (
-            <div className="text-sm text-text-secondary">No persona selected.</div>
+            <div className="text-sm text-text-secondary">No Archetype selected.</div>
           )}
         </Widget>
       </div>

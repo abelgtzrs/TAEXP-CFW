@@ -153,7 +153,7 @@ const UiCustomizerModal = ({ open, onClose, settings, onChange, anchorLeft = 0, 
       }
     } catch (e) {
       console.error("Failed to update persona", e);
-      alert("Failed to save persona theme.");
+      alert("Failed to save Archetype theme.");
     }
   };
 
@@ -199,7 +199,7 @@ const UiCustomizerModal = ({ open, onClose, settings, onChange, anchorLeft = 0, 
               }`}
               onClick={() => setTab("persona")}
             >
-              <Palette className="w-3.5 h-3.5" /> Persona
+              <Palette className="w-3.5 h-3.5" /> Archetype
             </button>
           </div>
         </div>
@@ -255,9 +255,9 @@ const UiCustomizerModal = ({ open, onClose, settings, onChange, anchorLeft = 0, 
               className="rounded-lg border p-3 flex flex-col min-h-0"
               style={{ borderColor: "var(--color-primary)" }}
             >
-              <h3 className="font-semibold text-text-main mb-2 text-sm">Persona Theme</h3>
+              <h3 className="font-semibold text-text-main mb-2 text-sm">Archetype Theme</h3>
               <div className="mb-3 flex items-center gap-2">
-                <label className="text-xs text-text-secondary w-28">Active Persona</label>
+                <label className="text-xs text-text-secondary w-28">Active Archetype</label>
                 <select
                   className="flex-1 rounded border px-2 py-1 text-xs"
                   style={{ background: "var(--color-background)", borderColor: "var(--color-primary)" }}
@@ -275,7 +275,7 @@ const UiCustomizerModal = ({ open, onClose, settings, onChange, anchorLeft = 0, 
               </div>
 
               {!editing ? (
-                <div className="text-[11px] text-text-secondary">Select a persona to edit its colors.</div>
+                <div className="text-[11px] text-text-secondary">Select an Archetype to edit its colors.</div>
               ) : (
                 <div className="space-y-3 overflow-auto pr-1">
                   <div>

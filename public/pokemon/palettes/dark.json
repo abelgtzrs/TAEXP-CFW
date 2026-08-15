@@ -1,0 +1,26 @@
+{
+  "colors": [
+    [
+      6,
+      6,
+      104
+    ],
+    [
+      81,
+      81,
+      81
+    ],
+    [
+      42,
+      42,
+      42
+    ],
+    [
+      40,
+      25,
+      86
+    ]
+  ],
+  "mapping_mode": "preserve_shading",
+  "preserve_transparency": true
+}

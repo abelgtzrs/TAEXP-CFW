@@ -5,15 +5,14 @@ const CATEGORY_LABELS = {
   yugioh: "Yu-Gi-Oh!",
   snoopy: "Snoopy",
   habbo: "Habbo Rare",
-  abelpersona: "Persona",
+  abelpersona: "Archetype",
 };
 
-const CategoryPanel = ({ config, recentItems = [], isAdmin, onPull, isLoading, categoryLabel }) => {
-  if (config.category === "abelpersona" && !isAdmin) return null;
-
+const CategoryPanel = ({ config, recentItems = [], onPull, isLoading, categoryLabel }) => {
   const label = categoryLabel ? categoryLabel(config.category) : CATEGORY_LABELS[config.category] || config.title;
   const items = Array.isArray(recentItems) ? recentItems.slice(0, 10) : [];
   const slots = [...items, ...Array.from({ length: Math.max(0, 5 - items.length) })];
+  const purchaseOptions = config.purchaseOptions || [{ quantity: 1, cost: config.cost, label: "Pull" }];
 
   return (
     <div
@@ -37,7 +36,9 @@ const CategoryPanel = ({ config, recentItems = [], isAdmin, onPull, isLoading, c
           </div>
           {/* Cost */}
           <div className="shrink-0 text-right">
-            <span className="text-base font-bold text-primary">{config.cost}</span>
+            <span className="text-base font-bold text-primary">
+              {purchaseOptions.map((option) => option.cost).join(" / ")}
+            </span>
             <span className="ml-1 text-xs text-text-secondary">{config.currencySymbol}</span>
           </div>
         </div>
@@ -82,27 +83,30 @@ const CategoryPanel = ({ config, recentItems = [], isAdmin, onPull, isLoading, c
       </div>
 
       {/* ── Pull button ── */}
-      <div className="px-4 pb-4 mt-auto">
-        <button
-          onClick={() => onPull(config.category)}
-          disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-opacity duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: "var(--color-primary)", color: "var(--color-bg)" }}
-          aria-label={`Pull from ${config.title}`}
-        >
-          {isLoading ? (
-            <>
-              <motion.span
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
-                className="inline-block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent"
-              />
-              Pulling…
-            </>
-          ) : (
-            `Pull · ${config.cost} ${config.currencySymbol}`
-          )}
-        </button>
+      <div className={`px-4 pb-4 mt-auto grid gap-2 ${purchaseOptions.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+        {purchaseOptions.map((option) => (
+          <button
+            key={option.quantity}
+            onClick={() => onPull(config.category, option.quantity)}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-opacity duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: "var(--color-primary)", color: "var(--color-bg)" }}
+            aria-label={`${option.label} from ${config.title} for ${option.cost} ${config.currencySymbol}`}
+          >
+            {isLoading ? (
+              <>
+                <motion.span
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+                  className="inline-block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent"
+                />
+                Pulling…
+              </>
+            ) : (
+              `${option.label} · ${option.cost} ${config.currencySymbol}`
+            )}
+          </button>
+        ))}
       </div>
     </div>
   );

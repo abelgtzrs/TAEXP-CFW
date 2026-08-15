@@ -5,7 +5,7 @@ import PersonaEditor from "../components/settings/PersonaEditor";
 const SettingsPage = () => {
   return (
     <div>
-      <PageHeader title="Persona Manager" subtitle="Edit persona palettes, fonts, and preview them live." />
+      <PageHeader title="Archetype Manager" subtitle="Edit Archetype palettes, fonts, and preview them live." />
       <PersonaEditor />
     </div>
   );

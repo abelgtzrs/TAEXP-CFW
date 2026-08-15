@@ -3,6 +3,8 @@
 const WorkoutLog = require("../models/userSpecific/WorkoutLog"); // Import the WorkoutLog model.
 const User = require("../models/User"); // Import User model for rewards.
 const ExerciseDefinition = require("../models/ExerciseDefinition");
+const { awardExperience } = require("../accountProgression");
+const { calculateWorkoutGold, getRewardDayRange } = require("../workoutRewards");
 
 // @desc    Create a new workout log
 // @route   POST /api/workouts
@@ -17,50 +19,33 @@ exports.createWorkoutLog = async (req, res) => {
       });
     }
 
-    // --- NEW REWARD LOGIC ---
-    let totalGatillaGoldAwarded = 0;
     const XP_PER_SET = 5; // Example: 5 XP per set logged
-
-    // Iterate over each exercise in the logged workout
-    for (const exercise of exercises) {
-      // Check if 'sets' exists and is an array
-      if (exercise.sets && Array.isArray(exercise.sets)) {
-        const numSets = exercise.sets.length;
-        let goldForThisExercise = 0;
-
-        if (numSets === 1) {
-          goldForThisExercise = 1;
-        } else if (numSets === 2) {
-          goldForThisExercise = 3;
-        } else if (numSets >= 3) {
-          // Baseline for 3 sets is 5 gold
-          goldForThisExercise = 5;
-          // Add 1 gold for each extra set beyond 3
-          if (numSets > 3) {
-            goldForThisExercise += numSets - 3;
-          }
-        }
-        totalGatillaGoldAwarded += goldForThisExercise;
-      }
-    }
-
-    // Calculate total XP based on the number of sets across all exercises
     const totalSets = exercises.reduce((acc, curr) => acc + (curr.sets ? curr.sets.length : 0), 0);
-    const totalXpAwarded = totalSets * XP_PER_SET;
+    const baseXpAwarded = totalSets * XP_PER_SET;
 
     // Find the user to give them their reward.
-    const user = await User.findById(req.user.id);
+    const rewardDay = getRewardDayRange();
+    const [user, dailyAwards] = await Promise.all([
+      User.findById(req.user.id),
+      WorkoutLog.aggregate([
+        {
+          $match: {
+            user: req.user._id,
+            createdAt: {
+              $gte: rewardDay.start,
+              $lt: rewardDay.end,
+            },
+          },
+        },
+        { $group: { _id: null, total: { $sum: "$gatillaGoldAwarded" } } },
+      ]),
+    ]);
+    const alreadyAwardedToday = dailyAwards[0]?.total || 0;
+    const totalGatillaGoldAwarded = calculateWorkoutGold(exercises, alreadyAwardedToday);
 
     // Add the rewards.
     user.gatillaGold += totalGatillaGoldAwarded;
-    user.experience += totalXpAwarded;
-
-    // Check for user level up.
-    if (user.experience >= user.xpToNextLevel) {
-      user.level += 1;
-      user.experience -= user.xpToNextLevel;
-      user.xpToNextLevel = Math.floor(user.xpToNextLevel * 1.25);
-    }
+    const xpReward = awardExperience(user, baseXpAwarded);
 
     // --- Save to Database ---
     const newLog = await WorkoutLog.create({
@@ -71,13 +56,14 @@ exports.createWorkoutLog = async (req, res) => {
       exercises,
       overallFeeling,
       notesSession,
+      gatillaGoldAwarded: totalGatillaGoldAwarded,
     });
     await user.save();
 
     // Send a successful response.
     res.status(201).json({
       success: true,
-      message: `Workout logged! +${totalXpAwarded} XP, +${totalGatillaGoldAwarded} Gatilla Gold!`,
+      message: `Workout logged! +${xpReward.xpAwarded} XP, +${totalGatillaGoldAwarded} Gatilla Gold!`,
       data: newLog,
     });
   } catch (error) {

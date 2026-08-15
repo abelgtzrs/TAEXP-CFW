@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Coins, Gem, Heart, X, AlertCircle } from "lucide-react";
+import { Coins, Gem, Heart, X, AlertCircle, Sparkles, ShoppingBag } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import PullResultModal from "../components/shop/PullResultModal";
-import ShopFilter from "../components/shop/ShopFilter";
 import BalancesChips from "../components/shop/BalancesChips";
 import CategoryPanel from "../components/shop/CategoryPanel";
 
+const MotionDiv = motion.div;
+
 const ShopPage = () => {
   const { user, setUser } = useAuth();
+  const [activeTab, setActiveTab] = useState("collectibles");
   const [loadingCategory, setLoadingCategory] = useState(null);
+  const [loadingUpgrade, setLoadingUpgrade] = useState(null);
+  const [accountUpgrades, setAccountUpgrades] = useState([]);
   const [error, setError] = useState("");
   const [lastPulledItem, setLastPulledItem] = useState(null);
-  const [filterCurrency, setFilterCurrency] = useState("all");
   // Per-category last 5 pulls, persisted locally (with migration from old flat list)
   const [recentByCategory, setRecentByCategory] = useState(() => {
     try {
@@ -58,7 +61,7 @@ const ShopPage = () => {
       yugioh: "Yu-Gi-Oh!",
       snoopy: "Snoopy",
       habbo: "Habbo Rare",
-      abelpersona: "Persona",
+      abelpersona: "Archetype",
     };
     return map[cat] || cat;
   };
@@ -71,49 +74,67 @@ const ShopPage = () => {
         capped[cat] = (Array.isArray(arr) ? arr : []).slice(0, 10);
       }
       localStorage.setItem("tae.shop.recentByCategory.v1", JSON.stringify(capped));
-    } catch {}
+    } catch {
+      // localStorage history is nice-to-have only.
+    }
   }, [recentByCategory]);
+
+  useEffect(() => {
+    const loadUpgrades = async () => {
+      try {
+        const response = await api.get("/shop/account-upgrades");
+        setAccountUpgrades(response.data?.data || []);
+      } catch {
+        setAccountUpgrades([]);
+      }
+    };
+    loadUpgrades();
+  }, []);
 
   const SHOP_CONFIG = [
     {
       category: "pokemon",
       title: "Summon Pokémon",
-      description: "Burn Temu Tokens to execute a randomized Pokémon roll. Duplicates auto-refund at 25%.",
-      cost: 5,
+      description: "Spend Temu Tokens on a randomized Pokémon pull.",
+      cost: 10,
       currencyName: "temuTokens",
       currencySymbol: "TT",
     },
     {
       category: "yugioh",
-      title: "Draw a Card",
-      description: "Consume Temu Tokens to draw a random card from the archive. Standard RNG applies.",
-      cost: 5,
+      title: "Draw Yu-Gi-Oh! Cards",
+      description: "Draw 1 random card for 2 tokens or 3 random cards for 5 tokens.",
+      cost: 2,
       currencyName: "temuTokens",
       currencySymbol: "TT",
+      purchaseOptions: [
+        { quantity: 1, cost: 2, label: "1 Card" },
+        { quantity: 3, cost: 5, label: "3 Cards" },
+      ],
     },
     {
       category: "snoopy",
       title: "Find a Snoopy",
-      description: "Spend Gatilla Gold to uncover a randomized Snoopy pixel—rarity-weighted outcomes.",
+      description: "Spend Temu Tokens to uncover a randomized Snoopy collectible.",
       cost: 20,
-      currencyName: "gatillaGold",
-      currencySymbol: "GG",
+      currencyName: "temuTokens",
+      currencySymbol: "TT",
     },
     {
       category: "habbo",
       title: "Discover a Habbo Rare",
-      description: "Redeem Gatilla Gold to roll for a Habbo rare. Duplicates trigger partial credit.",
+      description: "Spend Temu Tokens to roll for a randomized Habbo rare.",
       cost: 20,
-      currencyName: "gatillaGold",
-      currencySymbol: "GG",
+      currencyName: "temuTokens",
+      currencySymbol: "TT",
     },
     {
       category: "abelpersona",
-      title: "Unlock a Persona",
-      description: "Spend Wendy Hearts to unlock a new Abel Persona. Access restricted to administrators.",
-      cost: 10,
-      currencyName: "wendyHearts",
-      currencySymbol: "❤️",
+      title: "Unlock an Archetype",
+      description: "Spend Temu Tokens to unlock a randomized Archetype theme.",
+      cost: 30,
+      currencyName: "temuTokens",
+      currencySymbol: "TT",
     },
   ];
 
@@ -124,36 +145,33 @@ const ShopPage = () => {
         value: user?.temuTokens || 0,
         symbol: "TT",
         icon: Coins,
-        title: "Primary grind currency earned via habits",
+        title: "Collectible currency earned via habits",
       },
       {
         label: "Gatilla Gold",
         value: user?.gatillaGold || 0,
         symbol: "GG",
         icon: Gem,
-        title: "Premium currency earned via workouts and challenges",
+        title: "Earned via workouts; spent on account upgrades",
       },
       {
         label: "Wendy Hearts",
         value: user?.wendyHearts || 0,
         symbol: "\u2764\uFE0F",
         icon: Heart,
-        title: "Narrative currency for Persona unlocks",
+        title: "Earned via reading; future use to be defined",
       },
     ],
     [user],
   );
 
-  const visibleConfigs = useMemo(() => {
-    if (filterCurrency === "all") return SHOP_CONFIG;
-    return SHOP_CONFIG.filter((c) => c.currencySymbol === filterCurrency);
-  }, [SHOP_CONFIG, filterCurrency]);
-
-  const handlePull = async (category) => {
+  const handlePull = async (category, quantity = 1) => {
     const config = SHOP_CONFIG.find((c) => c.category === category);
     if (!config || !user) return;
 
-    if (user[config.currencyName] < config.cost) {
+    const cost = category === "yugioh" && quantity === 3 ? 5 : config.cost;
+
+    if (user[config.currencyName] < cost) {
       setError("You don't have enough currency for this!");
       return;
     }
@@ -162,7 +180,7 @@ const ShopPage = () => {
     setError("");
 
     try {
-      const response = await api.post(`/shop/pull/${category}`);
+      const response = await api.post(`/shop/pull/${category}`, { quantity });
       setLastPulledItem(response.data);
 
       const nested = response.data?.data || {};
@@ -196,13 +214,9 @@ const ShopPage = () => {
 
       setUser((prevUser) => {
         const newUserState = { ...prevUser };
-        const currency = config.currencyName;
-        const cost = config.cost;
-        const refund = Math.floor(cost / 4);
-        if (response.data?.data?.isDuplicate) {
-          newUserState[currency] = (newUserState[currency] || 0) - cost + refund;
-        } else {
-          newUserState[currency] = (newUserState[currency] || 0) - cost;
+        const { currency, balance } = response.data?.data || {};
+        if (currency && Number.isFinite(balance)) {
+          newUserState[currency] = balance;
         }
         return newUserState;
       });
@@ -213,26 +227,63 @@ const ShopPage = () => {
     }
   };
 
+  const handleBuyUpgrade = async (upgradeKey) => {
+    setLoadingUpgrade(upgradeKey);
+    setError("");
+
+    try {
+      const response = await api.post(`/shop/account-upgrades/${upgradeKey}/buy`);
+      setAccountUpgrades(response.data?.data || []);
+      if (response.data?.userData) {
+        setUser(response.data.userData);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "An error occurred while buying the upgrade.");
+    } finally {
+      setLoadingUpgrade(null);
+    }
+  };
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="pb-12">
+    <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="pb-12">
       {/* ── Header ── */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-text-main">Storefront</h1>
         <p className="text-sm text-text-secondary mt-0.5">
-          Burn tokens. Execute an RNG pull. Duplicates auto-refund at 25%.
+          Spend Temu Tokens on randomized collectibles. Duplicate rules vary by collection.
         </p>
       </div>
 
       {/* ── Wallet ── */}
       <BalancesChips balances={balances} />
 
-      {/* ── Filter tabs ── */}
-      <ShopFilter value={filterCurrency} onChange={setFilterCurrency} />
+      <div className="mb-5 inline-flex rounded-xl border border-border bg-surface/70 p-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("collectibles")}
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
+            activeTab === "collectibles" ? "bg-primary text-white" : "text-text-secondary hover:text-text-main"
+          }`}
+        >
+          <ShoppingBag className="h-4 w-4" />
+          Collectibles
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("upgrades")}
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
+            activeTab === "upgrades" ? "bg-primary text-white" : "text-text-secondary hover:text-text-main"
+          }`}
+        >
+          <Sparkles className="h-4 w-4" />
+          Account Upgrades
+        </button>
+      </div>
 
       {/* ── Error toast ── */}
       <AnimatePresence>
         {error && (
-          <motion.div
+          <MotionDiv
             key="err"
             initial={{ opacity: 0, y: -8, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -251,14 +302,14 @@ const ShopPage = () => {
             >
               <X className="h-4 w-4 text-text-secondary" />
             </button>
-          </motion.div>
+          </MotionDiv>
         )}
       </AnimatePresence>
 
       {/* ── Banner grid ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {visibleConfigs.map((cfg, i) => (
-          <motion.div
+      <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 ${activeTab === "collectibles" ? "" : "hidden"}`}>
+        {SHOP_CONFIG.map((cfg, i) => (
+          <MotionDiv
             key={cfg.category}
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -267,25 +318,82 @@ const ShopPage = () => {
             <CategoryPanel
               config={cfg}
               recentItems={recentByCategory[cfg.category] || []}
-              isAdmin={user?.role === "admin"}
               onPull={handlePull}
               isLoading={loadingCategory === cfg.category}
               categoryLabel={categoryLabel}
             />
-          </motion.div>
+          </MotionDiv>
         ))}
       </div>
 
-      {visibleConfigs.length === 0 && (
-        <div className="py-16 text-center text-text-secondary text-sm">No banners match the current filter.</div>
-      )}
-
-      <p className="mt-8 text-center text-xs text-text-secondary opacity-60">
-        Pull outcomes are probabilistic · Duplicates issue 25% credit
+      <p className={`mt-8 text-center text-xs text-text-secondary opacity-60 ${activeTab === "collectibles" ? "" : "hidden"}`}>
+        Pull outcomes are randomized · All collectible purchases use Temu Tokens
       </p>
 
+      {activeTab === "upgrades" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {accountUpgrades.map((upgrade) => {
+            const nextTier = upgrade.nextTier;
+            const levelLocked = nextTier && (user?.level || 1) < nextTier.levelRequired;
+            const goldLocked = nextTier && (user?.gatillaGold || 0) < nextTier.cost;
+            const disabled = upgrade.isMaxed || levelLocked || goldLocked || loadingUpgrade === upgrade.key;
+            const buttonText = upgrade.isMaxed
+              ? "Maxed"
+              : levelLocked
+                ? `Level ${nextTier.levelRequired} Required`
+                : goldLocked
+                  ? `${nextTier.cost} GG Required`
+                  : loadingUpgrade === upgrade.key
+                    ? "Upgrading..."
+                    : `Upgrade for ${nextTier.cost} GG`;
+
+            return (
+              <MotionDiv
+                key={upgrade.key}
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-xl border border-border bg-surface p-5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-text-main">{upgrade.title}</h2>
+                    <p className="mt-1 text-sm text-text-secondary">{upgrade.description}</p>
+                  </div>
+                  <div className="rounded-lg bg-amber-400/10 px-3 py-2 text-right">
+                    <p className="text-xs text-text-secondary">Tier</p>
+                    <p className="font-mono text-lg font-bold text-amber-300">
+                      {upgrade.currentTier}/{upgrade.maxTier}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-lg border border-border/70 p-3">
+                    <p className="text-xs text-text-secondary">Current</p>
+                    <p className="mt-1 font-semibold text-text-main">{upgrade.currentEffect}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/70 p-3">
+                    <p className="text-xs text-text-secondary">Next</p>
+                    <p className="mt-1 font-semibold text-text-main">{nextTier ? nextTier.effect : "Complete"}</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => handleBuyUpgrade(upgrade.key)}
+                  className="mt-5 w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {buttonText}
+                </button>
+              </MotionDiv>
+            );
+          })}
+        </div>
+      )}
+
       <PullResultModal result={lastPulledItem} onClose={() => setLastPulledItem(null)} />
-    </motion.div>
+    </MotionDiv>
   );
 };
 

@@ -660,7 +660,7 @@ function PersonaSection({ user, setUser, accent }) {
       setTimeout(() => setApplied(false), 2500);
     } catch (err) {
       console.error("Failed to set active persona:", err);
-      alert("Failed to set active persona.");
+      alert("Failed to set active Archetype.");
     } finally {
       setActivating(null);
     }
@@ -669,10 +669,10 @@ function PersonaSection({ user, setUser, accent }) {
   const activeId = user?.activeAbelPersona?._id || user?.activeAbelPersona || null;
 
   return (
-    <SectionCard title="Persona" icon={Zap}>
+    <SectionCard title="Archetype" icon={Zap}>
       <div className="space-y-4">
         <p className="text-xs text-white/35 leading-relaxed">
-          Switch your active persona to change the accent color and theme across the dashboard.
+          Switch your active Archetype to change the accent color and theme across the dashboard.
         </p>
 
         {loading ? (
@@ -681,7 +681,7 @@ function PersonaSection({ user, setUser, accent }) {
               className="w-4 h-4 rounded-full border-2 border-white/15 animate-spin"
               style={{ borderTopColor: accent }}
             />
-            <span className="text-xs text-white/28">Loading personas…</span>
+            <span className="text-xs text-white/28">Loading Archetypes…</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -752,7 +752,7 @@ function PersonaSection({ user, setUser, accent }) {
 
         {applied && (
           <p className="text-xs text-emerald-400 flex items-center gap-1.5">
-            <Check size={11} /> Persona applied — reload to see full effect
+            <Check size={11} /> Archetype applied — reload to see full effect
           </p>
         )}
       </div>
@@ -873,7 +873,7 @@ function AppearanceSection({ accent: liveAccent }) {
       <SectionCard title="Accent Color" icon={Palette}>
         <div className="space-y-4">
           <p className="text-xs text-white/35 leading-relaxed">
-            Override your persona&rsquo;s accent color with a custom one. Leave blank to use the persona color.
+            Override your Archetype&rsquo;s accent color with a custom one. Leave blank to use the Archetype color.
           </p>
           <div className="flex items-center gap-4">
             {/* Color preview + native picker */}
@@ -894,7 +894,7 @@ function AppearanceSection({ accent: liveAccent }) {
               <TextInput
                 value={accentOverride}
                 onChange={(v) => set("tae.appearance.accentOverride", v, setAccentOverride)}
-                placeholder="#22d3ee or leave blank for persona"
+                placeholder="#22d3ee or leave blank for Archetype"
               />
               {accentOverride && (
                 <button
@@ -902,7 +902,7 @@ function AppearanceSection({ accent: liveAccent }) {
                   onClick={() => set("tae.appearance.accentOverride", "", setAccentOverride)}
                   className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/55 transition"
                 >
-                  <RotateCcw size={10} /> Reset to persona color
+                  <RotateCcw size={10} /> Reset to Archetype color
                 </button>
               )}
             </div>
@@ -1141,7 +1141,7 @@ const SECTIONS = [
   { id: "avatar",     label: "Avatar",     Icon: Camera      },
   { id: "appearance", label: "Appearance", Icon: Sparkles    },
   { id: "theme",      label: "Theme",      Icon: Palette     },
-  { id: "persona",    label: "Persona",    Icon: Zap         },
+  { id: "persona",    label: "Archetype",  Icon: Zap         },
   { id: "badges",     label: "Badges",     Icon: Award       },
 ];
 

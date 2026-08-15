@@ -224,7 +224,7 @@ const Header = ({ forcedHeight }) => {
       setUser(response.data.data);
       setPersonaDropdownOpen(false);
     } catch (error) {
-      alert("Could not set active persona.");
+      alert("Could not set active Archetype.");
     }
   };
 

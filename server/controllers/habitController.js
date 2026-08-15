@@ -2,6 +2,7 @@
 
 const Habit = require("../models/userSpecific/Habit"); // Import Habit model
 const User = require("../models/User"); // Import User model for rewards
+const { awardExperience } = require("../accountProgression");
 
 // --- HELPER FUNCTIONS ---
 const isToday = (someDate) => {
@@ -131,10 +132,6 @@ exports.completeHabit = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (typeof user.xpToNextLevel !== "number" || isNaN(user.xpToNextLevel)) {
-      user.xpToNextLevel = 100;
-    }
-
     // Security check: User must own the habit.
     if (habit.user.toString() !== req.user.id) {
       return res.status(401).json({ success: false, message: "Not authorized" });
@@ -162,14 +159,7 @@ exports.completeHabit = async (req, res) => {
     // The daily cap logic would go here. For now, we award on every valid completion.
 
     user.temuTokens = (user.temuTokens || 0) + TEMU_TOKENS_AWARD;
-    user.experience = (user.experience || 0) + XP_AWARD;
-
-    // Check for user level up.
-    if (user.experience >= user.xpToNextLevel) {
-      user.level += 1;
-      user.experience -= user.xpToNextLevel;
-      user.xpToNextLevel = Math.floor(user.xpToNextLevel * 1.25);
-    }
+    const xpReward = awardExperience(user, XP_AWARD);
 
     // Save both documents. Using Promise.all is efficient.
     const [updatedHabit, updatedUser] = await Promise.all([habit.save(), user.save()]);
@@ -183,7 +173,7 @@ exports.completeHabit = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Habit completed! +${XP_AWARD} XP, +${TEMU_TOKENS_AWARD} Temu Tokens.`,
+      message: `Habit completed! +${xpReward.xpAwarded} XP, +${TEMU_TOKENS_AWARD} Temu Tokens.`,
       habitData: updatedHabit,
       userData: userResponse, // Sending back the full updated user state
     });

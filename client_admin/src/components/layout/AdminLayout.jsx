@@ -685,7 +685,7 @@ const AdminLayout = () => {
               className={`w-full flex items-center p-2 rounded-lg text-xs text-text-secondary hover:bg-primary/30 hover:text-white transition-all duration-300 ${
                 isSidebarCollapsed ? "justify-center" : ""
               }`}
-              title="Customize UI (glass, colors, persona)"
+              title="Customize UI (glass, colors, Archetype)"
             >
               <Settings2 size={14} className={isSidebarCollapsed ? "" : "mr-2"} />
               <span

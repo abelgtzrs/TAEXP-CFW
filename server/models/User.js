@@ -115,6 +115,14 @@ const UserSchema = new mongoose.Schema({
     default: 10,
     min: [0, "Wendy Hearts cannot be negative"],
   },
+  accountUpgrades: {
+    xpBoostTier: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+  },
   spotifyConnected: {
     type: Boolean,
     default: false,

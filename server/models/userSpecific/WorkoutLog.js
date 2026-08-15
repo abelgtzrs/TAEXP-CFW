@@ -90,6 +90,12 @@ const WorkoutLogSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    gatillaGoldAwarded: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     // This Mongoose option automatically adds `createdAt` and `updatedAt` fields.
