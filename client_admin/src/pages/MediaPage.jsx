@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Film, Gamepad2 } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import MediaTab from "../components/media/MediaTab";
+import MovieTab from "../components/media/MovieTab";
 import { searchMovies, searchGames } from "../services/mediaService";
 
 const MOVIE_STATUS_OPTIONS = [
@@ -48,12 +49,7 @@ const MediaPage = () => {
       </div>
 
       {activeTab === "movie" && (
-        <MediaTab
-          mediaType="movie"
-          searchFn={searchMovies}
-          statusOptions={MOVIE_STATUS_OPTIONS}
-          searchPlaceholder="Search movies to add..."
-        />
+        <MovieTab searchFn={searchMovies} statusOptions={MOVIE_STATUS_OPTIONS} />
       )}
       {activeTab === "game" && (
         <MediaTab

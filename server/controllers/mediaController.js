@@ -4,6 +4,27 @@ const MediaItem = require("../models/userSpecific/MediaItems");
 const TMDB_API_KEY = process.env.TMDB_API_KEY || "";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w342";
+const TMDB_MOVIE_GENRES = {
+  12: "Adventure",
+  14: "Fantasy",
+  16: "Animation",
+  18: "Drama",
+  27: "Horror",
+  28: "Action",
+  35: "Comedy",
+  36: "History",
+  37: "Western",
+  53: "Thriller",
+  80: "Crime",
+  99: "Documentary",
+  878: "Science Fiction",
+  9648: "Mystery",
+  10402: "Music",
+  10749: "Romance",
+  10751: "Family",
+  10752: "War",
+  10770: "TV Movie",
+};
 
 const RAWG_API_KEY = process.env.RAWG_API_KEY || "";
 const RAWG_BASE_URL = "https://api.rawg.io/api";
@@ -35,6 +56,7 @@ exports.searchMovies = async (req, res) => {
       releaseYear: movie.release_date ? Number(movie.release_date.slice(0, 4)) : null,
       coverImageUrl: movie.poster_path ? `${TMDB_IMAGE_BASE_URL}${movie.poster_path}` : "",
       overview: movie.overview || "",
+      genre: (movie.genre_ids || []).map((id) => TMDB_MOVIE_GENRES[id]).filter(Boolean),
     }));
 
     res.json({ success: true, data: results, page, hasMore: page < (data.total_pages || 1) });
