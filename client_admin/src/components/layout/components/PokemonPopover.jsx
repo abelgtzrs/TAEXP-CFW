@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { advancePokemonSpriteFallback, getPokemonSpriteUrls } from "../../../utils/pokemonSprites";
 
 const PokemonPopover = ({ displayedPokemon = [], serverBaseUrl }) => {
   const [pokemonOpen, setPokemonOpen] = useState(false);
@@ -10,15 +11,6 @@ const PokemonPopover = ({ displayedPokemon = [], serverBaseUrl }) => {
   const [actors, setActors] = useState([]);
 
   const displayedTeam = useMemo(() => (displayedPokemon || []).slice(0, 6), [displayedPokemon]);
-
-  const getPokemonSprite = (basePokemon) => {
-    if (!basePokemon) return null;
-    const firstForm = basePokemon.forms?.[0];
-    const sprite = useGen6Sprites
-      ? firstForm?.spriteGen6Animated || firstForm?.spriteGen5Animated || null
-      : firstForm?.spriteGen5Animated || firstForm?.spriteGen6Animated || null;
-    return sprite ? `${serverBaseUrl}${sprite}` : null;
-  };
 
   useEffect(() => {
     const team = displayedTeam;
@@ -190,7 +182,8 @@ const PokemonPopover = ({ displayedPokemon = [], serverBaseUrl }) => {
               <div className="relative w-full h-[300px] overflow-hidden" ref={containerRef}>
                 {displayedTeam.map((p, idx) => {
                   const base = p?.basePokemon;
-                  const sprite = getPokemonSprite(base);
+                  const spriteUrls = getPokemonSpriteUrls(base, p?.variant, useGen6Sprites ? 6 : 5, serverBaseUrl);
+                  const sprite = spriteUrls[0];
                   if (!sprite) return null;
                   const actor = actors[idx];
                   const x = actor?.x ?? 0;
@@ -204,6 +197,7 @@ const PokemonPopover = ({ displayedPokemon = [], serverBaseUrl }) => {
                       alt={base?.name || "Pokemon"}
                       height={spriteSize}
                       className="pointer-events-none"
+                      onError={(event) => advancePokemonSpriteFallback(event, spriteUrls)}
                       style={{
                         position: "absolute",
                         left: x,

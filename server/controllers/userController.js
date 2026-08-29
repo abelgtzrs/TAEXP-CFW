@@ -12,6 +12,7 @@ const Budget = require("../models/Budget");
 const SpotifyLog = require("../models/SpotifyLogs");
 const mongoose = require("mongoose");
 const fs = require("fs");
+const { getPokemonSpritePaths } = require("../pokemonVariants");
 
 // --- Daily Login Streak Utilities ---
 const isSameDay = (a, b) => a && b && new Date(a).toDateString() === new Date(b).toDateString();
@@ -833,20 +834,14 @@ const getDashboardStats = async (req, res) => {
     ];
 
     // Sort all collected items by date (newest first)
-    const getCollectibleImage = (base) => {
-      if (!base) return null;
-      if (base.imageUrl) return base.imageUrl;
-      if (base.spriteSmallUrl) return base.spriteSmallUrl;
+    const getCollectibleImages = (item, base) => {
+      if (!base) return [];
+      if (base.imageUrl) return [base.imageUrl];
+      if (base.spriteSmallUrl) return [base.spriteSmallUrl];
 
-      if (Array.isArray(base.forms) && base.forms.length > 0) {
-        const withGen5 = base.forms.find((form) => form?.spriteGen5Animated);
-        if (withGen5?.spriteGen5Animated) return withGen5.spriteGen5Animated;
+      if (item.basePokemon) return getPokemonSpritePaths(base, item.variant);
 
-        const withGen6 = base.forms.find((form) => form?.spriteGen6Animated);
-        if (withGen6?.spriteGen6Animated) return withGen6.spriteGen6Animated;
-      }
-
-      return null;
+      return [];
     };
 
     const toAbsoluteAssetUrl = (assetPath) => {
@@ -872,13 +867,17 @@ const getDashboardStats = async (req, res) => {
       .map((item) => {
         const base = item.basePokemon || item.snoopyArtBase || item.habboRareBase || item.yugiohCardBase || {};
         const name = base.name || item.nickname || "Unknown Collectible";
-        const rarity = base.rarity || base.systemRarity || base.rarityCategory || "common";
-        const imageUrl = toAbsoluteAssetUrl(getCollectibleImage(base));
+        const rarity =
+          item.variant && item.variant !== "Normal"
+            ? item.variant
+            : base.rarity || base.systemRarity || base.rarityCategory || "common";
+        const imageUrls = getCollectibleImages(item, base).map(toAbsoluteAssetUrl);
         return {
           name,
           rarity,
           type: item.type,
-          imageUrl,
+          imageUrl: imageUrls[0] || null,
+          imageUrls,
           obtainedAt: item.obtainedAt || item.createdAt || null,
         };
       })
@@ -1095,11 +1094,12 @@ const getAllUsersAdmin = async (req, res) => {
   }
 };
 
-// --- Admin: Update user fields (role, username, level, XP, and currency balances) ---
+// --- Admin: Update user account fields ---
 const updateUserAdmin = async (req, res) => {
   try {
     const { id } = req.params;
     const allowed = [
+      "email",
       "username",
       "role",
       "level",
@@ -1119,8 +1119,17 @@ const updateUserAdmin = async (req, res) => {
 
     for (const k of allowed) {
       if (k in req.body) {
-        // Coerce numeric fields and validate non-negativity where applicable
-        if (["level", "experience", "temuTokens", "gatillaGold", "wendyHearts"].includes(k)) {
+        if (k === "email") {
+          const email = String(req.body.email ?? "").trim().toLowerCase();
+          if (!/^\S+@\S+\.\S+$/.test(email)) {
+            return res.status(400).json({ success: false, message: "Please enter a valid email address" });
+          }
+          if (await User.exists({ email, _id: { $ne: id } })) {
+            return res.status(409).json({ success: false, message: "Email is already associated with an account" });
+          }
+          updates.email = email;
+        } else if (["level", "experience", "temuTokens", "gatillaGold", "wendyHearts"].includes(k)) {
+          // Coerce numeric fields and validate non-negativity where applicable
           const num = Number(req.body[k]);
           if (!Number.isFinite(num)) {
             return res.status(400).json({ success: false, message: `${k} must be a number` });
@@ -1143,8 +1152,15 @@ const updateUserAdmin = async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     res.status(200).json({ success: true, data: user });
   } catch (error) {
+    if (error.code === 11000 && (error.keyPattern?.email || error.keyValue?.email)) {
+      return res.status(409).json({ success: false, message: "Email is already associated with an account" });
+    }
+    if (error.name === "ValidationError") {
+      const message = Object.values(error.errors || {})[0]?.message || "Invalid user data";
+      return res.status(400).json({ success: false, message });
+    }
     console.error("Admin updateUser Error:", error);
-    res.status(500).json({ success: false, message: "Server Error" });
+    return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 

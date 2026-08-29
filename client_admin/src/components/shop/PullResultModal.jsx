@@ -1,3 +1,5 @@
+import { advancePokemonSpriteFallback, getPokemonSpriteUrls } from "../../utils/pokemonSprites";
+
 const PullResultModal = ({ result, onClose }) => {
   // If there's no result data at all, render nothing.
   if (!result) return null;
@@ -30,16 +32,21 @@ const PullResultModal = ({ result, onClose }) => {
 
   const getDisplayProps = (item) => {
     let displayImageUrl = item.imageUrl || item.iconUrlOrKey;
+    let displayImageUrls = [];
 
     // For Pokémon, check for sprite URLs in the forms array
-    if (!displayImageUrl && item.forms && item.forms.length > 0) {
-      const firstForm = item.forms[0];
-      displayImageUrl = firstForm.spriteGen5Animated || firstForm.spriteGen6Animated;
+    if (item.forms && item.forms.length > 0) {
+      displayImageUrls = getPokemonSpriteUrls(item, item.variant, 5, serverBaseUrl);
+      displayImageUrl = displayImageUrls[0];
     }
+    if (!displayImageUrls.length) displayImageUrls = [buildImageUrl(displayImageUrl)].filter(Boolean);
 
-    const displayRarity = item.rarity || item.rarityCategory || item.systemRarity;
+    const displayRarity =
+      item.variant && item.variant !== "Normal"
+        ? item.variant
+        : item.rarity || item.rarityCategory || item.systemRarity;
 
-    return { displayImageUrl: buildImageUrl(displayImageUrl), displayRarity };
+    return { displayImageUrl: displayImageUrls[0], displayImageUrls, displayRarity };
   };
 
   const rarityColor = {
@@ -60,6 +67,7 @@ const PullResultModal = ({ result, onClose }) => {
     "Ultra Rare": "text-yellow-400",
     "Secret Rare": "text-red-400",
     "Ultimate Rare": "text-orange-400",
+    Shiny: "text-yellow-300",
   };
 
   return (
@@ -81,7 +89,7 @@ const PullResultModal = ({ result, onClose }) => {
           <div className="my-6">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {displayItems.map((item, index) => {
-                const { displayImageUrl, displayRarity } = getDisplayProps(item);
+                const { displayImageUrl, displayImageUrls, displayRarity } = getDisplayProps(item);
                 return (
                   <div
                     key={index}
@@ -89,7 +97,12 @@ const PullResultModal = ({ result, onClose }) => {
                     style={{ borderColor: "var(--color-primary)" }}
                   >
                     {displayImageUrl ? (
-                      <img src={displayImageUrl} alt={item.name} className="h-32 mx-auto object-contain mb-2" />
+                      <img
+                        src={displayImageUrl}
+                        alt={item.name}
+                        className="h-32 mx-auto object-contain mb-2"
+                        onError={(event) => advancePokemonSpriteFallback(event, displayImageUrls)}
+                      />
                     ) : (
                       <div className="h-32 flex items-center justify-center text-text-secondary mb-2">[No Image]</div>
                     )}
@@ -110,11 +123,16 @@ const PullResultModal = ({ result, onClose }) => {
           // Single item display - original layout
           <div className="my-6 p-4 rounded-lg border glass-surface" style={{ borderColor: "var(--color-primary)" }}>
             {(() => {
-              const { displayImageUrl, displayRarity } = getDisplayProps(displayItems[0]);
+              const { displayImageUrl, displayImageUrls, displayRarity } = getDisplayProps(displayItems[0]);
               return (
                 <>
                   {displayImageUrl ? (
-                    <img src={displayImageUrl} alt={displayItems[0].name} className="h-40 mx-auto object-contain" />
+                    <img
+                      src={displayImageUrl}
+                      alt={displayItems[0].name}
+                      className="h-40 mx-auto object-contain"
+                      onError={(event) => advancePokemonSpriteFallback(event, displayImageUrls)}
+                    />
                   ) : (
                     <div className="h-40 flex items-center justify-center text-text-secondary">[No Image]</div>
                   )}

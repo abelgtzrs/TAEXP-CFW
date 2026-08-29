@@ -4,6 +4,7 @@ import api from "../services/api";
 import PageHeader from "../components/ui/PageHeader";
 import StyledButton from "../components/ui/StyledButton";
 import { Trash2, PlusCircle, Search, ChevronRight } from "lucide-react";
+import { getShinySpritePath, toAssetUrl } from "../utils/pokemonSprites";
 
 // A reusable input component with a label to keep the form clean
 const InputWithLabel = ({ label, id, ...props }) => (
@@ -36,6 +37,7 @@ const SuccessToast = ({ open, message, duration = 2500, onClose }) => {
 
 const PokemonEditorPage = () => {
   const navigate = useNavigate();
+  const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
 
   const [allPokemonList, setAllPokemonList] = useState([]);
   const [selectedPokemonId, setSelectedPokemonId] = useState("");
@@ -151,7 +153,14 @@ const PokemonEditorPage = () => {
       ...prev,
       forms: [
         ...prev.forms,
-        { formName: "New Form", types: pokemon.baseTypes, spriteGen5Animated: "", spriteGen6Animated: "" },
+        {
+          formName: "New Form",
+          types: pokemon.baseTypes,
+          spriteGen5Animated: "",
+          spriteGen6Animated: "",
+          spriteGen5ShinyFilename: "",
+          spriteGen6ShinyFilename: "",
+        },
       ],
     }));
   };
@@ -325,27 +334,45 @@ const PokemonEditorPage = () => {
                             value={form.spriteGen6Animated}
                             onChange={(e) => handleFormChange(index, "spriteGen6Animated", e.target.value)}
                           />
+                          <InputWithLabel
+                            label="Gen 5 Shiny Filename Override (optional)"
+                            id={`sprite5-shiny-${index}`}
+                            value={form.spriteGen5ShinyFilename || ""}
+                            placeholder="Derived from the regular sprite filename"
+                            onChange={(e) => handleFormChange(index, "spriteGen5ShinyFilename", e.target.value)}
+                          />
+                          <InputWithLabel
+                            label="Gen 6 Shiny Filename Override (optional)"
+                            id={`sprite6-shiny-${index}`}
+                            value={form.spriteGen6ShinyFilename || ""}
+                            placeholder="Derived from the regular sprite filename"
+                            onChange={(e) => handleFormChange(index, "spriteGen6ShinyFilename", e.target.value)}
+                          />
                         </div>
                         <div className="flex flex-col items-center justify-center bg-background p-6 rounded-md">
-                          <div className="flex gap-2">
-                            <img
-                              src={form.spriteGen5Animated || "https://placehold.co/96x96/161B22/4B5563?text=N/A"}
-                              alt="Gen 5 Sprite"
-                              className="w-20 h-20 object-contain"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "https://placehold.co/96x96/161B22/4B5563?text=Invalid";
-                              }}
-                            />
-                            <img
-                              src={form.spriteGen6Animated || "https://placehold.co/96x96/161B22/4B5563?text=N/A"}
-                              alt="Gen 6 Sprite"
-                              className="w-20 h-20 object-contain"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "https://placehold.co/96x96/161B22/4B5563?text=Invalid";
-                              }}
-                            />
+                          <div className="grid grid-cols-2 gap-3 text-center text-xs text-text-secondary">
+                            {[
+                              ["Gen 5", form.spriteGen5Animated],
+                              ["Gen 5 Shiny", getShinySpritePath(form, 5)],
+                              ["Gen 6", form.spriteGen6Animated],
+                              ["Gen 6 Shiny", getShinySpritePath(form, 6)],
+                            ].map(([label, path]) => (
+                              <div key={label}>
+                                <img
+                                  src={
+                                    toAssetUrl(path, serverBaseUrl) ||
+                                    "https://placehold.co/96x96/161B22/4B5563?text=N/A"
+                                  }
+                                  alt={`${label} Sprite`}
+                                  className="w-20 h-20 object-contain"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "https://placehold.co/96x96/161B22/4B5563?text=Invalid";
+                                  }}
+                                />
+                                <span>{label}</span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>

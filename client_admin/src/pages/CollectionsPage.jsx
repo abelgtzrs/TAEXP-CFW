@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { advancePokemonSpriteFallback, getPokemonSpriteUrls } from "../utils/pokemonSprites";
 
 // Central definition of collections with simple, non-emoji badges
 const collections = [
@@ -73,13 +74,10 @@ const CollectionsPage = () => {
   const getThumbUrl = (type, item) => {
     if (!item) return null;
     if (type === "pokemon") {
-      const base = item?.basePokemon;
-      const form = base?.forms?.[0];
-      const sprite = form?.spriteGen5Animated || form?.spriteGen6Animated || null;
-      return resolveUrl(sprite);
+      return getPokemonSpriteUrls(item.basePokemon, item.variant, 5, serverBaseUrl);
     }
     const { base } = getBaseAndName(type, item);
-    return resolveUrl(base?.imageUrl || null);
+    return [resolveUrl(base?.imageUrl || null)].filter(Boolean);
   };
 
   const getDisplayedNames = (type) => {
@@ -185,15 +183,16 @@ const CollectionsPage = () => {
                       <div className="flex flex-wrap items-center gap-1">
                         {items.slice(0, 6).map((it) => {
                           const { name } = getBaseAndName(c.type, it);
-                          const src = getThumbUrl(c.type, it);
-                          return src ? (
+                          const urls = getThumbUrl(c.type, it) || [];
+                          return urls[0] ? (
                             <img
                               key={it._id}
-                              src={src}
+                              src={urls[0]}
                               title={name}
                               alt={name || c.type}
                               className="h-8 w-8 object-contain"
                               style={{ background: "var(--color-surface)" }}
+                              onError={(event) => advancePokemonSpriteFallback(event, urls)}
                             />
                           ) : (
                             <span
@@ -247,15 +246,16 @@ const CollectionsPage = () => {
                       <div className="flex flex-wrap items-center gap-1">
                         {items.slice(0, 6).map((it) => {
                           const { name } = getBaseAndName(c.type, it);
-                          const src = getThumbUrl(c.type, it);
-                          return src ? (
+                          const urls = getThumbUrl(c.type, it) || [];
+                          return urls[0] ? (
                             <img
                               key={it._id}
-                              src={src}
+                              src={urls[0]}
                               title={name}
                               alt={name || c.type}
                               className="h-8 w-8 object-contain"
                               style={{ background: "var(--color-surface)" }}
+                              onError={(event) => advancePokemonSpriteFallback(event, urls)}
                             />
                           ) : (
                             <span

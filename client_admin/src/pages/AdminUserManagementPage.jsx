@@ -147,6 +147,7 @@ const AdminUserManagementPage = () => {
   const startEdit = (u) => {
     setEditingId(u._id);
     setDraft({
+      email: u.email,
       username: u.username,
       role: u.role,
       level: u.level,
@@ -351,6 +352,15 @@ const AdminUserManagementPage = () => {
                                 <input
                                   value={draft.username}
                                   onChange={(e) => setDraft((d) => ({ ...d, username: e.target.value }))}
+                                  className="w-full bg-background border-b border-primary/50 text-primary p-1 focus:border-primary outline-none font-mono"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] uppercase text-text-secondary block">Email</label>
+                                <input
+                                  type="email"
+                                  value={draft.email}
+                                  onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
                                   className="w-full bg-background border-b border-primary/50 text-primary p-1 focus:border-primary outline-none font-mono"
                                 />
                               </div>

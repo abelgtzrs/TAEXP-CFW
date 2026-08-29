@@ -1,4 +1,5 @@
 import React from "react";
+import { advancePokemonSpriteFallback, getPokemonSpriteUrls } from "../../utils/pokemonSprites";
 
 const CompactDisplayedCollections = ({
   displayedPokemon = [],
@@ -8,12 +9,8 @@ const CompactDisplayedCollections = ({
 }) => {
   const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
 
-  const getPokemonSprite = (basePokemon) => {
-    if (!basePokemon) return null;
-    const firstForm = basePokemon.forms?.[0];
-    const sprite = firstForm?.spriteGen6Animated || firstForm?.spriteGen5Animated || null;
-    return sprite ? `${serverBaseUrl}${sprite}` : null;
-  };
+  const getPokemonSprites = (basePokemon, item) =>
+    getPokemonSpriteUrls(basePokemon, item?.variant, 6, serverBaseUrl);
 
   const getImageUrl = (baseItem) => {
     if (!baseItem) return null;
@@ -44,7 +41,8 @@ const CompactDisplayedCollections = ({
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {items.map((item) => {
           const base = item?.[baseField];
-          const thumb = getThumb ? getThumb(base) : getImageUrl(base);
+          const thumbs = getThumb ? getThumb(base, item) : [getImageUrl(base)].filter(Boolean);
+          const thumb = thumbs[0];
           return (
             <div key={item?._id || base?._id} className="flex flex-col items-center text-center">
               <div className="w-14 h-14 flex items-center justify-center">
@@ -54,6 +52,7 @@ const CompactDisplayedCollections = ({
                     alt={base?.name || "thumb"}
                     className="max-w-full max-h-full object-contain"
                     onError={(e) => {
+                      if (getThumb && advancePokemonSpriteFallback(e, thumbs)) return;
                       console.warn("Compact collection image failed to load", {
                         section: title,
                         baseField,
@@ -70,6 +69,9 @@ const CompactDisplayedCollections = ({
               <div className="mt-0.5 text-[10px] text-slate-200 truncate w-full" title={base?.name}>
                 {base?.name || "Unknown"}
               </div>
+              {item?.variant && item.variant !== "Normal" && (
+                <div className="text-[10px] text-yellow-400">{item.variant}</div>
+              )}
             </div>
           );
         })}
@@ -82,7 +84,7 @@ const CompactDisplayedCollections = ({
 
   return (
     <div className="space-y-2">
-      <Section title="Pokémon" items={displayedPokemon} baseField="basePokemon" getThumb={getPokemonSprite} />
+      <Section title="Pokémon" items={displayedPokemon} baseField="basePokemon" getThumb={getPokemonSprites} />
       <Section title="Snoopys" items={displayedSnoopyArt} baseField="snoopyArtBase" />
       <Section title="Habbo Rares" items={displayedHabboRares} baseField="habboRareBase" />
       <Section title="Yu-Gi-Oh!" items={displayedYugiohCards} baseField="yugiohCardBase" />

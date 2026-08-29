@@ -26,29 +26,26 @@ const AcquisitionImageThumb = ({ item, itemKey, serverBaseUrl, widgetBoundaryRef
     );
 
   const getImageCandidates = (value) => {
-    if (!value) {
+    const values = (Array.isArray(value) ? value : [value]).filter(Boolean);
+    if (!values.length) {
       return [defaultImage, `${clientBaseUrl}${defaultImage}`, `${serverBaseUrl}${defaultImage}`, finalSvgFallback];
     }
 
-    if (value.startsWith("http")) {
+    const assetCandidates = values.flatMap((candidate) => {
+      if (candidate.startsWith("http")) return [candidate];
+      const clean = candidate.replace(/^\/?public\//, "");
+      const normalizedPath = clean.startsWith("/") ? clean : `/${clean}`;
       return [
-        value,
-        defaultImage,
-        `${clientBaseUrl}${defaultImage}`,
-        `${serverBaseUrl}${defaultImage}`,
-        finalSvgFallback,
+        normalizedPath,
+        `${clientBaseUrl}${normalizedPath}`,
+        `${serverBaseUrl}${normalizedPath}`,
+        `${clientBaseUrl}/${clean}`,
+        `${serverBaseUrl}/${clean}`,
       ];
-    }
-
-    const clean = value.replace(/^\/?public\//, "");
-    const normalizedPath = clean.startsWith("/") ? clean : `/${clean}`;
+    });
 
     return [
-      normalizedPath,
-      `${clientBaseUrl}${normalizedPath}`,
-      `${serverBaseUrl}${normalizedPath}`,
-      `${clientBaseUrl}/${clean}`,
-      `${serverBaseUrl}/${clean}`,
+      ...assetCandidates,
       defaultImage,
       `${clientBaseUrl}${defaultImage}`,
       `${serverBaseUrl}${defaultImage}`,
@@ -56,7 +53,7 @@ const AcquisitionImageThumb = ({ item, itemKey, serverBaseUrl, widgetBoundaryRef
     ];
   };
 
-  const candidates = useMemo(() => getImageCandidates(item?.imageUrl), [item?.imageUrl, clientBaseUrl, serverBaseUrl]);
+  const candidates = getImageCandidates(item?.imageUrls?.length ? item.imageUrls : item?.imageUrl);
 
   useEffect(() => {
     setFallbackIdx(0);

@@ -49,6 +49,8 @@ const transformPokemonData = (rawData) => {
       types: baseTypes,
       spriteGen5Animated: f.spriteGen5Animated,
       spriteGen6Animated: f.spriteGen6Animated,
+      spriteGen5ShinyFilename: f.spriteGen5ShinyFilename,
+      spriteGen6ShinyFilename: f.spriteGen6ShinyFilename,
     }));
 
     // --- Evolution Stage & Paths (with limitations) ---

@@ -13,6 +13,7 @@ const UserHabboRare = require("../models/userSpecific/userHabboRare");
 const AbelPersonaBase = require("../models/AbelPersonaBase");
 const { SHOP_PRICES, getPullPricing } = require("../shopPricing");
 const { GATILLA_UPGRADES, getAccountUpgradesForUser } = require("../gatillaUpgrades");
+const { rollPokemonVariant } = require("../pokemonVariants");
 
 const GACHA_CONFIG = {
   pokemon: {
@@ -193,6 +194,8 @@ exports.pullFromGacha = async (req, res) => {
     // Deduct currency first
     user[config.currency] -= pricing.cost;
     let alreadyOwned = false; // Declare at the top level
+    let pokemonVariant = null;
+    let pokemonCollectibleId = null;
 
     if (categoryKey === "yugioh") {
       // Special handling for yugioh packs (multiple cards)
@@ -235,12 +238,17 @@ exports.pullFromGacha = async (req, res) => {
         if (existingItem && (categoryKey === "snoopy" || categoryKey === "habbo")) {
           alreadyOwned = true;
         } else {
+          pokemonVariant = categoryKey === "pokemon" ? rollPokemonVariant() : null;
           const newUserCollectible = await config.UserCollectibleModel.create({
             user: userId,
             [config.baseModelRefField]: pulledItem._id,
+            ...(pokemonVariant && { variant: pokemonVariant }),
           });
           user[config.userCollectionField].push(newUserCollectible._id);
-          message = `Congratulations! You pulled: ${pulledItem.name}`;
+          if (categoryKey === "pokemon") pokemonCollectibleId = newUserCollectible._id;
+          message = pokemonVariant === "Shiny"
+            ? `Congratulations! You pulled a Shiny ${pulledItem.name}!`
+            : `Congratulations! You pulled: ${pulledItem.name}`;
         }
       }
 
@@ -257,7 +265,14 @@ exports.pullFromGacha = async (req, res) => {
       success: true,
       message: message,
       data: {
-        items: pulledItems,
+        items:
+          categoryKey === "pokemon"
+            ? pulledItems.map((item) => ({
+                ...item.toObject(),
+                variant: pokemonVariant,
+                userCollectibleId: pokemonCollectibleId,
+              }))
+            : pulledItems,
         isDuplicate: alreadyOwned,
         balance: user[config.currency],
         currency: config.currency,

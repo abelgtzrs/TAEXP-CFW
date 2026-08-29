@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import Widget from "../ui/Widget";
+import { advancePokemonSpriteFallback, getPokemonSpriteUrls } from "../../utils/pokemonSprites";
 
 const DisplayedCollection = ({
   title,
@@ -60,26 +61,21 @@ const DisplayedCollection = ({
   const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
 
   // Helper function to get the image URL based on collection type
-  const getImageUrl = (baseItem, baseField) => {
+  const getImageUrls = (item, baseItem, baseField) => {
     if (!baseItem) return null;
 
     // Pokemon has a complex structure with forms and sprite fields
     if (baseField === "basePokemon") {
-      // Try to get sprite from the first form (default form), honoring the selected generation
-      const firstForm = baseItem.forms?.[0];
-      const primarySprite = spriteGen === "gen5" ? firstForm?.spriteGen5Animated : firstForm?.spriteGen6Animated;
-      const fallbackSprite = spriteGen === "gen5" ? firstForm?.spriteGen6Animated : firstForm?.spriteGen5Animated;
-      const pokemonSprite = primarySprite || fallbackSprite || null;
-      return pokemonSprite ? `${serverBaseUrl}${pokemonSprite}` : null;
+      return getPokemonSpriteUrls(baseItem, item?.variant, spriteGen === "gen5" ? 5 : 6, serverBaseUrl);
     }
 
     // Other collections - check if it's an external URL or local path
     let imageUrl = baseItem.imageUrl;
-    if (!imageUrl) return null;
+    if (!imageUrl) return [];
 
     // If it's already a full URL (starts with http), return as-is
     if (imageUrl.startsWith("http")) {
-      return imageUrl;
+      return [imageUrl];
     }
 
     // Otherwise, it's a local path - normalize and prefix with server URL
@@ -112,7 +108,7 @@ const DisplayedCollection = ({
         finalImageSrc: fullUrl,
       });
     }
-    return fullUrl;
+    return [fullUrl];
   };
 
   // NEW: helper to determine glow classes by item rarity/type
@@ -156,13 +152,19 @@ const DisplayedCollection = ({
     if (baseField === "basePokemon") {
       const types = baseItem.baseTypes?.join(", ") || baseItem.forms?.[0]?.types?.join(", ") || "";
       const variant = item.variant || "Normal";
-      const spriteUrl = getImageUrl(baseItem, "basePokemon");
+      const spriteUrls = getImageUrls(item, baseItem, "basePokemon");
+      const spriteUrl = spriteUrls[0];
       return (
         <div>
           <div className="font-semibold text-slate-100">{baseItem.name}</div>
           {spriteUrl && (
             <div className="mt-2 w-full flex justify-center">
-              <img src={spriteUrl} alt={`${baseItem.name} sprite`} className="h-16 w-auto object-contain" />
+              <img
+                src={spriteUrl}
+                alt={`${baseItem.name} sprite`}
+                className="h-16 w-auto object-contain"
+                onError={(event) => advancePokemonSpriteFallback(event, spriteUrls)}
+              />
             </div>
           )}
           <div className="text-slate-300">Variant: {variant}</div>
@@ -176,7 +178,7 @@ const DisplayedCollection = ({
     }
 
     if (baseField === "yugiohCardBase") {
-      const largeImg = getImageUrl(baseItem, "yugiohCardBase");
+      const largeImg = getImageUrls(item, baseItem, "yugiohCardBase")[0];
       return (
         <div>
           <div className="font-semibold text-slate-100">{baseItem.name}</div>
@@ -278,7 +280,8 @@ const DisplayedCollection = ({
               <div className={`grid ${cellGapClass}`} style={gridStyle}>
                 {rowItems.map((item, index) => {
                   const baseItem = item ? item[baseField] : null;
-                  const imageUrl = getImageUrl(baseItem, baseField);
+                  const imageUrls = getImageUrls(item, baseItem, baseField) || [];
+                  const imageUrl = imageUrls[0];
                   const glowClasses = getGlowClasses(item, baseItem);
                   const cellKey = item?._id || `cell-${rowIdx}-${index}`;
                   const isOpen = hoveredKey === cellKey;
@@ -297,6 +300,7 @@ const DisplayedCollection = ({
                               alt={baseItem.name}
                               className="max-w-full max-h-full object-contain rounded-md"
                               onError={(e) => {
+                                if (baseField === "basePokemon" && advancePokemonSpriteFallback(e, imageUrls)) return;
                                 // Helpful diagnostics in console when an image fails
                                 console.warn("Collection image failed to load", {
                                   title,

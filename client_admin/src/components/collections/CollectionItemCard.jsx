@@ -1,6 +1,7 @@
 import { CheckCircle, PlusCircle, Swords, Shield, Star, Zap } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { advancePokemonSpriteFallback, getPokemonSpriteUrls } from "../../utils/pokemonSprites";
 
 // Function to get rarity text color
 const getRarityTextColor = (rarity) => {
@@ -44,10 +45,12 @@ const CollectionItemCard = ({ item, config, onSelect, isDisplayed, isDisplayFull
 
   if (!baseItem) return null;
 
-  const imageUrl =
+  const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
+  const pokemonImageUrls =
     config.baseField === "basePokemon"
-      ? baseItem.forms[0]?.spriteGen5Animated || baseItem.forms[0]?.spriteGen6Animated
-      : baseItem.imageUrl;
+      ? getPokemonSpriteUrls(baseItem, item.variant, 5, serverBaseUrl)
+      : [];
+  const imageUrl = config.baseField === "basePokemon" ? pokemonImageUrls[0] : baseItem.imageUrl;
 
   let buttonDisabled = false;
   let buttonText = "Add to Profile";
@@ -157,13 +160,19 @@ const CollectionItemCard = ({ item, config, onSelect, isDisplayed, isDisplayFull
         {isCompact && (
           <div className="mb-2">
             <p className="text-xs font-medium text-white leading-tight">{baseItem.name}</p>
+            {item.variant && item.variant !== "Normal" && <p className="text-xs text-yellow-400">{item.variant}</p>}
           </div>
         )}
 
         {/* Image Section */}
         <div className={`w-full ${isCompact ? "h-24" : "h-32"} mb-2 flex items-center justify-center rounded-md`}>
           {imageUrl ? (
-            <img src={imageUrl} alt={baseItem.name} className="max-w-full max-h-full object-contain" />
+            <img
+              src={imageUrl}
+              alt={baseItem.name}
+              className="max-w-full max-h-full object-contain"
+              onError={(event) => advancePokemonSpriteFallback(event, pokemonImageUrls)}
+            />
           ) : (
             <div className="w-full h-full rounded flex items-center justify-center text-xs text-gray-500">[IMG]</div>
           )}

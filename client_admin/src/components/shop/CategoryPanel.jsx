@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { advancePokemonSpriteFallback } from "../../utils/pokemonSprites";
 
 const CATEGORY_LABELS = {
   pokemon: "Pokémon",
@@ -64,7 +65,12 @@ const CategoryPanel = ({ config, recentItems = [], onPull, isLoading, categoryLa
                 title={`${rp.name}${rp.rarity ? ` · ${String(rp.rarity).replace(/_/g, " ")}` : ""}`}
               >
                 {rp.imageUrl ? (
-                  <img src={rp.imageUrl} alt={rp.name} className="max-h-10 max-w-10 object-contain" />
+                  <img
+                    src={rp.imageUrl}
+                    alt={rp.name}
+                    className="max-h-10 max-w-10 object-contain"
+                    onError={(event) => advancePokemonSpriteFallback(event, rp.imageUrls || [rp.imageUrl])}
+                  />
                 ) : (
                   <span className="text-[10px] text-text-secondary font-semibold">?</span>
                 )}

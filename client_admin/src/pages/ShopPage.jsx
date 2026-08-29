@@ -6,6 +6,7 @@ import api from "../services/api";
 import PullResultModal from "../components/shop/PullResultModal";
 import BalancesChips from "../components/shop/BalancesChips";
 import CategoryPanel from "../components/shop/CategoryPanel";
+import { getPokemonSpriteUrls } from "../utils/pokemonSprites";
 
 const MotionDiv = motion.div;
 
@@ -192,13 +193,16 @@ const ShopPage = () => {
             : [];
       const ts = Date.now();
       const entries = pulledItems.map((it) => {
-        let img = it.imageUrl;
-        if (!img && it.forms) img = it.forms?.[0]?.spriteGen5Animated || it.forms?.[0]?.spriteGen6Animated;
-        const imageUrl = buildImageUrl(img);
+        const pokemonImageUrls = category === "pokemon" ? getPokemonSpriteUrls(it, it.variant, 5, serverBaseUrl) : [];
+        const imageUrls = pokemonImageUrls.length ? pokemonImageUrls : [buildImageUrl(it.imageUrl)].filter(Boolean);
+        const imageUrl = imageUrls[0];
         const name = it.name || it.title || "Unknown";
-        const rarity = it.rarity || it.rarityCategory || it.systemRarity || null;
-        const id = it._id || it.id || `${name}-${ts}`;
-        return { id, name, imageUrl, rarity, category, ts };
+        const rarity =
+          it.variant && it.variant !== "Normal"
+            ? it.variant
+            : it.rarity || it.rarityCategory || it.systemRarity || null;
+        const id = it.userCollectibleId || it._id || it.id || `${name}-${ts}`;
+        return { id, name, imageUrl, imageUrls, rarity, category, ts };
       });
       setRecentByCategory((prev) => {
         const next = { ...prev };
