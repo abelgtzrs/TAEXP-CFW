@@ -26,6 +26,17 @@ const PokemonFormSchema = new mongoose.Schema(
     spriteGen6Animated: { type: String },
     spriteGen5ShinyFilename: { type: String, trim: true },
     spriteGen6ShinyFilename: { type: String, trim: true },
+    variantSpriteFilenames: {
+      type: [
+        {
+          _id: false,
+          variantSlug: { type: String, required: true, trim: true, lowercase: true },
+          spriteGen5Filename: { type: String, trim: true },
+          spriteGen6Filename: { type: String, trim: true },
+        },
+      ],
+      default: [],
+    },
   },
   { _id: false }
 );

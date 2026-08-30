@@ -12,6 +12,7 @@ const { protect, authorize } = require("./middleware/authMiddleware");
 // Base models (shared data)
 require("./models/User");
 require("./models/PokemonBase");
+require("./models/PokemonVariant");
 require("./models/SnoopyArtBase");
 require("./models/BadgeBase");
 require("./models/TitleBase");

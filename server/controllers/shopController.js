@@ -3,6 +3,7 @@
 // Make sure all these models are imported at the top of your file
 const User = require("../models/User");
 const PokemonBase = require("../models/PokemonBase");
+const PokemonVariant = require("../models/PokemonVariant");
 const UserPokemon = require("../models/userSpecific/userPokemon");
 const SnoopyArtBase = require("../models/SnoopyArtBase");
 const UserSnoopyArt = require("../models/userSpecific/userSnoopyArt");
@@ -196,6 +197,10 @@ exports.pullFromGacha = async (req, res) => {
     let alreadyOwned = false; // Declare at the top level
     let pokemonVariant = null;
     let pokemonCollectibleId = null;
+    const customPokemonVariants =
+      categoryKey === "pokemon"
+        ? await PokemonVariant.find().select("name slug").sort({ createdAt: 1, name: 1 }).lean()
+        : [];
 
     if (categoryKey === "yugioh") {
       // Special handling for yugioh packs (multiple cards)
@@ -238,7 +243,7 @@ exports.pullFromGacha = async (req, res) => {
         if (existingItem && (categoryKey === "snoopy" || categoryKey === "habbo")) {
           alreadyOwned = true;
         } else {
-          pokemonVariant = categoryKey === "pokemon" ? rollPokemonVariant() : null;
+          pokemonVariant = categoryKey === "pokemon" ? rollPokemonVariant(customPokemonVariants) : null;
           const newUserCollectible = await config.UserCollectibleModel.create({
             user: userId,
             [config.baseModelRefField]: pulledItem._id,
@@ -246,8 +251,8 @@ exports.pullFromGacha = async (req, res) => {
           });
           user[config.userCollectionField].push(newUserCollectible._id);
           if (categoryKey === "pokemon") pokemonCollectibleId = newUserCollectible._id;
-          message = pokemonVariant === "Shiny"
-            ? `Congratulations! You pulled a Shiny ${pulledItem.name}!`
+          message = pokemonVariant && pokemonVariant !== "Normal"
+            ? `Congratulations! You pulled a ${pokemonVariant} ${pulledItem.name}!`
             : `Congratulations! You pulled: ${pulledItem.name}`;
         }
       }

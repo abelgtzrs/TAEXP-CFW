@@ -21,7 +21,7 @@ const UserPokemonSchema = new mongoose.Schema(
     },
     variant: {
       type: String,
-      enum: ["Normal", "Shiny", "Dark", "Steel", "Mystic", "Shadow"], // As discussed
+      trim: true,
       default: "Normal",
     },
     currentLevel: {

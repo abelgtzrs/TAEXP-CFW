@@ -4,7 +4,7 @@ import api from "../services/api";
 import PageHeader from "../components/ui/PageHeader";
 import StyledButton from "../components/ui/StyledButton";
 import { Trash2, PlusCircle, Search, ChevronRight } from "lucide-react";
-import { getShinySpritePath, toAssetUrl } from "../utils/pokemonSprites";
+import { getShinySpritePath, getVariantSpritePath, toAssetUrl, toVariantSlug } from "../utils/pokemonSprites";
 
 // A reusable input component with a label to keep the form clean
 const InputWithLabel = ({ label, id, ...props }) => (
@@ -35,12 +35,18 @@ const SuccessToast = ({ open, message, duration = 2500, onClose }) => {
   );
 };
 
+const getVariantFilename = (form, slug, generation) =>
+  form.variantSpriteFilenames?.find((entry) => entry.variantSlug === slug)?.[`spriteGen${generation}Filename`] || "";
+
 const PokemonEditorPage = () => {
   const navigate = useNavigate();
   const serverBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").split("/api")[0];
 
   const [allPokemonList, setAllPokemonList] = useState([]);
   const [selectedPokemonId, setSelectedPokemonId] = useState("");
+  const [variantDefinitions, setVariantDefinitions] = useState([]);
+  const [newVariantName, setNewVariantName] = useState("");
+  const [addingVariant, setAddingVariant] = useState(false);
 
   // Custom dropdown state
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -73,7 +79,10 @@ const PokemonEditorPage = () => {
   useEffect(() => {
     const fetchAllPokemonNames = async () => {
       try {
-        const response = await api.get("/pokemon/base");
+        const [response, variantsResponse] = await Promise.all([
+          api.get("/pokemon/base"),
+          api.get("/admin/pokemon/variants"),
+        ]);
         const nameList = response.data.data
           .map((p) => ({
             _id: p._id,
@@ -83,6 +92,7 @@ const PokemonEditorPage = () => {
           }))
           .sort((a, b) => a.speciesId - b.speciesId);
         setAllPokemonList(nameList);
+        setVariantDefinitions(variantsResponse.data.data || []);
       } catch (err) {
         setError("Failed to load Pokémon list.");
       }
@@ -141,6 +151,40 @@ const PokemonEditorPage = () => {
     setPokemon((prev) => ({ ...prev, forms: newForms }));
   };
 
+  const handleVariantFilenameChange = (formIndex, variantSlug, generation, value) => {
+    setPokemon((prev) => ({
+      ...prev,
+      forms: prev.forms.map((form, index) => {
+        if (index !== formIndex) return form;
+        const overrides = [...(form.variantSpriteFilenames || [])];
+        const overrideIndex = overrides.findIndex((entry) => entry.variantSlug === variantSlug);
+        const nextOverride = {
+          ...(overrideIndex >= 0 ? overrides[overrideIndex] : { variantSlug }),
+          [`spriteGen${generation}Filename`]: value,
+        };
+        if (overrideIndex >= 0) overrides[overrideIndex] = nextOverride;
+        else overrides.push(nextOverride);
+        return { ...form, variantSpriteFilenames: overrides };
+      }),
+    }));
+  };
+
+  const handleAddVariant = async (event) => {
+    event.preventDefault();
+    if (!newVariantName.trim()) return;
+    setAddingVariant(true);
+    setError("");
+    try {
+      const response = await api.post("/admin/pokemon/variants", { name: newVariantName });
+      setVariantDefinitions((current) => [...current, response.data.data]);
+      setNewVariantName("");
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to add variant.");
+    } finally {
+      setAddingVariant(false);
+    }
+  };
+
   const handleEvolutionPathChange = (pathIndex, field, value) => {
     const newPaths = [...pokemon.evolutionPaths];
     const parsedValue = field === "toSpeciesId" ? Number(value) : value;
@@ -160,6 +204,7 @@ const PokemonEditorPage = () => {
           spriteGen6Animated: "",
           spriteGen5ShinyFilename: "",
           spriteGen6ShinyFilename: "",
+          variantSpriteFilenames: [],
         },
       ],
     }));
@@ -216,6 +261,51 @@ const PokemonEditorPage = () => {
         <div>
           <div ref={headerRef}>
             <PageHeader title="Pokémon Database Editor" subtitle="Select a Pokémon to view and modify its data." />
+          </div>
+
+          <div
+            className="mb-4 rounded-lg border p-4"
+            style={{ background: "var(--color-surface)", borderColor: "var(--color-primary)" }}
+          >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Global Variants</h3>
+                <p className="text-xs text-text-secondary">
+                  Shiny: 5% · Each custom variant: 1% · Regular: {Math.max(0, 95 - variantDefinitions.length)}%
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {variantDefinitions.map((variant) => (
+                    <span key={variant._id} className="rounded border border-primary/40 px-2 py-1 text-xs text-primary">
+                      {variant.name} · gen5ani_{variant.slug} / gen6ani_{variant.slug}
+                    </span>
+                  ))}
+                  {variantDefinitions.length === 0 && (
+                    <span className="text-xs text-text-secondary">No custom variants added.</span>
+                  )}
+                </div>
+              </div>
+              <form onSubmit={handleAddVariant} className="flex w-full gap-2 lg:w-auto">
+                <input
+                  value={newVariantName}
+                  onChange={(event) => setNewVariantName(event.target.value)}
+                  placeholder="Variant name, e.g. Dark"
+                  maxLength={30}
+                  className="min-w-0 flex-1 rounded-md border border-primary bg-background p-2 text-text-main lg:w-64"
+                />
+                <button
+                  type="submit"
+                  disabled={addingVariant || !newVariantName.trim()}
+                  className="rounded-md bg-primary px-4 py-2 font-semibold text-background disabled:opacity-50"
+                >
+                  {addingVariant ? "Adding..." : "Add Variant"}
+                </button>
+              </form>
+            </div>
+            {newVariantName.trim() && toVariantSlug(newVariantName) && (
+              <p className="mt-2 text-xs text-text-secondary lg:text-right">
+                Folders: gen5ani_{toVariantSlug(newVariantName)} and gen6ani_{toVariantSlug(newVariantName)}
+              </p>
+            )}
           </div>
 
           {loading && <p className="text-white text-center">Loading Data...</p>}
@@ -348,6 +438,37 @@ const PokemonEditorPage = () => {
                             placeholder="Derived from the regular sprite filename"
                             onChange={(e) => handleFormChange(index, "spriteGen6ShinyFilename", e.target.value)}
                           />
+                          {variantDefinitions.map((variant) => (
+                            <div key={variant._id} className="rounded-md border border-primary/25 p-3">
+                              <p className="mb-2 text-xs font-semibold text-primary">
+                                {variant.name} · gen5ani_{variant.slug} / gen6ani_{variant.slug}
+                              </p>
+                              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                <InputWithLabel
+                                  label="Gen 5 Filename Override (optional)"
+                                  id={`sprite5-${variant.slug}-${index}`}
+                                  value={getVariantFilename(form, variant.slug, 5)}
+                                  placeholder="Derived from the regular sprite filename"
+                                  onChange={(e) =>
+                                    handleVariantFilenameChange(index, variant.slug, 5, e.target.value)
+                                  }
+                                />
+                                <InputWithLabel
+                                  label="Gen 6 Filename Override (optional)"
+                                  id={`sprite6-${variant.slug}-${index}`}
+                                  value={getVariantFilename(form, variant.slug, 6)}
+                                  placeholder="Derived from the regular sprite filename"
+                                  onChange={(e) =>
+                                    handleVariantFilenameChange(index, variant.slug, 6, e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div className="mt-2 text-[10px] text-text-secondary">
+                                Derived paths: {getVariantSpritePath(form, 5, variant.name) || "N/A"} ·{" "}
+                                {getVariantSpritePath(form, 6, variant.name) || "N/A"}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                         <div className="flex flex-col items-center justify-center bg-background p-6 rounded-md">
                           <div className="grid grid-cols-2 gap-3 text-center text-xs text-text-secondary">
@@ -356,6 +477,10 @@ const PokemonEditorPage = () => {
                               ["Gen 5 Shiny", getShinySpritePath(form, 5)],
                               ["Gen 6", form.spriteGen6Animated],
                               ["Gen 6 Shiny", getShinySpritePath(form, 6)],
+                              ...variantDefinitions.flatMap((variant) => [
+                                [`Gen 5 ${variant.name}`, getVariantSpritePath(form, 5, variant.name)],
+                                [`Gen 6 ${variant.name}`, getVariantSpritePath(form, 6, variant.name)],
+                              ]),
                             ].map(([label, path]) => (
                               <div key={label}>
                                 <img
