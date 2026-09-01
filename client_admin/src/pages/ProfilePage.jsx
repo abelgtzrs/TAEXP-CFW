@@ -1,8 +1,9 @@
 ﻿import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api, { getAssetUrl } from "../services/api";
-import { Flame, Images, Star, Award, BarChart2, LayoutGrid, Settings } from "lucide-react";
+import { ArrowLeft, Flame, Images, Star, Award, BarChart2, LayoutGrid, Settings } from "lucide-react";
 import { useAppearance, AVATAR_SHAPE_RADIUS, AVATAR_RING_PAD } from "../hooks/useAppearance";
 import OverviewTab from "./profile/OverviewTab";
 import CollectionsTab from "./profile/CollectionsTab";
@@ -22,6 +23,16 @@ const TABS = [
   { id: "stats", label: "Stats", Icon: BarChart2 },
   { id: "edit", label: "Edit", Icon: Settings },
 ];
+
+const EMPTY_COLLECTIONS = {
+  pokemon: [],
+  snoopy: [],
+  habbo: [],
+  yugioh: [],
+  loading: false,
+  loaded: false,
+  error: "",
+};
 
 function StatChip({ icon, value, label, color = "text-white/60" }) {
   return (
@@ -54,21 +65,17 @@ function ProfileSkeleton() {
 }
 
 const ProfilePage = () => {
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  const { userId } = useParams();
+  const isReadOnly = Boolean(userId);
+  const [viewedUser, setViewedUser] = useState(null);
   const [allBadges, setAllBadges] = useState([]);
   const [earnedBadges, setEarnedBadges] = useState([]);
   const [dashboardStats, setDashboardStats] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
-  const [collectionsState, setCollectionsState] = useState({
-    pokemon: [],
-    snoopy: [],
-    habbo: [],
-    yugioh: [],
-    loading: false,
-    loaded: false,
-    error: "",
-  });
+  const [collectionsState, setCollectionsState] = useState(EMPTY_COLLECTIONS);
 
   const [bannerHeightPx, setBannerHeightPx] = useState(() => {
     if (typeof window === "undefined") return 260;
@@ -77,23 +84,37 @@ const ProfilePage = () => {
   });
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    setActiveTab("overview");
+    setCollectionsState({ ...EMPTY_COLLECTIONS });
+
     (async () => {
       try {
-        const [badgesRes, statsRes, earnedRes] = await Promise.all([
+        const [profileRes, badgesRes, statsRes, earnedRes] = await Promise.all([
+          isReadOnly ? api.get(`/users/profiles/${userId}`) : Promise.resolve(null),
           api.get("/badges/base"),
-          api.get("/users/me/dashboard-stats"),
-          api.get("/badges/earned"),
+          api.get(isReadOnly ? `/users/profiles/${userId}/dashboard-stats` : "/users/me/dashboard-stats"),
+          api.get(isReadOnly ? `/badges/earned/${userId}` : "/badges/earned"),
         ]);
+        if (cancelled) return;
+        if (profileRes) setViewedUser(profileRes.data.data);
         setAllBadges(badgesRes.data.data);
         setDashboardStats(statsRes.data.data);
         setEarnedBadges(earnedRes.data.data || []);
       } catch (err) {
         console.error("Failed to load profile data:", err);
+        if (!cancelled) setError(err.response?.data?.message || "Failed to load profile.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isReadOnly, userId]);
 
   useEffect(() => {
     if (activeTab !== "collections") return;
@@ -101,11 +122,12 @@ const ProfilePage = () => {
     (async () => {
       setCollectionsState((s) => ({ ...s, loading: true, error: "" }));
       try {
+        const collectionPath = isReadOnly ? `/users/profiles/${userId}/collection` : "/users/me/collection";
         const [p, s, h, y] = await Promise.all([
-          api.get("/users/me/collection/pokemon"),
-          api.get("/users/me/collection/snoopy"),
-          api.get("/users/me/collection/habbo"),
-          api.get("/users/me/collection/yugioh"),
+          api.get(`${collectionPath}/pokemon`),
+          api.get(`${collectionPath}/snoopy`),
+          api.get(`${collectionPath}/habbo`),
+          api.get(`${collectionPath}/yugioh`),
         ]);
         setCollectionsState({
           pokemon: p.data?.data || [],
@@ -122,7 +144,7 @@ const ProfilePage = () => {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, isReadOnly, userId]);
 
   useEffect(() => {
     try {
@@ -131,14 +153,28 @@ const ProfilePage = () => {
   }, [bannerHeightPx]);
 
   const appearance = useAppearance();
+  const user = isReadOnly ? viewedUser : authUser;
 
-  if (loading || !user) return <ProfileSkeleton />;
+  if (loading) return <ProfileSkeleton />;
+  if (error || !user) {
+    return (
+      <div className="rounded-2xl border border-red-400/20 bg-red-400/5 p-6 text-center">
+        <p className="text-sm text-red-300">{error || "Profile not found."}</p>
+        {isReadOnly && (
+          <Link to="/profiles" className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:text-white">
+            <ArrowLeft size={15} /> Back to profiles
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   const personaAccent = user?.activeAbelPersona?.colors?.primary || "#22d3ee";
-  const accent = appearance.accentOverride || personaAccent;
-  const avatarRadius = AVATAR_SHAPE_RADIUS[appearance.avatarShape] || "50%";
-  const ringPad = AVATAR_RING_PAD[appearance.avatarRing] || 3;
-  const glowAlpha = Math.round((appearance.avatarGlow / 100) * 80).toString(16).padStart(2, "0");
+  const accent = isReadOnly ? personaAccent : appearance.accentOverride || personaAccent;
+  const avatarRadius = isReadOnly ? "50%" : AVATAR_SHAPE_RADIUS[appearance.avatarShape] || "50%";
+  const ringPad = isReadOnly ? 3 : AVATAR_RING_PAD[appearance.avatarRing] || 3;
+  const avatarGlow = isReadOnly ? 45 : appearance.avatarGlow;
+  const glowAlpha = Math.round((avatarGlow / 100) * 80).toString(16).padStart(2, "0");
   const avatarUrl = user?.profilePicture
     ? getAssetUrl(user.profilePicture)
     : `https://api.dicebear.com/8.x/pixel-art/svg?seed=${user?.username || "user"}`;
@@ -149,9 +185,18 @@ const ProfilePage = () => {
     (user?.habboRares?.length || 0) +
     (user?.yugiohCards?.length || 0);
   const streak = dashboardStats?.activeStreaks ?? user.currentLoginStreak ?? 0;
+  const visibleTabs = isReadOnly ? TABS.filter((tab) => tab.id !== "edit") : TABS;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+      {isReadOnly && (
+        <Link
+          to="/profiles"
+          className="mb-3 inline-flex items-center gap-2 text-xs font-medium text-text-secondary transition-colors hover:text-white"
+        >
+          <ArrowLeft size={14} /> All profiles
+        </Link>
+      )}
       {/* HERO */}
       <div className="relative">
         {/* Banner */}
@@ -202,7 +247,7 @@ const ProfilePage = () => {
                 borderRadius: avatarRadius,
                 padding: ringPad,
                 background: `linear-gradient(135deg, ${accent}, ${accent}50)`,
-                boxShadow: appearance.avatarGlow > 0 ? `0 0 20px ${accent}${glowAlpha}, 0 4px 20px rgba(0,0,0,0.55)` : "0 4px 20px rgba(0,0,0,0.55)",
+                boxShadow: avatarGlow > 0 ? `0 0 20px ${accent}${glowAlpha}, 0 4px 20px rgba(0,0,0,0.55)` : "0 4px 20px rgba(0,0,0,0.55)",
               }}
             >
               <div className="overflow-hidden" style={{ borderRadius: avatarRadius, padding: 2, background: "var(--color-bg)" }}>
@@ -249,9 +294,9 @@ const ProfilePage = () => {
               )}
 
               <div className="mt-2 flex items-center justify-center sm:justify-start gap-3 flex-wrap">
-                {appearance.showStreakChip && <StatChip icon={<Flame size={12} />} value={`${streak}d`} label="streak" color="text-amber-400" />}
-                {appearance.showItemsChip && <StatChip icon={<Images size={12} />} value={totalCollectibles} label="items" color="text-sky-400" />}
-                {appearance.showBadgesChip && earnedBadges.length > 0 && (
+                {(isReadOnly || appearance.showStreakChip) && <StatChip icon={<Flame size={12} />} value={`${streak}d`} label="streak" color="text-amber-400" />}
+                {(isReadOnly || appearance.showItemsChip) && <StatChip icon={<Images size={12} />} value={totalCollectibles} label="items" color="text-sky-400" />}
+                {(isReadOnly || appearance.showBadgesChip) && earnedBadges.length > 0 && (
                   <StatChip
                     icon={<Award size={12} />}
                     value={earnedBadges.length}
@@ -269,7 +314,7 @@ const ProfilePage = () => {
       <div className="mt-4 border-b border-white/[0.07]">
         <nav className="overflow-x-auto scrollbar-hide">
           <div className="flex px-3 sm:px-4 min-w-max">
-            {TABS.map(({ id, label, Icon }) => {
+            {visibleTabs.map(({ id, label, Icon }) => {
               const isActive = activeTab === id;
               return (
                 <button
@@ -305,7 +350,7 @@ const ProfilePage = () => {
               allBadges={allBadges}
               earnedBadges={earnedBadges}
               user={user}
-              onEditClick={() => setActiveTab("edit")}
+              onEditClick={isReadOnly ? undefined : () => setActiveTab("edit")}
             />
           )}
           {activeTab === "collections" && (
@@ -315,7 +360,7 @@ const ProfilePage = () => {
             <BadgesTab key="badges" allBadges={allBadges} earnedBadges={earnedBadges} user={user} />
           )}
           {activeTab === "stats" && <StatsTab key="stats" stats={dashboardStats} />}
-          {activeTab === "edit" && (
+          {!isReadOnly && activeTab === "edit" && (
             <EditTab key="edit" bannerHeightPx={bannerHeightPx} setBannerHeightPx={setBannerHeightPx} accent={accent} />
           )}
         </AnimatePresence>

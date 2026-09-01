@@ -10,5 +10,6 @@ router.get("/base", protect, getAllBaseBadges);
 
 // Get current user's earned badges directly from UserBadge collection.
 router.get("/earned", protect, getMyEarnedBadges);
+router.get("/earned/:userId", protect, getMyEarnedBadges);
 
 module.exports = router;

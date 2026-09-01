@@ -16,6 +16,10 @@ const { getPokemonSpritePaths } = require("../pokemonVariants");
 
 // --- Daily Login Streak Utilities ---
 const isSameDay = (a, b) => a && b && new Date(a).toDateString() === new Date(b).toDateString();
+const getProfileUserId = (req) => {
+  const userId = req.params.userId || req.user.id;
+  return mongoose.isValidObjectId(userId) ? userId : null;
+};
 
 // Return whether today has been counted and current streaks
 const getStreakStatus = async (req, res) => {
@@ -455,10 +459,50 @@ const setActivePersona = async (req, res) => {
   }
 };
 
+const getAllProfiles = async (req, res) => {
+  try {
+    // ponytail: keep this unpaginated until the account count makes pagination necessary.
+    const profiles = await User.find({})
+      .select("username role level profilePicture motto bio location createdAt")
+      .sort({ username: 1 })
+      .lean();
+
+    res.status(200).json({ success: true, count: profiles.length, data: profiles });
+  } catch (error) {
+    console.error("Get Profiles Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+const getProfileById = async (req, res) => {
+  try {
+    const userId = getProfileUserId(req);
+    if (!userId) return res.status(400).json({ success: false, message: "Invalid user ID" });
+
+    const user = await User.findById(userId)
+      .select(
+        "username role level experience xpToNextLevel profilePicture bannerImage bannerFitMode bannerPositionX bannerPositionY bio location website motto currentLoginStreak longestLoginStreak activeBadgeCollectionKey createdAt activeAbelPersona pokemonCollection snoopyArtCollection habboRares yugiohCards displayedPokemon displayedSnoopyArt displayedHabboRares displayedYugiohCards equippedTitle",
+      )
+      .populate({ path: "activeAbelPersona", model: "AbelPersonaBase" })
+      .populate({ path: "displayedPokemon", populate: { path: "basePokemon", model: "PokemonBase" } })
+      .populate({ path: "displayedSnoopyArt", populate: { path: "snoopyArtBase", model: "SnoopyArtBase" } })
+      .populate({ path: "displayedHabboRares", populate: { path: "habboRareBase", model: "HabboRareBase" } })
+      .populate({ path: "displayedYugiohCards", populate: { path: "yugiohCardBase", model: "YugiohCardBase" } })
+      .populate({ path: "equippedTitle", populate: { path: "titleBase", model: "TitleBase" } });
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    console.error("Get Profile Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
 const getUserCollection = async (req, res) => {
   try {
     const { type } = req.params;
-    const userId = req.user.id;
+    const userId = getProfileUserId(req);
+    if (!userId) return res.status(400).json({ success: false, message: "Invalid user ID" });
 
     const collectionConfig = {
       pokemon: { path: "pokemonCollection", populate: { path: "basePokemon" } },
@@ -528,7 +572,8 @@ const updateDisplayedItems = async (req, res) => {
 // --- UPDATED AND EXPANDED FUNCTION ---
 const getDashboardStats = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getProfileUserId(req);
+    if (!userId) return res.status(400).json({ success: false, message: "Invalid user ID" });
 
     // --- Basic Stats ---
     const startOfToday = new Date();
@@ -825,12 +870,18 @@ const getDashboardStats = async (req, res) => {
       ]),
     ]);
 
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
     // --- Recent Acquisitions Logic ---
+    const pokemonCollection = (user.pokemonCollection || []).filter(Boolean);
+    const snoopyArtCollection = (user.snoopyArtCollection || []).filter(Boolean);
+    const habboRares = (user.habboRares || []).filter(Boolean);
+    const yugiohCards = (user.yugiohCards || []).filter(Boolean);
     const allCollections = [
-      ...user.pokemonCollection.map((p) => ({ ...p.toObject(), type: "Pokémon" })),
-      ...user.snoopyArtCollection.map((s) => ({ ...s.toObject(), type: "Snoopy" })),
-      ...user.habboRares.map((h) => ({ ...h.toObject(), type: "Habbo Rare" })),
-      ...user.yugiohCards.map((y) => ({ ...y.toObject(), type: "Yu-Gi-Oh! Card" })),
+      ...pokemonCollection.map((p) => ({ ...p.toObject(), type: "Pokémon" })),
+      ...snoopyArtCollection.map((s) => ({ ...s.toObject(), type: "Snoopy" })),
+      ...habboRares.map((h) => ({ ...h.toObject(), type: "Habbo Rare" })),
+      ...yugiohCards.map((y) => ({ ...y.toObject(), type: "Yu-Gi-Oh! Card" })),
     ];
 
     // Sort all collected items by date (newest first)
@@ -884,10 +935,7 @@ const getDashboardStats = async (req, res) => {
       .filter((item) => item && item.name);
 
     const totalCollectibles =
-      user.pokemonCollection.length +
-      user.snoopyArtCollection.length +
-      user.habboRares.length +
-      user.yugiohCards.length;
+      pokemonCollection.length + snoopyArtCollection.length + habboRares.length + yugiohCards.length;
 
     const taskStats = {
       total: lifetimeTaskAgg[0]?.total || 0,
@@ -1234,6 +1282,8 @@ const resetUserPasswordAdmin = async (req, res) => {
 
 // --- Export all functions together in one object ---
 module.exports = {
+  getAllProfiles,
+  getProfileById,
   getUserCollection,
   updateDisplayedItems,
   getDashboardStats,

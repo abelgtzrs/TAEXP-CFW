@@ -80,6 +80,8 @@ const bannerUpload = multer({
 
 const {
   getUserCollection,
+  getAllProfiles,
+  getProfileById,
   updateDisplayedItems,
   getDashboardStats,
   setActivePersona,
@@ -101,6 +103,11 @@ const { protect } = require("../middleware/authMiddleware");
 
 // Apply 'protect' middleware to all routes in this file
 router.use(protect);
+
+router.get("/profiles", getAllProfiles);
+router.get("/profiles/:userId", getProfileById);
+router.get("/profiles/:userId/dashboard-stats", getDashboardStats);
+router.get("/profiles/:userId/collection/:type", getUserCollection);
 
 // Basic profile fetch for current user (mirrors /api/auth/me)
 router.get("/me", getMe);

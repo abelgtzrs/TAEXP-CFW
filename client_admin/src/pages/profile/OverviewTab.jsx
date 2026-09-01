@@ -12,7 +12,7 @@ const OverviewTab = ({ allBadges, earnedBadges, user, onEditClick }) => (
     className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start"
   >
     <div className="lg:col-span-1 space-y-4">
-      <UserOverviewCard onEdit={onEditClick} />
+      <UserOverviewCard user={user} onEdit={onEditClick} />
       <BadgeDisplay
         allBadges={allBadges}
         earnedBadges={earnedBadges}

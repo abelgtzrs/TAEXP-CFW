@@ -3,6 +3,7 @@ export const NAV_ORDER_STORAGE_KEY = "tae.bottomNav.order";
 export const BOTTOM_NAV_LINKS = [
   { to: "/dashboard", label: "Home", iconKey: "LayoutDashboard" },
   { to: "/profile", label: "Profile", iconKey: "User" },
+  { to: "/profiles", label: "Profiles", iconKey: "Users" },
   { to: "/shop", label: "Shop", iconKey: "Store" },
   { to: "/tasks", label: "Tasks", iconKey: "Clapperboard" },
   { to: "/habits", label: "Habits", iconKey: "CheckSquare" },

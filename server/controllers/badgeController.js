@@ -1,6 +1,7 @@
 // server/controllers/badgeController.js
 const BadgeBase = require("../models/BadgeBase");
 const UserBadge = require("../models/userSpecific/userBadge");
+const mongoose = require("mongoose");
 
 // @desc    Get all base badge data for the profile display
 // @route   GET /api/badges/base
@@ -20,7 +21,12 @@ exports.getAllBaseBadges = async (req, res) => {
 // @access  Private
 exports.getMyEarnedBadges = async (req, res) => {
   try {
-    const earned = await UserBadge.find({ user: req.user.id })
+    const userId = req.params.userId || req.user.id;
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
+
+    const earned = await UserBadge.find({ user: userId })
       .populate({ path: "badgeBase", model: "BadgeBase" })
       .sort({ earnedAt: 1 });
     res.status(200).json({ success: true, data: earned });

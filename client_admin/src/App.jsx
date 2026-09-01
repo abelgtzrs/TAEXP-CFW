@@ -22,6 +22,7 @@ import AdminTemplatesPage from "./pages/AdminTemplatesPage";
 import SnoopyAdminPage from "./pages/SnoopyAdminPage";
 import ShopPage from "./pages/ShopPage";
 import ProfilePage from "./pages/ProfilePage";
+import ProfilesPage from "./pages/ProfilesPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import CollectionDetailPage from "./pages/CollectionDetailPage";
 import PokedexPage from "./pages/PokedexPage";
@@ -68,6 +69,8 @@ function App() {
           <Route path="/workouts/log" element={<LogWorkoutPage />} />
           <Route path="/workouts/new/template" element={<SelectTemplatePage />} />
           <Route path="/shop" element={<ShopPage />} />
+          <Route path="/profiles" element={<ProfilesPage />} />
+          <Route path="/profiles/:userId" element={<ProfilePage />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/tasks" element={<TasksPage />} />

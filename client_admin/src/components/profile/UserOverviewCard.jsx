@@ -1,8 +1,6 @@
-﻿import { useAuth } from "../../context/AuthContext";
 import { Flame, Images, MapPin, Link as LinkIcon, Pencil, CalendarDays } from "lucide-react";
 
-export default function UserOverviewCard({ onEdit }) {
-  const { user } = useAuth();
+export default function UserOverviewCard({ user, onEdit }) {
   if (!user) return null;
 
   const accent = user?.activeAbelPersona?.colors?.primary || "#22d3ee";
@@ -120,20 +118,22 @@ export default function UserOverviewCard({ onEdit }) {
         )}
 
         {/* Edit button */}
-        <button
-          onClick={onEdit}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-semibold tracking-wide uppercase transition-all duration-150 active:scale-[0.98]"
-          style={{
-            background: `${accent}10`,
-            color: accent,
-            outline: `1px solid ${accent}25`,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = `${accent}1e`; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = `${accent}10`; }}
-        >
-          <Pencil size={11} />
-          Edit Profile
-        </button>
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-semibold tracking-wide uppercase transition-all duration-150 active:scale-[0.98]"
+            style={{
+              background: `${accent}10`,
+              color: accent,
+              outline: `1px solid ${accent}25`,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = `${accent}1e`; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = `${accent}10`; }}
+          >
+            <Pencil size={11} />
+            Edit Profile
+          </button>
+        )}
 
       </div>
     </div>

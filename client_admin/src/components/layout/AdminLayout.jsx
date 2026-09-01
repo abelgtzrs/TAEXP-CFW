@@ -465,6 +465,9 @@ const AdminLayout = () => {
                 <NavItem to="/profile" icon={User} isCollapsed={isSidebarCollapsed}>
                   Account Profile
                 </NavItem>
+                <NavItem to="/profiles" icon={Users} isCollapsed={isSidebarCollapsed}>
+                  Profiles
+                </NavItem>
                 <NavItem to="/shop" icon={Store} isCollapsed={isSidebarCollapsed}>
                   Storefront
                 </NavItem>
