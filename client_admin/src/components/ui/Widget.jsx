@@ -17,8 +17,10 @@ const Widget = ({ title, children, className = "", padding = "p-6", titleChildre
     return () => window.removeEventListener("tae:settings-changed", refresh);
   }, []);
 
-  const baseClasses = "h-full flex flex-col rounded-lg";
-  const surfaceClasses = "bg-surface border border-gray-700/50 shadow-lg";
+  const baseClasses =
+    "dashboard-card group relative h-full min-w-0 flex flex-col rounded-xl transition-colors duration-200";
+  const surfaceClasses =
+    "bg-surface border border-white/[0.08] shadow-sm hover:border-white/20";
   const plainClasses = "bg-transparent border-0 shadow-none";
 
   // When glass is ON and variant is not plain, use CSS variables provided by the customizer
@@ -35,16 +37,20 @@ const Widget = ({ title, children, className = "", padding = "p-6", titleChildre
   const headerBorderClass =
     variant === "plain" ? "border-transparent" : useGlass ? "border-white/10" : "border-gray-700/50";
 
+  const hoverRingClass = useGlass
+    ? "hover:ring-1 hover:ring-white/10"
+    : "";
+
   return (
     <div
       className={`${baseClasses} ${
         variant === "plain" ? plainClasses : useGlass ? "bg-transparent" : surfaceClasses
-      } ${className}`}
+      } ${hoverRingClass} ${className}`}
       style={containerStyle}
     >
       {title && (
-        <div className={`px-6 py-4 flex-shrink-0 flex justify-between items-center border-b ${headerBorderClass}`}>
-          <h3 className="text-sm font-semibold uppercase text-text-secondary tracking-wider">{title}</h3>
+        <div className={`dashboard-card-heading px-5 py-3.5 flex-shrink-0 flex flex-wrap gap-2 justify-between items-center border-b ${headerBorderClass}`}>
+          <h3 className="text-sm font-semibold text-text-main tracking-tight">{title}</h3>
           {titleChildren}
         </div>
       )}

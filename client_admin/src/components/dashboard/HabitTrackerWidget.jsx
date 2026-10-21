@@ -6,6 +6,73 @@ import api from "../../services/api";
 import Widget from "../ui/Widget";
 import { CheckSquare, Fan, Flame, XCircle } from "lucide-react";
 
+// Streak visuals escalate in prominence as the streak grows: 1-2 is a quiet spark,
+// 30+ is a shimmering, glowing "epic" badge.
+const getStreakTier = (streak) => {
+  if (streak >= 30) return "epic";
+  if (streak >= 14) return "blazing";
+  if (streak >= 7) return "hot";
+  if (streak >= 3) return "building";
+  return "spark";
+};
+
+const STREAK_TIER_STYLES = {
+  spark: {
+    pill: "bg-orange-500/10 border border-orange-500/20",
+    icon: "text-orange-400",
+    iconSize: 11,
+    text: "text-[10px] font-bold text-orange-400",
+    flame: "",
+    glow: "",
+  },
+  building: {
+    pill: "bg-orange-500/15 border border-orange-500/30",
+    icon: "text-orange-300",
+    iconSize: 12,
+    text: "text-[11px] font-bold text-orange-300",
+    flame: "",
+    glow: "streak-glow-warm",
+  },
+  hot: {
+    pill: "bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/40",
+    icon: "text-red-400",
+    iconSize: 13,
+    text: "text-xs font-extrabold text-orange-200",
+    flame: "streak-flame-flicker",
+    glow: "streak-glow-warm",
+  },
+  blazing: {
+    pill: "bg-gradient-to-r from-orange-500/25 to-red-500/25 border border-red-400/50",
+    icon: "text-red-400",
+    iconSize: 14,
+    text: "text-sm font-extrabold text-orange-100",
+    flame: "streak-flame-flicker",
+    glow: "streak-glow-warm",
+  },
+  epic: {
+    pill: "bg-gradient-to-r from-orange-500/25 via-red-500/25 to-fuchsia-500/25 border border-fuchsia-400/50",
+    icon: "text-red-400",
+    iconSize: 15,
+    text: "text-sm font-extrabold streak-text-epic",
+    flame: "streak-flame-flicker",
+    glow: "streak-glow-epic",
+  },
+};
+
+// Keyed by streak value in the caller so the pop-in animation replays on every increment.
+const StreakBadge = ({ streak, longestStreak }) => {
+  const tier = STREAK_TIER_STYLES[getStreakTier(streak)];
+  return (
+    <span
+      className={`streak-badge-pop flex-none flex items-center gap-1 rounded-full px-1.5 py-0.5 ${tier.pill} ${tier.glow}`}
+      title={`Longest streak: ${longestStreak || 0} days`}
+    >
+      <Flame size={tier.iconSize} className={`${tier.icon} ${tier.flame}`} />
+      <span className={tier.text}>{streak}</span>
+    </span>
+  );
+};
+
 const HabitTrackerWidget = () => {
   const [habits, setHabits] = useState([]);
   const { setUser, user } = useAuth();
@@ -130,13 +197,7 @@ const HabitTrackerWidget = () => {
                     {habit.name}
                   </span>
                   {habit.streak > 0 && (
-                    <span
-                      className="flex-none flex items-center gap-0.5 text-[10px] font-bold text-orange-400"
-                      title={`Longest streak: ${habit.longestStreak || 0} days`}
-                    >
-                      <Flame size={11} />
-                      {habit.streak}
-                    </span>
+                    <StreakBadge key={`streak-${habit.streak}`} streak={habit.streak} longestStreak={habit.longestStreak} />
                   )}
                 </div>
                 <div className={`flex items-center gap-1.5 ${completed ? "text-status-success" : "text-gray-500"}`}>

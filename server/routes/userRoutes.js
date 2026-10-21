@@ -82,6 +82,7 @@ const {
   getUserCollection,
   getAllProfiles,
   getProfileById,
+  getCollectionCompletion,
   updateDisplayedItems,
   getDashboardStats,
   setActivePersona,
@@ -107,6 +108,7 @@ router.use(protect);
 router.get("/profiles", getAllProfiles);
 router.get("/profiles/:userId", getProfileById);
 router.get("/profiles/:userId/dashboard-stats", getDashboardStats);
+router.get("/profiles/:userId/collection-completion", getCollectionCompletion);
 router.get("/profiles/:userId/collection/:type", getUserCollection);
 
 // Basic profile fetch for current user (mirrors /api/auth/me)
@@ -146,6 +148,7 @@ router.post("/me/test/unlock-personas", async (req, res) => {
 
 // It should be placed before any routes with URL parameters if possible, for clarity.
 router.get("/me/dashboard-stats", getDashboardStats);
+router.get("/me/collection-completion", getCollectionCompletion);
 // Dashboard layout persistence
 router.get("/me/dashboard-layout", getDashboardLayout);
 router.put("/me/dashboard-layout", setDashboardLayout);

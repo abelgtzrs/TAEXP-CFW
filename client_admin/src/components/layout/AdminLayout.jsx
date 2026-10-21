@@ -43,8 +43,9 @@ const NavItem = ({ to, icon: Icon, children, isCollapsed }) => {
     <li>
       <NavLink
         to={to}
+        title={typeof children === "string" ? children : undefined}
         className={({ isActive }) =>
-          `group flex items-center rounded-lg transition-all duration-300 text-text-secondary hover:bg-gray-700/50 hover:text-white px-[9px] py-[7px] ${
+          `app-nav-link group flex items-center rounded-lg transition-all duration-300 text-text-secondary hover:bg-gray-700/50 hover:text-white px-[9px] py-[7px] ${
             isActive ? "bg-primary/20 text-white shadow-lg" : ""
           }`
         }
@@ -54,7 +55,7 @@ const NavItem = ({ to, icon: Icon, children, isCollapsed }) => {
         </span>
         <span
           className={`ml-1.5 overflow-hidden whitespace-nowrap transition-all duration-300 ${
-            isCollapsed ? "max-w-0 opacity-0" : "max-w-[200px] opacity-100 text-[11px]"
+            isCollapsed ? "max-w-0 opacity-0" : "max-w-[200px] opacity-100 text-xs"
           }`}
         >
           {children}
@@ -102,7 +103,7 @@ const AdminLayout = () => {
 
   // ~20% size increase and align numeric width with Tailwind classes below
   const sidebarCollapsedWidth = 48; // w-12 (was ~40)
-  const sidebarExpandedWidth = 208; // w-52 (was 176)
+  const sidebarExpandedWidth = 224; // w-56
   const headerHeight = 48; // compact header height (was 56)
   const sidebarWidth = isSidebarCollapsed ? sidebarCollapsedWidth : sidebarExpandedWidth;
 
@@ -365,7 +366,7 @@ const AdminLayout = () => {
 
   return (
     <LayoutProvider>
-      <div className="relative h-screen w-screen overflow-hidden bg-background text-text-main text-xs">
+      <div className="experience-shell relative h-screen w-screen overflow-hidden bg-background text-text-main text-xs">
         {/* Global toast host for cross-app notifications */}
         <GlobalToastHost />
         {/* Default gradient background (visible when no custom image set) */}
@@ -375,7 +376,7 @@ const AdminLayout = () => {
           style={{
             background:
               "radial-gradient(1200px 400px at 0% 0%, var(--color-primary) 6%, transparent 60%), radial-gradient(1000px 600px at 100% 100%, var(--color-secondary) 5%, transparent 60%), linear-gradient(135deg, var(--color-surface) 0%, var(--color-background) 80%)",
-            opacity: 0.35,
+            opacity: 0.08,
           }}
         />
         {/* Page background layer */}
@@ -400,15 +401,16 @@ const AdminLayout = () => {
         {/* Sidebar full height */}
         {/* Sidebar full height */}
         <aside
-          className={`fixed top-0 left-0 z-50 flex flex-col bg-surface/95 backdrop-blur-md border-r border-gray-700/80 shadow-2xl transition-all duration-500 ease-in-out 
-            ${isSidebarCollapsed ? "w-12 -translate-x-full lg:translate-x-0" : "w-64 lg:w-52 translate-x-0"}
-            lg:block
+          className={`experience-sidebar fixed top-0 left-0 z-50 flex flex-col bg-surface/95 backdrop-blur-md border-r border-gray-700/80 shadow-2xl transition-all duration-500 ease-in-out
+            ${isSidebarCollapsed ? "w-12 -translate-x-full lg:translate-x-0" : "w-64 lg:w-56 translate-x-0"}
           `}
           style={{ bottom: "var(--bottom-nav-height)" }}
         >
           {/* Toggle (15px from bottom) - Desktop only */}
           <button
             onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+            aria-expanded={!isSidebarCollapsed}
             className="hidden lg:block absolute right-0 translate-x-full bg-surface/80 backdrop-blur-md border border-gray-700/40 rounded-r-md p-1 hover:bg-gray-700/60 transition-all duration-300 shadow-md"
             style={{ bottom: 15 }}
           >
@@ -422,13 +424,14 @@ const AdminLayout = () => {
           {/* Mobile Close Button */}
           <button
             onClick={() => setIsSidebarCollapsed(true)}
+            aria-label="Close navigation"
             className="lg:hidden absolute top-4 right-4 text-white/70 hover:text-white"
           >
             <ChevronLeft size={24} />
           </button>
 
           {/* Brand */}
-          <div className="px-2 pt-4 pb-2 flex-shrink-0">
+          <div className="px-2 py-5 flex-shrink-0 border-b border-white/[0.06] mb-4">
             <div className="flex items-center gap-2">
               <div className="flex-none w-[26px] h-[26px] rounded-md overflow-hidden bg-primary/40 flex items-center justify-center">
                 {logoImg ? (
@@ -442,13 +445,14 @@ const AdminLayout = () => {
                   isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[144px] opacity-100"
                 }`}
               >
-                The Abel Experience™ CFW
+                <span className="block text-xs tracking-tight">The Abel Experience</span>
+                <span className="block mt-1 text-[9px] font-medium tracking-widest uppercase text-text-secondary">Management console</span>
               </span>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-grow space-y-3 overflow-y-auto scrollbar-hide px-1 pb-2">
+          <nav aria-label="Main navigation" className="min-h-0 flex-grow space-y-5 overflow-y-auto px-1 pb-2">
             {/* Overview */}
             <div>
               <p
@@ -749,7 +753,7 @@ const AdminLayout = () => {
             bottom: "var(--bottom-nav-height)",
           }}
         >
-          <div className="flex-1 overflow-y-auto scrollbar-hide p-2 lg:p-3 min-h-0 pb-0 lg:pb-3">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-7 min-h-0">
             <div className="mx-auto w-full" style={{ maxWidth: 1600 }}>
               <Outlet />
             </div>

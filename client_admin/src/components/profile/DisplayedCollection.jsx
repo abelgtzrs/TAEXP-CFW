@@ -11,6 +11,7 @@ const DisplayedCollection = ({
   columns = 10,
   sortable = false,
   spriteToggle = false,
+  completion = null,
 }) => {
   const [sortBy, setSortBy] = useState("obtained");
   const [spriteGen, setSpriteGen] = useState("gen6");
@@ -236,6 +237,11 @@ const DisplayedCollection = ({
   const gridStyle = { gridTemplateColumns: `repeat(${effectiveColumns}, minmax(0, 1fr))` };
   const rowGapClass = compact ? "mb-3" : "mb-6";
   const cellGapClass = compact ? "gap-2" : "gap-4";
+  const completionRows = Array.isArray(completion?.variants)
+    ? completion.variants
+    : completion
+      ? [{ name: title, ...completion }]
+      : [];
 
   const titleChildren = (
     <div className="flex items-center gap-2">
@@ -273,6 +279,36 @@ const DisplayedCollection = ({
   return (
     <Widget title={title} titleChildren={titleChildren} padding={isExpanded ? (compact ? "p-4" : "p-6") : "p-0"}>
       <div ref={gridWrapperRef}>
+        {isExpanded && completionRows.length > 0 && (
+          <div className={`grid gap-2 ${completionRows.length > 1 ? "mb-5 sm:grid-cols-2 xl:grid-cols-3" : "mb-5"}`}>
+            {completionRows.map((row) => {
+              const percentage = Math.max(0, Math.min(100, Number(row.percentage) || 0));
+              return (
+                <div key={row.slug || row.name} className="rounded-lg border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="truncate font-semibold text-text-secondary">{row.name}</span>
+                    <span className="shrink-0 font-mono text-white">
+                      {row.owned}/{row.total} · {percentage}%
+                    </span>
+                  </div>
+                  <div
+                    className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/25"
+                    role="progressbar"
+                    aria-label={`${row.name} collection completion`}
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow={percentage}
+                  >
+                    <div
+                      className="h-full rounded-full bg-primary transition-[width] duration-500"
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {isExpanded &&
           rows.map((rowItems, rowIdx) => (
             <div key={`row-${rowIdx}`} className={rowIdx < rows.length - 1 ? rowGapClass : ""}>

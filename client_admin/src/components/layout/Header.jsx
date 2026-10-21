@@ -233,7 +233,7 @@ const Header = ({ forcedHeight }) => {
   const mailButtonRef = useRef(null);
   return (
     <header
-      className="relative bg-black/20 backdrop-blur-xl border-b border-white/10 px-3 py-1.5 flex items-center justify-between sticky top-0 z-40 shadow-2xl shadow-black/50 transition-[height] duration-300 ease-out"
+      className="relative bg-surface/90 backdrop-blur-xl border-b border-white/[0.07] px-3 py-1.5 flex items-center justify-between sticky top-0 z-40 transition-[height] duration-200 ease-out"
       style={{ height: computedHeight }}
     >
       {/* Left Side: Logo/Brand */}

@@ -1,6 +1,15 @@
 const User = require("../models/User");
+const PokemonBase = require("../models/PokemonBase");
+const PokemonVariant = require("../models/PokemonVariant");
+const SnoopyArtBase = require("../models/SnoopyArtBase");
+const HabboRareBase = require("../models/HabboRareBase");
+const YugiohCardBase = require("../models/YugiohCardBase");
 const BadgeBase = require("../models/BadgeBase");
 const UserBadge = require("../models/userSpecific/userBadge");
+const UserPokemon = require("../models/userSpecific/userPokemon");
+const UserSnoopyArt = require("../models/userSpecific/userSnoopyArt");
+const UserHabboRare = require("../models/userSpecific/userHabboRare");
+const UserYugiohCard = require("../models/userSpecific/userYugiohCard");
 const BadgeCollection = require("../models/BadgeCollection");
 const { awardNextStreakBadge } = require("../utils/badgeAwardUtils");
 const Habit = require("../models/userSpecific/Habit");
@@ -13,6 +22,7 @@ const SpotifyLog = require("../models/SpotifyLogs");
 const mongoose = require("mongoose");
 const fs = require("fs");
 const { getPokemonSpritePaths } = require("../pokemonVariants");
+const { buildCollectionCompletion, buildPokemonCompletion } = require("../utils/collectionCompletion");
 
 // --- Daily Login Streak Utilities ---
 const isSameDay = (a, b) => a && b && new Date(a).toDateString() === new Date(b).toDateString();
@@ -494,6 +504,52 @@ const getProfileById = async (req, res) => {
     res.status(200).json({ success: true, data: user });
   } catch (error) {
     console.error("Get Profile Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+const getCollectionCompletion = async (req, res) => {
+  try {
+    const userId = getProfileUserId(req);
+    if (!userId) return res.status(400).json({ success: false, message: "Invalid user ID" });
+
+    const [
+      userExists,
+      pokemonBaseIds,
+      snoopyBaseIds,
+      habboBaseIds,
+      yugiohBaseIds,
+      ownedPokemon,
+      ownedSnoopyIds,
+      ownedHabboIds,
+      ownedYugiohIds,
+      pokemonVariants,
+    ] = await Promise.all([
+      User.exists({ _id: userId }),
+      PokemonBase.distinct("_id"),
+      SnoopyArtBase.distinct("_id"),
+      HabboRareBase.distinct("_id"),
+      YugiohCardBase.distinct("_id"),
+      UserPokemon.find({ user: userId }).select("basePokemon variant -_id").lean(),
+      UserSnoopyArt.distinct("snoopyArtBase", { user: userId }),
+      UserHabboRare.distinct("habboRareBase", { user: userId }),
+      UserYugiohCard.distinct("yugiohCardBase", { user: userId }),
+      PokemonVariant.find({}).select("name slug -_id").sort({ createdAt: 1, name: 1 }).lean(),
+    ]);
+
+    if (!userExists) return res.status(404).json({ success: false, message: "User not found" });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        pokemon: buildPokemonCompletion(pokemonBaseIds, ownedPokemon, pokemonVariants),
+        snoopy: buildCollectionCompletion(snoopyBaseIds, ownedSnoopyIds),
+        habbo: buildCollectionCompletion(habboBaseIds, ownedHabboIds),
+        yugioh: buildCollectionCompletion(yugiohBaseIds, ownedYugiohIds),
+      },
+    });
+  } catch (error) {
+    console.error("Get Collection Completion Error:", error);
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -1284,6 +1340,7 @@ const resetUserPasswordAdmin = async (req, res) => {
 module.exports = {
   getAllProfiles,
   getProfileById,
+  getCollectionCompletion,
   getUserCollection,
   updateDisplayedItems,
   getDashboardStats,

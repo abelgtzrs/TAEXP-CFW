@@ -18,6 +18,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import Widget from "../ui/Widget";
+import { calculateOverallActivityScore } from "../../utils/profileStats";
 
 const numberFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 const currencyFormatter = new Intl.NumberFormat(undefined, {
@@ -765,6 +766,7 @@ const UserStatsWidget = ({ stats = {} }) => {
     const taskCompletion = safePercent(normalized.tasksCompletedToday, totalTasks);
     const backlogShare = safePercent(normalized.tasksPending, Math.max(totalTasks, 1));
     const streakProgress = safePercent(normalized.currentStreak, Math.max(normalized.longestStreak, 1));
+    const streakActivityScore = safePercent(Math.max(normalized.currentStreak - 1, 0), 6);
     const weeklyWorkoutShare = safePercent(normalized.workoutsThisWeek, Math.max(normalized.totalWorkouts, 7));
     const collectionDiversity = clamp((normalized.collectionTypes / 4) * 100);
     const readingScore = clamp(normalized.booksFinished * 8);
@@ -986,6 +988,7 @@ const UserStatsWidget = ({ stats = {} }) => {
         value: totalTasks > 0 ? formatPercent(backlogShare) : "No tasks",
         score: backlogShare,
         reverseStatus: true,
+        overallContribution: totalTasks > 0 ? 100 - backlogShare : 0,
         color: "#fb7185",
         Icon: ListChecks,
         inputs: ["tasksPending", "tasksCompletedToday"],
@@ -1118,6 +1121,7 @@ const UserStatsWidget = ({ stats = {} }) => {
         label: "Current streak vs best",
         value: `${formatNumber(normalized.currentStreak)} / ${formatNumber(normalized.longestStreak)} days`,
         score: streakProgress,
+        overallContribution: streakActivityScore,
         color: "#f59e0b",
         Icon: Flame,
         inputs: ["currentStreak", "longestStreak"],
@@ -1179,18 +1183,6 @@ const UserStatsWidget = ({ stats = {} }) => {
         calculation: "Average of current divided by target across yearly goals, capped per goal.",
       },
       {
-        id: "publishingScore",
-        label: "Volumes published",
-        value: formatNumber(normalized.volumesPublished),
-        score: publishingScore,
-        color: "#a78bfa",
-        Icon: Award,
-        inputs: ["volumesPublished"],
-        summary: "Admin publishing output",
-        detail: "Displays the published volume count returned by the dashboard stats endpoint.",
-        calculation: "Published volumes multiplied by 12, capped at 100.",
-      },
-      {
         id: "budgetScore",
         label: "Budget total",
         value: currencyFormatter.format(normalized.totalBudget),
@@ -1205,10 +1197,7 @@ const UserStatsWidget = ({ stats = {} }) => {
       },
     ];
 
-    const overallScore =
-      items.length > 0
-        ? items.reduce((sum, item) => sum + (item.reverseStatus ? 100 - item.score : item.score), 0) / items.length
-        : 0;
+    const overallScore = calculateOverallActivityScore(items);
 
     return {
       normalized,

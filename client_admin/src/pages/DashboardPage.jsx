@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { motion as Motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { SlidersHorizontal } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLayout } from "../context/LayoutContext";
 import api from "../services/api";
@@ -29,7 +30,6 @@ import PersonaWidget from "../components/dashboard/PersonaWidget";
 import CalendarWidget from "../components/dashboard/CalendarWidget";
 import StrokesLyricsWidget from "../components/dashboard/StrokesLyricsWidget";
 import LeftColumns from "../components/dashboard/layout/LeftColumns";
-import StreakCompactPreview from "../components/dashboard/StreakCompactPreview";
 
 const getMaxUsefulColumnsForVisibleWidgets = (visibleWidgetCount) => {
   if (visibleWidgetCount <= 1) return 1;
@@ -39,7 +39,7 @@ const getMaxUsefulColumnsForVisibleWidgets = (visibleWidgetCount) => {
 };
 
 const DashboardPage = () => {
-  const { user, setUser } = useAuth();
+  const { setUser } = useAuth();
   const { activeColumnCount, applyLayoutProfile, getAutoColumnCountForWidth, columns, widgetVisibility } = useLayout();
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -227,51 +227,24 @@ const DashboardPage = () => {
   return (
     <div
       ref={dashboardWidthRef}
-      className="max-w-[1800px] mx-auto px-2 md:px-4 h-full min-h-0 overflow-y-auto md:overflow-hidden"
+      className="dashboard-home relative isolate max-w-[1800px] mx-auto"
     >
-      <Motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="space-y-3 h-full min-h-0 flex flex-col"
-        style={{ zoom: "0.75", transformOrigin: "top left" }}
-      >
-        <Motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="flex-shrink-0"
-        >
-          <PageHeader
-            title="Dashboard"
-            subtitle={`Cognitive Framework Status for ${user.username || "Admin"}.`}
-            className="mt-1 mb-1 pl-4"
-            actions={
-              !loading ? <StreakCompactPreview streak={streakStatus.currentLoginStreak || 0} mode="inline" /> : null
-            }
-          />
-          {/* Layout edit toggle is in the sidebar footer above Customize UI */}
-        </Motion.div>
-
+      <div className="relative space-y-6 flex flex-col">
+        <div className="dashboard-toolbar">
+          <PageHeader title="Dashboard" className="!m-0 !pl-0" />
+          <Link to="/dashboard/layout-editor" className="admin-toolbar-button">
+            <SlidersHorizontal size={14} aria-hidden="true" /> Configure widgets
+          </Link>
+        </div>
         {/* --- Main Dashboard Grid --- */}
-        <Motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="relative grid grid-cols-1 md:grid-cols-8 gap-3 -mt-1 grid-flow-row-dense flex-1 min-h-0 overflow-y-auto md:overflow-hidden"
-        >
+        <div className="relative flex flex-col gap-6">
           {/* Row 1: Full-width Stat Box */}
-          <Motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-            className="col-span-1 md:col-span-8 order-1 md:order-1"
-          >
-            <div className="grid grid-cols-2 gap-1 w-full md:grid-cols-8 md:gap-3 auto-rows-fr">
+          <div className="admin-overview-enter">
+            <div className="grid grid-cols-2 gap-3 w-full md:grid-cols-4 auto-rows-fr">
               {Array.isArray(stats.statBoxes) ? (
                 stats.statBoxes.map((stat, idx) => (
                   <div key={stat.id || idx} className="w-full h-full">
-                    <StatBox stat={stat} loading={loading} className="w-full h-full" />
+                    <StatBox {...stat} compact loading={loading} showDivider={false} />
                   </div>
                 ))
               ) : (
@@ -280,16 +253,15 @@ const DashboardPage = () => {
                 </div>
               )}
             </div>
-          </Motion.div>
+          </div>
 
           {/* --- Precise Widget Placement --- */}
           {/* Main content: first 3 columns (all other widgets) */}
-          <Motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.9 }}
-            className="col-span-1 md:col-span-8 md:col-start-1 order-3 md:order-3 h-full min-h-0 md:overflow-y-auto scrollbar-hide pr-1"
-          >
+          <div className="min-w-0">
+            <div className="dashboard-section-heading">
+              <h2>Widgets</h2>
+              <span>{visibleWidgetCount} visible</span>
+            </div>
             <LeftColumns
               extraProps={{
                 goals: stats.goals,
@@ -301,12 +273,9 @@ const DashboardPage = () => {
             />
 
             {/* All additional widgets now participate in the LeftColumns layout via registry */}
-          </Motion.div>
+          </div>
 
-          {/* Subtle edge fades for the widget viewport */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-background to-transparent" />
-        </Motion.div>
+        </div>
 
         {/* Streak Modal (appears at 0:00 America/New_York if not yet counted) */}
         {showStreakModal && (
@@ -337,7 +306,7 @@ const DashboardPage = () => {
             </div>
           </div>
         )}
-      </Motion.div>
+      </div>
     </div>
   );
 };

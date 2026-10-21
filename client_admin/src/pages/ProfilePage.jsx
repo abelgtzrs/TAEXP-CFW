@@ -29,6 +29,7 @@ const EMPTY_COLLECTIONS = {
   snoopy: [],
   habbo: [],
   yugioh: [],
+  completion: null,
   loading: false,
   loaded: false,
   error: "",
@@ -123,17 +124,22 @@ const ProfilePage = () => {
       setCollectionsState((s) => ({ ...s, loading: true, error: "" }));
       try {
         const collectionPath = isReadOnly ? `/users/profiles/${userId}/collection` : "/users/me/collection";
-        const [p, s, h, y] = await Promise.all([
+        const completionPath = isReadOnly
+          ? `/users/profiles/${userId}/collection-completion`
+          : "/users/me/collection-completion";
+        const [p, s, h, y, completion] = await Promise.all([
           api.get(`${collectionPath}/pokemon`),
           api.get(`${collectionPath}/snoopy`),
           api.get(`${collectionPath}/habbo`),
           api.get(`${collectionPath}/yugioh`),
+          api.get(completionPath),
         ]);
         setCollectionsState({
           pokemon: p.data?.data || [],
           snoopy: s.data?.data || [],
           habbo: h.data?.data || [],
           yugioh: y.data?.data || [],
+          completion: completion.data?.data || null,
           loading: false,
           loaded: true,
           error: "",

@@ -266,6 +266,257 @@
   animation: habit-toast-drain 2.6s linear forwards;
 }
 
+/* --- Habit streak prominence tiers --- */
+@keyframes streak-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) translateY(4px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes flame-flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.1) rotate(-6deg);
+  }
+  50% {
+    transform: scale(0.94) rotate(4deg);
+  }
+  75% {
+    transform: scale(1.06) rotate(-3deg);
+  }
+}
+@keyframes streak-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px 2px rgba(251, 146, 60, 0.45);
+  }
+}
+@keyframes streak-glow-pulse-epic {
+  0%,
+  100% {
+    box-shadow:
+      0 0 6px 1px rgba(248, 113, 113, 0.4),
+      0 0 14px 4px rgba(217, 70, 239, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 16px 4px rgba(248, 113, 113, 0.65),
+      0 0 28px 9px rgba(217, 70, 239, 0.45);
+  }
+}
+@keyframes streak-text-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+.streak-badge-pop {
+  animation: streak-pop-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.streak-flame-flicker {
+  animation: flame-flicker 1.6s ease-in-out infinite;
+  transform-origin: center;
+}
+.streak-glow-warm {
+  animation: streak-glow-pulse 2.2s ease-in-out infinite;
+}
+.streak-glow-epic {
+  animation: streak-glow-pulse-epic 1.8s ease-in-out infinite;
+}
+.streak-text-epic {
+  background: linear-gradient(90deg, #fdba74, #f87171, #e879f9, #fdba74);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: streak-text-shimmer 2.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .streak-badge-pop,
+  .streak-flame-flicker,
+  .streak-glow-warm,
+  .streak-glow-epic,
+  .streak-text-epic {
+    animation: none;
+  }
+}
+
+/* --- Loading skeleton shimmer --- */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton-shimmer {
+  display: inline-block;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 25%, rgba(255, 255, 255, 0.16) 37%, rgba(255, 255, 255, 0.06) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+  }
+}
+
+/* --- Staggered widget entrance --- */
+@keyframes widget-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.widget-enter {
+  animation: widget-enter 240ms ease-out backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .widget-enter {
+    animation: none;
+  }
+}
+
+/* Admin shell and dashboard */
+.experience-shell { color-scheme: dark; }
+.experience-sidebar {
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+}
+.experience-sidebar nav p {
+  padding-left: 10px;
+  letter-spacing: 0.12em;
+  color: var(--color-text-secondary);
+  font-size: 9px;
+}
+.app-nav-link {
+  min-height: 36px;
+  margin: 2px 0;
+  border: 1px solid transparent;
+  transition: color 160ms, background-color 160ms, border-color 160ms;
+}
+.app-nav-link[aria-current="page"] {
+  color: var(--color-text-main);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  box-shadow: inset 2px 0 var(--color-primary);
+}
+.app-nav-link[aria-current="page"] svg { color: var(--color-primary); }
+.experience-shell :is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+.experience-shell .widget-container {
+  border-color: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.dashboard-stat {
+  position: relative;
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: var(--color-surface);
+  transition: border-color 180ms, box-shadow 180ms;
+}
+.dashboard-stat::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: var(--color-primary);
+  opacity: 0;
+  transition: opacity 180ms;
+}
+.dashboard-card-heading {
+  background: rgba(255, 255, 255, 0.015);
+  border-radius: 12px 12px 0 0;
+}
+.dashboard-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.admin-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-text-main);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 160ms, border-color 160ms;
+}
+.admin-toolbar-button:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+.dashboard-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.dashboard-section-heading h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.dashboard-section-heading span {
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.admin-overview-enter { animation: widget-enter 220ms ease-out backwards; }
+@media (hover: hover) {
+  .dashboard-stat:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  .dashboard-stat:hover::after { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .experience-shell *, .experience-shell *::before, .experience-shell *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Global Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;

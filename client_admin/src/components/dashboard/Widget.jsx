@@ -1,12 +1,11 @@
 const Widget = ({ title, children, className = "" }) => {
   return (
     <div
-      className={`widget-container p-2 md:p-2 h-full flex flex-col border rounded-lg ${className}`}
-      style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-primary)" }}
+      className={`widget-container p-2 md:p-2 h-full min-w-0 flex flex-col border rounded-2xl ${className}`}
     >
       {title && (
-        <div className="border-b p-2" style={{ borderColor: "var(--color-primary)" }}>
-          <h3 className="text-m font-semibold uppercase tracking-wider text-text-secondary">{title}</h3>
+        <div className="border-b border-white/10 p-3">
+          <h3 className="text-sm font-semibold tracking-tight text-text-main">{title}</h3>
         </div>
       )}
 

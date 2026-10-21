@@ -29,10 +29,26 @@ const CollectionsTab = ({ collectionsState, accent }) => (
           columns={10}
           sortable
           spriteToggle
+          completion={collectionsState.completion?.pokemon}
         />
-        <DisplayedCollection title="Snoopy Art" items={collectionsState.snoopy} baseField="snoopyArtBase" />
-        <DisplayedCollection title="Habbo Rares" items={collectionsState.habbo} baseField="habboRareBase" />
-        <DisplayedCollection title="Yu-Gi-Oh!" items={collectionsState.yugioh} baseField="yugiohCardBase" />
+        <DisplayedCollection
+          title="Snoopy Art"
+          items={collectionsState.snoopy}
+          baseField="snoopyArtBase"
+          completion={collectionsState.completion?.snoopy}
+        />
+        <DisplayedCollection
+          title="Habbo Rares"
+          items={collectionsState.habbo}
+          baseField="habboRareBase"
+          completion={collectionsState.completion?.habbo}
+        />
+        <DisplayedCollection
+          title="Yu-Gi-Oh!"
+          items={collectionsState.yugioh}
+          baseField="yugiohCardBase"
+          completion={collectionsState.completion?.yugioh}
+        />
       </>
     )}
   </motion.div>

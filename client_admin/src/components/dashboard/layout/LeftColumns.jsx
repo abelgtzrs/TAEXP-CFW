@@ -33,7 +33,7 @@ function Column({ id: columnId, items, extraProps }) {
   };
 
   return (
-    <div className="min-w-0 space-y-2" onDragOver={(e) => e.preventDefault()}>
+    <div className="min-w-0 space-y-5" onDragOver={(e) => e.preventDefault()}>
       {visibleItems.map((item, i) => {
         const Comp = registry[item.key];
         if (!Comp) return null;
@@ -43,7 +43,8 @@ function Column({ id: columnId, items, extraProps }) {
             <div
               draggable={editMode}
               onDragStart={(e) => onDragStartItem(e, item.id)}
-              className={editMode ? "cursor-move" : ""}
+              className={`widget-enter ${editMode ? "cursor-move" : ""}`}
+              style={{ animationDelay: `${Math.min(i * 35, 140)}ms` }}
             >
               <DraggableWidgetShell item={item} columnId={columnId} index={i}>
                 <Comp {...extraProps} />
@@ -63,7 +64,7 @@ export default function LeftColumns({ extraProps }) {
   const columnIds = allColumnIds.slice(0, activeColumnCount || 4);
 
   const colsMap = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" };
-  const gridClass = `grid ${colsMap[activeColumnCount] ?? "grid-cols-4"} gap-3 items-start`;
+  const gridClass = `grid ${colsMap[activeColumnCount] ?? "grid-cols-4"} gap-5 items-start`;
 
   return (
     <div className={gridClass}>

@@ -13,10 +13,10 @@ export const STANDARD_ISSUE_DEFAULT = {
   name: "Standard Issue",
   description: "Default system theme",
   colors: {
-    bg: "#0D1117",
-    surface: "#161B22",
-    primary: "#1a6359ff",
-    secondary: "#0099c399",
+    bg: "#0B0E14",
+    surface: "#151A23",
+    primary: "#5EEAD4",
+    secondary: "#60A5FA",
     tertiary: "#A5F3FC",
   },
   text: {
