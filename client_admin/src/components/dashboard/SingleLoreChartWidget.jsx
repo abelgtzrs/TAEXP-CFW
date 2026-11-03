@@ -30,7 +30,7 @@ export default function SingleLoreChartWidget({ type = "coherence" }) {
       <div className="relative h-full min-h-0">
         <button
           onClick={() => setOpen(true)}
-          className="absolute right-2 top-2 z-10 px-2 py-1 text-[11px] rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-600"
+          className="dash-btn absolute right-2 top-2 z-10 !min-h-[26px] !px-2 !text-[11px]"
           title={`Edit ${initialTab}`}
         >
           Edit

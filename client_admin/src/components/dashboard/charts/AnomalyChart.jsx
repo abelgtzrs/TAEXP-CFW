@@ -72,12 +72,12 @@ export default function AnomalyChart() {
             }}
           >
             <ResponsiveContainer width="100%" height="100%" minHeight={80}>
-              <BarChart data={data} margin={{ top: 6, right: 12, left: -10, bottom: 6 }} barCategoryGap={8}>
-                <XAxis dataKey="name" stroke={primary} tick={{ fill: textSecondary, fontSize: 9 }} />
-                <YAxis stroke={primary} tick={{ fill: textSecondary, fontSize: 9 }} />
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <BarChart data={data} margin={{ top: 6, right: 12, left: -10, bottom: 6 }} barCategoryGap={1}>
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.12)" tick={{ fill: textSecondary, fontSize: 9 }} />
+                <YAxis stroke="rgba(255,255,255,0.12)" tick={{ fill: textSecondary, fontSize: 9 }} />
+                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
                 <Tooltip
-                  contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.9)", borderColor: primary, color: "#e5e7eb" }}
+                  contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.95)", borderColor: "rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 12, color: "#e5e7eb" }}
                   formatter={(value, name) => [value, "Lines"]}
                 />
                 <Bar dataKey="lines" fill={primary} style={{ cursor: "default" }} className="no-hover" />

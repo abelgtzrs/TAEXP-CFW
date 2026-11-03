@@ -1,4 +1,5 @@
 import React from "react";
+import { X } from "lucide-react";
 import Widget from "../ui/Widget";
 
 const STORAGE_KEY = "tae.countdown.events.v1";
@@ -96,7 +97,9 @@ export default function CountdownWidget() {
     let raf;
     const tick = () => {
       const t = selectedCountdown?.target ? new Date(selectedCountdown.target).getTime() : 0;
-      setRemaining(t - Date.now());
+      const next = t - Date.now();
+      // Only re-render when the displayed second changes, not on every animation frame.
+      setRemaining((prev) => (Math.floor(prev / 1000) === Math.floor(next / 1000) ? prev : next));
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -175,7 +178,7 @@ export default function CountdownWidget() {
       <div className="h-full flex flex-col gap-2.5 sm:gap-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <select
-            className="bg-background border border-gray-700/60 rounded px-2.5 py-2 sm:py-1.5 text-xs sm:text-xs"
+            className="dash-input"
             value={selectedEvent?.id || ""}
             onChange={(e) =>
               setState((prev) => {
@@ -200,26 +203,28 @@ export default function CountdownWidget() {
               value={newEventName}
               onChange={(e) => setNewEventName(e.target.value)}
               placeholder="New event"
-              className="flex-1 bg-background border border-gray-700/60 rounded px-2.5 py-2 sm:py-1.5 text-xs"
+              className="flex-1 dash-input"
             />
-            <button className="px-3 py-2 sm:py-1.5 text-xs rounded bg-slate-700 hover:bg-slate-600" onClick={addEvent}>
+            <button className="dash-btn" onClick={addEvent}>
               Add
             </button>
           </div>
         </div>
 
-        <div className="text-center text-xl sm:text-2xl font-mono">{formatDuration(remaining)}</div>
-        <div className="text-xs text-center text-slate-400">{selectedCountdown?.title || "Select a countdown"}</div>
+        <div className="dash-tile py-3">
+          <p className="dashboard-label truncate">{selectedCountdown?.title || "Select a countdown"}</p>
+          <p className="dash-value mt-1 text-2xl leading-none">{formatDuration(remaining)}</p>
+        </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <input
             type="datetime-local"
-            className="flex-1 bg-background border border-gray-700/60 rounded px-2.5 py-2 sm:py-1.5 text-xs"
+            className="flex-1 dash-input"
             value={selectedCountdown?.target ? new Date(selectedCountdown.target).toISOString().slice(0, 16) : ""}
             onChange={(e) => updateSelectedCountdownTarget(e.target.value)}
           />
           <button
-            className="px-3 py-2 sm:py-1.5 text-xs rounded bg-slate-700 hover:bg-slate-600 text-white"
+            className="dash-btn"
             onClick={() => updateSelectedCountdownTarget(defaultTarget().slice(0, 16))}
           >
             Next Month
@@ -232,46 +237,47 @@ export default function CountdownWidget() {
             value={newCountdownTitle}
             onChange={(e) => setNewCountdownTitle(e.target.value)}
             placeholder="Countdown title"
-            className="bg-background border border-gray-700/60 rounded px-2.5 py-2 sm:py-1.5 text-xs"
+            className="dash-input"
           />
           <input
             type="datetime-local"
             value={newCountdownTarget}
             onChange={(e) => setNewCountdownTarget(e.target.value)}
-            className="bg-background border border-gray-700/60 rounded px-2.5 py-2 sm:py-1.5 text-xs"
+            className="dash-input"
           />
           <button
-            className="px-3 py-2 sm:py-1.5 text-xs rounded bg-slate-700 hover:bg-slate-600"
+            className="dash-btn"
             onClick={addCountdown}
           >
             Add
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+        <div className="dash-rows flex-1 overflow-y-auto pr-1">
           {(selectedEvent?.countdowns || []).map((cd) => {
             const isSelected = cd.id === selectedCountdown?.id;
             const rem = new Date(cd.target).getTime() - Date.now();
             return (
               <div
                 key={cd.id}
-                className={`p-2.5 rounded border text-xs flex items-center justify-between gap-2 ${
-                  isSelected ? "border-emerald-500/60 bg-emerald-500/10" : "border-gray-700/60 bg-background/50"
+                className={`px-2 py-2 text-xs flex items-center justify-between gap-2 border-l-2 ${
+                  isSelected ? "border-primary bg-white/[0.03]" : "border-transparent hover:bg-white/[0.02]"
                 }`}
               >
                 <button
                   className="text-left flex-1 min-w-0"
                   onClick={() => setState((prev) => ({ ...prev, selectedCountdownId: cd.id }))}
                 >
-                  <div className="truncate text-white">{cd.title}</div>
-                  <div className="text-[10px] text-slate-400">{formatDuration(rem)}</div>
+                  <div className="truncate text-text-main">{cd.title}</div>
+                  <div className="text-[10px] text-text-secondary tabular-nums">{formatDuration(rem)}</div>
                 </button>
                 <button
-                  className="px-2 py-1 rounded bg-red-900/50 hover:bg-red-800/60 text-[10px]"
+                  className="dash-btn dash-btn-icon dash-btn-danger !min-h-[22px] !w-[22px]"
                   onClick={() => removeCountdown(cd.id)}
                   title="Delete countdown"
+                  aria-label="Delete countdown"
                 >
-                  Del
+                  <X size={12} />
                 </button>
               </div>
             );

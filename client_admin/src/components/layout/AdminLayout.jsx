@@ -609,6 +609,9 @@ const AdminLayout = () => {
                     Volume Administration
                   </p>
                   <ul className="space-y-1">
+                    <NavItem to="/admin/volume-studio" icon={PenSquare} isCollapsed={isSidebarCollapsed}>
+                      Volume Studio
+                    </NavItem>
                     <NavItem
                       to={isMobile ? "/admin/volumes-mobile" : "/admin/volumes"}
                       icon={Library}

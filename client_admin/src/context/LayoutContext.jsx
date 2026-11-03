@@ -7,6 +7,8 @@ const LAYOUT_PROFILES_KEY = "dashboardLayoutProfilesV1";
 const ACTIVE_COLS_KEY = "dashboardActiveColumnsV1";
 const WIDGET_VISIBILITY_KEY = "dashboardWidgetVisibilityV1";
 const AUTO_COLUMN_BREAKPOINTS_KEY = "dashboardAutoColumnBreakpointsV1";
+const PINNED_WIDGETS_KEY = "dashboardPinnedWidgetsV1";
+export const MAX_PINNED_WIDGETS = 4;
 const COLUMN_IDS = ["col1", "col2", "col3", "col4"];
 
 const DEFAULT_AUTO_COLUMN_BREAKPOINTS = Object.freeze({
@@ -251,6 +253,31 @@ export function LayoutProvider({ children }) {
     });
     return all;
   });
+
+  // Widget ids rendered in a row above the columns, in pin order. Saved immediately.
+  const [pinnedWidgets, setPinnedWidgets] = React.useState(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PINNED_WIDGETS_KEY) || "[]");
+      return Array.isArray(parsed) ? parsed.slice(0, MAX_PINNED_WIDGETS) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(PINNED_WIDGETS_KEY, JSON.stringify(pinnedWidgets));
+    } catch {
+      // storage unavailable; pins stay for this session
+    }
+  }, [pinnedWidgets]);
+
+  const togglePinned = (widgetId) => {
+    setPinnedWidgets((prev) => {
+      if (prev.includes(widgetId)) return prev.filter((id) => id !== widgetId);
+      return prev.length < MAX_PINNED_WIDGETS ? [...prev, widgetId] : prev;
+    });
+  };
 
   const persistLocalConfigurations = React.useCallback(
     (
@@ -545,6 +572,8 @@ export function LayoutProvider({ children }) {
     widgetVisibility,
     setWidgetVisible,
     toggleWidgetVisible,
+    pinnedWidgets,
+    togglePinned,
     widgetCatalog,
     saveConfigurations,
     persistLocalConfigurations,

@@ -17,7 +17,7 @@ const Sparkline = ({ data = [], height = 28, stroke = "#60a5fa", fill = "rgba(96
   return (
     <svg aria-hidden="true" viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
       <path d={area} fill={fill} />
-      <path d={path} fill="none" stroke={stroke} strokeWidth="2" />
+      <path d={path} fill="none" stroke={stroke} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 };
@@ -39,33 +39,47 @@ const StatBox = ({
   const Icon = isIncrease ? ArrowUpRight : ArrowDownRight;
 
   if (compact) {
+    const isFlat = /^[±+]?0%?$/.test(String(change ?? ""));
+    const deltaClass = isFlat
+      ? "text-text-secondary bg-white/[0.04]"
+      : isIncrease
+        ? "text-emerald-400 bg-emerald-400/10"
+        : "text-rose-400 bg-rose-400/10";
     return (
       <div
-        className={`dashboard-stat group min-w-0 flex-1 py-4 px-4 flex flex-col justify-center transition-colors duration-300 hover:bg-white/[0.03] ${
+        className={`dashboard-stat group min-w-0 flex-1 px-4 py-3.5 flex flex-col justify-between gap-3 ${
           showDivider ? "border-r border-gray-700/50 last:border-r-0" : ""
         }`}
       >
-        <div className="flex justify-between items-center mb-2">
-          <h4 className="font-medium text-text-secondary text-xs leading-relaxed pr-2">{title}</h4>
+        <div className="flex justify-between items-center gap-2">
+          <h4 className="dashboard-label truncate">{title}</h4>
           {loading ? (
-            <span className="skeleton-shimmer h-2.5 w-6" />
+            <span className="skeleton-shimmer h-3 w-8" />
           ) : (
-            <span title={`Change vs ${period}`} className={`flex shrink-0 items-center text-[10px] font-medium ${changeColor}`}>
-              <Icon size={12} className="mr-0.5" />
-              {change}
+            <span
+              title={`Change vs ${period}`}
+              className={`flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${deltaClass}`}
+            >
+              {!isFlat && <Icon size={11} className="mr-0.5" />}
+              {isFlat ? "0" : change}
             </span>
           )}
         </div>
 
-        <div className="flex justify-between items-end">
+        <div className="flex justify-between items-end gap-3">
           {loading ? (
-            <span className="skeleton-shimmer h-5 w-14" />
+            <span className="skeleton-shimmer h-6 w-14" />
           ) : (
-            <p className="text-2xl font-semibold text-text-main leading-none tabular-nums">{value}</p>
+            <p className="text-[22px] font-semibold text-text-main leading-none tracking-tight tabular-nums">{value}</p>
           )}
           {!loading && Array.isArray(trend) && trend.length > 1 && (
-            <div className="w-16 h-5 opacity-80">
-              <Sparkline data={trend} height={20} />
+            <div className="w-20 h-6 shrink-0 opacity-70 transition-opacity group-hover:opacity-100">
+              <Sparkline
+                data={trend}
+                height={24}
+                stroke="var(--color-primary)"
+                fill="color-mix(in srgb, var(--color-primary) 10%, transparent)"
+              />
             </div>
           )}
         </div>

@@ -20,6 +20,7 @@ export const BOTTOM_NAV_LINKS = [
   { to: "/spotify-stats", label: "Spotify", iconKey: "Music" },
   { to: "/football-tracker", label: "Football", iconKey: "Trophy" },
   { to: "/baseball-tracker", label: "Baseball", iconKey: "Trophy" },
+  { to: "/admin/volume-studio", label: "Studio", iconKey: "PenSquare", adminOnly: true },
   { to: "/admin/volumes", label: "JSON", iconKey: "Library", adminOnly: true },
   { to: "/admin/volumes-mobile", label: "JSON M", iconKey: "Smartphone", adminOnly: true },
   { to: "/admin/volume-workbench", label: "Workbench", iconKey: "FileSignature", adminOnly: true },

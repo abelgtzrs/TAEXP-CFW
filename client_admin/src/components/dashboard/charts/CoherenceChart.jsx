@@ -22,15 +22,15 @@ export default function CoherenceChart() {
                 <stop offset="95%" stopColor={secondary} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <XAxis dataKey="name" stroke={primary} tick={{ fill: textSecondary, fontSize: 10 }} />
+            <XAxis dataKey="name" stroke="rgba(255,255,255,0.12)" tick={{ fill: textSecondary, fontSize: 10 }} />
             <YAxis
-              stroke={primary}
+              stroke="rgba(255,255,255,0.12)"
               domain={["dataMin - 2", "dataMax + 2"]}
               tick={{ fill: textSecondary, fontSize: 10 }}
             />
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
             <Tooltip
-              contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.9)", borderColor: primary, color: "#e5e7eb" }}
+              contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.95)", borderColor: "rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 12, color: "#e5e7eb" }}
             />
             <Area type="monotone" dataKey="coherence" stroke={primary} strokeWidth={2} fill="url(#colorCoherence)" />
           </AreaChart>

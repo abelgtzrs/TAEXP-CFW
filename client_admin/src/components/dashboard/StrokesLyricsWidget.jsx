@@ -79,24 +79,24 @@ const StrokesLyricsWidget = () => {
                 <img
                   src={song.album.coverImageUrl}
                   alt={song.album.name}
-                  className="w-16 h-16 rounded-md object-cover border-2 border-gray-700"
+                  className="w-12 h-12 rounded object-cover border border-white/10"
                 />
               ) : (
-                <div className="w-16 h-16 bg-gray-700 rounded-md flex items-center justify-center">
-                  <Music size={24} className="text-text-tertiary" />
+                <div className="w-12 h-12 rounded border border-white/10 bg-white/[0.03] flex items-center justify-center">
+                  <Music size={18} className="text-text-secondary" />
                 </div>
               )}
-              <div className="overflow-hidden">
-                <h3 className="text-md font-bold text-white truncate">{song.title}</h3>
-                <p className="text-sm text-primary truncate">
-                  {song.album.name} ({song.album.year})
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-text-main truncate">{song.title}</h3>
+                <p className="text-xs text-text-secondary truncate">
+                  {song.album.name} <span className="tabular-nums">· {song.album.year}</span>
                 </p>
               </div>
             </div>
           </div>
 
           {/* Lyric Section with Animation */}
-          <div className="flex-grow flex items-center justify-center text-center my-4">
+          <div className="flex-grow flex items-center my-4 border-l-2 border-primary/50 pl-4">
             <AnimatePresence mode="wait">
               <motion.p
                 key={currentLyric + song.title} // Key change triggers animation
@@ -104,22 +104,19 @@ const StrokesLyricsWidget = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.5 }}
-                className="text-lg italic text-text-secondary whitespace-pre-line break-words"
+                className="text-[15px] leading-7 text-text-main whitespace-pre-line break-words"
               >
-                "{formatLyric(currentLyric)}"
+                {formatLyric(currentLyric)}
               </motion.p>
             </AnimatePresence>
           </div>
 
           {/* Footer with Refresh Button */}
-          <div className="mt-auto pt-3 border-t border-gray-700/50">
-            <button
-              onClick={fetchRandomSong}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 text-xs text-text-secondary hover:text-primary transition-colors"
-            >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-              New Random Song
+          <div className="mt-auto pt-3 border-t border-white/[0.06] flex items-center justify-between">
+            <span className="text-[11px] text-text-secondary">Rotates every 15s</span>
+            <button onClick={fetchRandomSong} disabled={loading} className="dash-btn">
+              <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+              Next
             </button>
           </div>
         </div>

@@ -35,6 +35,7 @@ import RichFinancePage from "./pages/RichFinancePage";
 import SpotifyStatsPage from "./pages/SpotifyStatsPage";
 import StrokesLyricsAdminPage from "./pages/StrokesLyricsAdminPage";
 import VolumeWorkbenchPage from "./pages/VolumeWorkbenchPage";
+import VolumeStudioPage from "./pages/VolumeStudioPage";
 import AdminUserManagementPage from "./pages/AdminUserManagementPage";
 import BlessingsAdminPage from "./pages/BlessingsAdminPage";
 import BlessingsUsagePage from "./pages/BlessingsUsagePage";
@@ -91,6 +92,7 @@ function App() {
       <Route element={<AdminRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin/volume-workbench" element={<VolumeWorkbenchPage />} />
+          <Route path="/admin/volume-studio" element={<VolumeStudioPage />} />
           <Route path="/admin/volumes" element={<VolumesPage />} />
           <Route path="/admin/volumes-mobile" element={<VolumesMobilePage />} />
           <Route path="/admin/volumes/edit/:volumeId" element={<EditVolumePage />} />

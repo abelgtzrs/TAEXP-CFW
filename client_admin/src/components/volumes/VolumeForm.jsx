@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { listBlessingDefs } from "../../services/blessingsService";
 import { parseRawGreentext } from "../../utils/greentextParser";
+import { splitBlessingName } from "../../utils/blessingSplit";
 
 const fieldClass =
   "w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-primary/60 focus:ring-2 focus:ring-primary/10";
@@ -68,17 +69,7 @@ const VolumeForm = ({ formData, onFormChange, onSubmit, loading, submitButtonTex
     onFormChange({ ...formData, blessings: nextBlessings });
   };
 
-  const splitBlessingString = (text) => {
-    const value = String(text || "").trim();
-    const dashMatch = value.match(/^(.*?)\s+[–-]\s+(.*)$/);
-    if (dashMatch) return { item: dashMatch[1].trim(), description: dashMatch[2].trim() };
-
-    const parentheticalMatch = value.match(/^(.*?)(?:\s*\((.*)\))?$/);
-    return {
-      item: (parentheticalMatch?.[1] || value).trim(),
-      description: (parentheticalMatch?.[2] || "").trim(),
-    };
-  };
+  const splitBlessingString = splitBlessingName;
 
   const splitBlessingAtIndex = (index) => {
     const currentBlessing = blessings[index] || {};

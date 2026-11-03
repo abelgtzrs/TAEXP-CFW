@@ -1,4 +1,5 @@
 import React from "react";
+import { X } from "lucide-react";
 import Widget from "../ui/Widget";
 
 const STORAGE_KEY = "tae.quickNotes";
@@ -38,25 +39,24 @@ export default function QuickNotesWidget() {
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addNote()}
             placeholder="Jot something down…"
-            className="flex-1 bg-background border border-gray-700/60 rounded px-2 py-1 text-xs"
+            className="dash-input flex-1"
           />
-          <button onClick={addNote} className="px-2 py-1 text-xs rounded bg-primary text-white hover:opacity-90">
+          <button onClick={addNote} className="dash-btn dash-btn-primary">
             Add
           </button>
         </div>
-        <ul className="space-y-1 max-h-44 overflow-auto pr-1">
-          {notes.length === 0 && <li className="text-text-secondary text-xs">No notes yet.</li>}
+        <ul className="dash-rows max-h-44 overflow-auto pr-1">
+          {notes.length === 0 && <li className="text-text-secondary text-xs py-2">No notes yet.</li>}
           {notes.map((n) => (
-            <li
-              key={n.id}
-              className="flex items-start gap-2 bg-background/50 border border-gray-700/40 rounded px-2 py-1"
-            >
-              <span className="flex-1 whitespace-pre-wrap break-words text-xs">{n.text}</span>
+            <li key={n.id} className="group flex items-start gap-2 py-1.5">
+              <span className="flex-1 whitespace-pre-wrap break-words text-xs text-text-main">{n.text}</span>
               <button
                 onClick={() => removeNote(n.id)}
-                className="text-[10px] px-1 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white"
+                className="dash-btn dash-btn-icon dash-btn-danger !min-h-[22px] !w-[22px]"
+                title="Delete note"
+                aria-label="Delete note"
               >
-                Del
+                <X size={12} />
               </button>
             </li>
           ))}

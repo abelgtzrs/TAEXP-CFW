@@ -91,27 +91,25 @@ const SecuritySettingsWidget = () => {
         </div>
       }
     >
-      <ul className="divide-y divide-gray-700/50">
+      <ul className="dash-rows">
         {settings.map((setting) => {
           const Icon = setting.icon;
           return (
-            <li key={setting.key} className="flex items-center justify-between gap-3 p-4">
+            <li key={setting.key} className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="flex items-start gap-3 min-w-0">
-                <div
-                  className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border ${
-                    setting.enabled
-                      ? "bg-primary/10 border-primary/40 text-primary"
-                      : "bg-gray-700/30 border-gray-700/50 text-text-secondary"
-                  }`}
-                >
-                  <Icon size={16} />
-                </div>
+                <Icon
+                  size={15}
+                  className={`mt-0.5 shrink-0 ${setting.enabled ? "text-primary" : "text-text-secondary"}`}
+                  aria-hidden="true"
+                />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-main">{setting.label}</p>
-                  <p className={`text-xs ${setting.enabled ? "text-text-secondary" : "text-yellow-500/80"}`}>
-                    {setting.enabled ? setting.onLabel : setting.offLabel}
+                  <p className="flex items-center gap-2 text-[13px] font-medium text-text-main">
+                    {setting.label}
+                    <span className={`dash-tag ${setting.enabled ? "" : "!text-amber-300/90 !border-amber-300/25"}`}>
+                      {setting.enabled ? setting.onLabel : setting.offLabel}
+                    </span>
                   </p>
-                  <p className="text-[11px] text-text-secondary/70 mt-0.5 truncate">{setting.description}</p>
+                  <p className="text-[11px] text-text-secondary mt-0.5 truncate">{setting.description}</p>
                 </div>
               </div>
               <StyledToggle enabled={setting.enabled} setEnabled={() => toggleSetting(setting.key)} />

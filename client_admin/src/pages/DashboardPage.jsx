@@ -52,6 +52,10 @@ const DashboardPage = () => {
   // got a new function identity after a LayoutContext re-render (which it does on every call).
   const applyLayoutProfileRef = useRef(applyLayoutProfile);
   // Team popover moved to global Header; local state removed
+  const todayLabel = useMemo(
+    () => new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
+    []
+  );
 
   const visibleWidgetCount = useMemo(() => {
     const allColumns = ["col1", "col2", "col3", "col4"];
@@ -231,15 +235,32 @@ const DashboardPage = () => {
     >
       <div className="relative space-y-6 flex flex-col">
         <div className="dashboard-toolbar">
-          <PageHeader title="Dashboard" className="!m-0 !pl-0" />
+          <PageHeader
+            title="Dashboard"
+            className="!m-0 !pl-0"
+            subtitle={
+              <span className="dashboard-meta">
+                <span>{todayLabel}</span>
+                <span>
+                  <span className={`dashboard-status-dot ${loading ? "is-pending" : ""}`} aria-hidden="true" />
+                  {loading ? "Syncing" : "Live"}
+                </span>
+                <span className="tabular-nums">Streak {streakStatus.currentLoginStreak || 0}d</span>
+              </span>
+            }
+          />
           <Link to="/dashboard/layout-editor" className="admin-toolbar-button">
             <SlidersHorizontal size={14} aria-hidden="true" /> Configure widgets
           </Link>
         </div>
         {/* --- Main Dashboard Grid --- */}
-        <div className="relative flex flex-col gap-6">
+        <div className="relative flex flex-col gap-8">
           {/* Row 1: Full-width Stat Box */}
           <div className="admin-overview-enter">
+            <div className="dashboard-section-heading">
+              <h2>Overview</h2>
+              <span>vs yesterday</span>
+            </div>
             <div className="grid grid-cols-2 gap-3 w-full md:grid-cols-4 auto-rows-fr">
               {Array.isArray(stats.statBoxes) ? (
                 stats.statBoxes.map((stat, idx) => (
@@ -248,7 +269,7 @@ const DashboardPage = () => {
                   </div>
                 ))
               ) : (
-                <div className="col-span-full">
+                <div className="col-span-full min-w-0">
                   <StatBoxRow stats={stats} loading={loading} />
                 </div>
               )}
@@ -259,7 +280,7 @@ const DashboardPage = () => {
           {/* Main content: first 3 columns (all other widgets) */}
           <div className="min-w-0">
             <div className="dashboard-section-heading">
-              <h2>Widgets</h2>
+              <h2>Workspace</h2>
               <span>{visibleWidgetCount} visible</span>
             </div>
             <LeftColumns

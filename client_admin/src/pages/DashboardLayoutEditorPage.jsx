@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Save, Columns, ArrowLeft, RotateCcw, SlidersHorizontal } from "lucide-react";
-import { useLayout } from "../context/LayoutContext";
+import { Save, Columns, ArrowLeft, RotateCcw, SlidersHorizontal, Pin } from "lucide-react";
+import { useLayout, MAX_PINNED_WIDGETS } from "../context/LayoutContext";
 import LeftColumns from "../components/dashboard/layout/LeftColumns";
 
 const COLUMN_OPTIONS = [1, 2, 3, 4];
@@ -19,6 +19,8 @@ export default function DashboardLayoutEditorPage() {
     widgetCatalog,
     widgetVisibility,
     setWidgetVisible,
+    pinnedWidgets,
+    togglePinned,
     autoColumnBreakpoints,
     setAutoColumnBreakpoints,
     resetAutoColumnBreakpoints,
@@ -209,21 +211,44 @@ export default function DashboardLayoutEditorPage() {
       </div>
 
       <div className="rounded-lg border border-gray-700/60 bg-surface p-3 space-y-3">
-        <div className="text-xs uppercase tracking-wide text-text-secondary">Visible Widgets</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs uppercase tracking-wide text-text-secondary">Visible Widgets</div>
+          <div className="text-xs text-text-secondary tabular-nums">
+            Pinned to top: <span className="text-text-main">{pinnedWidgets.length}</span> / {MAX_PINNED_WIDGETS}
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {widgetCatalog.map((widget) => (
-            <label
+            <div
               key={widget.id}
               className="flex items-center gap-2 px-2.5 py-2 rounded border border-gray-700/70 bg-gray-900/30"
             >
-              <input
-                type="checkbox"
-                checked={widgetVisibility[widget.id] !== false}
-                onChange={(e) => setWidgetVisible(widget.id, e.target.checked)}
-                className="h-4 w-4"
-              />
-              <span className="text-xs text-gray-200">{prettifyLabel(widget.key || widget.id)}</span>
-            </label>
+              <label className="flex flex-1 min-w-0 items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={widgetVisibility[widget.id] !== false}
+                  onChange={(e) => setWidgetVisible(widget.id, e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <span className="truncate text-xs text-gray-200">{prettifyLabel(widget.key || widget.id)}</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => togglePinned(widget.id)}
+                disabled={!pinnedWidgets.includes(widget.id) && pinnedWidgets.length >= MAX_PINNED_WIDGETS}
+                aria-pressed={pinnedWidgets.includes(widget.id)}
+                title={
+                  pinnedWidgets.includes(widget.id)
+                    ? "Unpin from top"
+                    : pinnedWidgets.length >= MAX_PINNED_WIDGETS
+                      ? `Unpin a widget first (max ${MAX_PINNED_WIDGETS})`
+                      : "Pin to top of dashboard"
+                }
+                className={`dash-btn dash-btn-icon !min-h-[24px] !w-[24px] ${pinnedWidgets.includes(widget.id) ? "dash-btn-primary" : ""}`}
+              >
+                <Pin size={12} aria-hidden="true" />
+              </button>
+            </div>
           ))}
         </div>
       </div>

@@ -30,8 +30,17 @@ function DashboardStat({ item, stats, loading }) {
 
 export default function StatBoxRow({ stats, loading }) {
   return (
-    <section aria-label="Activity overview" className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
-      {items.map((item) => <DashboardStat key={item.key} item={item} stats={stats} loading={loading} />)}
+    <section aria-label="Activity overview" className="dashboard-kpi-panel dashboard-ticker">
+      {/* Two identical copies; the track slides by one copy's width so the loop is seamless */}
+      <div className="dashboard-ticker-track">
+        {[0, 1].map((copy) =>
+          items.map((item) => (
+            <div key={`${copy}-${item.key}`} className="dashboard-ticker-cell" aria-hidden={copy === 1 || undefined}>
+              <DashboardStat item={item} stats={stats} loading={loading} />
+            </div>
+          )),
+        )}
+      </div>
     </section>
   );
 }

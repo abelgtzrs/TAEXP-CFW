@@ -201,17 +201,17 @@ const CalendarWidget = ({ compact = false }) => {
         <button
           type="button"
           onClick={handlePrevMonth}
-          className="rounded border border-gray-700/50 bg-black/10 p-2 text-text-secondary hover:border-primary/30 hover:text-white"
+          className="dash-btn dash-btn-icon"
         >
           <ChevronLeft size={16} />
         </button>
-        <h2 className="flex-1 text-center text-base font-semibold tracking-wide text-white">
+        <h2 className="flex-1 text-center text-sm font-semibold text-text-main">
           {currentDate.toLocaleString("default", { month: "long", year: "numeric" })}
         </h2>
         <button
           type="button"
           onClick={handleNextMonth}
-          className="rounded border border-gray-700/50 bg-black/10 p-2 text-text-secondary hover:border-primary/30 hover:text-white"
+          className="dash-btn dash-btn-icon"
         >
           <ChevronRight size={16} />
         </button>
@@ -222,7 +222,7 @@ const CalendarWidget = ({ compact = false }) => {
   const renderDays = () => {
     const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     return (
-      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-text-secondary">
+      <div className="mb-1 grid grid-cols-7 gap-1 text-center dashboard-label">
         {weekdays.map((day) => (
           <div key={day}>{day}</div>
         ))}

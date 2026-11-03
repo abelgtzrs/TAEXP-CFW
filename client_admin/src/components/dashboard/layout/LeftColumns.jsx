@@ -20,8 +20,8 @@ function DropZone({ columnId, index, onDropHere, isActive }) {
 }
 
 function Column({ id: columnId, items, extraProps }) {
-  const { editMode, moveWidget, widgetVisibility } = useLayout();
-  const visibleItems = items.filter((item) => widgetVisibility[item.id] !== false);
+  const { editMode, moveWidget, widgetVisibility, pinnedWidgets } = useLayout();
+  const visibleItems = items.filter((item) => widgetVisibility[item.id] !== false && !pinnedWidgets.includes(item.id));
 
   const onDragStartItem = (e, itemId) => {
     e.dataTransfer.setData("application/json", JSON.stringify({ id: itemId, fromColumn: columnId }));
@@ -33,7 +33,7 @@ function Column({ id: columnId, items, extraProps }) {
   };
 
   return (
-    <div className="min-w-0 space-y-5" onDragOver={(e) => e.preventDefault()}>
+    <div className="min-w-0 flex flex-col space-y-4" onDragOver={(e) => e.preventDefault()}>
       {visibleItems.map((item, i) => {
         const Comp = registry[item.key];
         if (!Comp) return null;
@@ -43,7 +43,8 @@ function Column({ id: columnId, items, extraProps }) {
             <div
               draggable={editMode}
               onDragStart={(e) => onDragStartItem(e, item.id)}
-              className={`widget-enter ${editMode ? "cursor-move" : ""}`}
+              // Last widget stretches so every column ends at the same height
+              className={`widget-enter grid ${i === visibleItems.length - 1 ? "flex-1" : ""} ${editMode ? "cursor-move" : ""}`}
               style={{ animationDelay: `${Math.min(i * 35, 140)}ms` }}
             >
               <DraggableWidgetShell item={item} columnId={columnId} index={i}>
@@ -59,18 +60,45 @@ function Column({ id: columnId, items, extraProps }) {
 }
 
 export default function LeftColumns({ extraProps }) {
-  const { columns, activeColumnCount } = useLayout();
+  const { columns, activeColumnCount, widgetVisibility, pinnedWidgets } = useLayout();
   const allColumnIds = ["col1", "col2", "col3", "col4"];
   const columnIds = allColumnIds.slice(0, activeColumnCount || 4);
 
   const colsMap = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" };
-  const gridClass = `grid ${colsMap[activeColumnCount] ?? "grid-cols-4"} gap-5 items-start`;
+  const gridClass = `grid ${colsMap[activeColumnCount] ?? "grid-cols-4"} gap-4 items-stretch`;
+
+  const pinnedItems = pinnedWidgets
+    .map((pinnedId) => {
+      for (const columnId of allColumnIds) {
+        const index = (columns[columnId] || []).findIndex((item) => item.id === pinnedId);
+        if (index !== -1) return { item: columns[columnId][index], columnId, index };
+      }
+      return null;
+    })
+    .filter((entry) => entry && widgetVisibility[entry.item.id] !== false);
 
   return (
-    <div className={gridClass}>
-      {columnIds.map((id) => (
-        <Column key={id} id={id} items={columns[id] || []} extraProps={extraProps} />
-      ))}
+    <div className="space-y-4">
+      {pinnedItems.length > 0 && (
+        <div className={gridClass}>
+          {pinnedItems.map(({ item, columnId, index }) => {
+            const Comp = registry[item.key];
+            if (!Comp) return null;
+            return (
+              <div key={item.id} className="widget-enter grid min-w-0">
+                <DraggableWidgetShell item={item} columnId={columnId} index={index}>
+                  <Comp {...extraProps} />
+                </DraggableWidgetShell>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className={gridClass}>
+        {columnIds.map((id) => (
+          <Column key={id} id={id} items={columns[id] || []} extraProps={extraProps} />
+        ))}
+      </div>
     </div>
   );
 }

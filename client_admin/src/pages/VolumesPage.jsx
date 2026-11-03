@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Copy,
   Download,
   FileText,
   Heart,
@@ -19,9 +18,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import VolumeExportModal from "../components/volumes/VolumeExportModal";
 import VolumeForm from "../components/volumes/VolumeForm";
+import VolumeStatusBadge from "../components/volumes/VolumeStatusBadge";
 import { searchVolumes } from "../utils/volumeSearch";
-import { buildExportText, copyToClipboard, downloadTxt } from "./volumeFunctionality/exportHelpers";
 import { toFormData, toPayload } from "./volumeFunctionality/formMappers";
 import {
   createVolume,
@@ -42,17 +42,6 @@ const INITIAL_FORM_STATE = {
   edition: "",
 };
 
-const StatusBadge = ({ status }) => (
-  <span
-    className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-      status === "published" ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"
-    }`}
-  >
-    <span className={`h-1.5 w-1.5 rounded-full ${status === "published" ? "bg-emerald-400" : "bg-amber-400"}`} />
-    {status}
-  </span>
-);
-
 const VolumesPage = () => {
   const [volumes, setVolumes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +56,6 @@ const VolumesPage = () => {
   const [resultNotice, setResultNotice] = useState("");
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [exportSelectedIds, setExportSelectedIds] = useState([]);
 
   const fetchVolumes = async () => {
     try {
@@ -150,18 +138,6 @@ const VolumesPage = () => {
   const nextVolume =
     currentIndex >= 0 && currentIndex < volumesByNumberAsc.length - 1 ? volumesByNumberAsc[currentIndex + 1] : null;
 
-  const exportableVolumes = useMemo(
-    () => [...volumes].sort((a, b) => (Number(a.volumeNumber) || 0) - (Number(b.volumeNumber) || 0)),
-    [volumes],
-  );
-
-  const selectedExportVolumes = useMemo(
-    () => exportableVolumes.filter((volume) => exportSelectedIds.includes(volume._id)),
-    [exportableVolumes, exportSelectedIds],
-  );
-
-  const exportText = useMemo(() => buildExportText(selectedExportVolumes), [selectedExportVolumes]);
-
   const resetForm = () => {
     setFormData(INITIAL_FORM_STATE);
     setEditingId(null);
@@ -220,22 +196,6 @@ const VolumesPage = () => {
     }
   };
 
-  const openExportModal = () => {
-    setExportSelectedIds(exportableVolumes.filter((volume) => volume.status === "published").map((volume) => volume._id));
-    setExportOpen(true);
-  };
-
-  const toggleExportVolume = (id) => {
-    setExportSelectedIds((currentIds) =>
-      currentIds.includes(id) ? currentIds.filter((currentId) => currentId !== id) : [...currentIds, id],
-    );
-  };
-
-  const copyExportToClipboard = async () => {
-    const copied = await copyToClipboard(exportText);
-    setResultNotice(copied ? "Export copied to clipboard" : "Copy failed—select the preview and copy it manually");
-  };
-
   return (
     <div className="flex h-[calc(100dvh-48px-var(--bottom-nav-height)-1.5rem)] min-h-0 flex-col overflow-hidden">
       <AnimatePresence>
@@ -265,7 +225,7 @@ const VolumesPage = () => {
         <div className="flex gap-1.5">
           <button
             type="button"
-            onClick={openExportModal}
+            onClick={() => setExportOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white transition hover:border-primary/40 hover:bg-primary/10"
           >
             <Download size={13} /> Export
@@ -340,7 +300,7 @@ const VolumesPage = () => {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-primary">Catalogue</span>
-                {editingId && <StatusBadge status={formData.status} />}
+                {editingId && <VolumeStatusBadge status={formData.status} />}
               </div>
               <p className="truncate text-xs font-semibold text-white">
                 {editingId
@@ -528,7 +488,7 @@ const VolumesPage = () => {
                               </span>
                             </div>
                             <div className="hidden w-24 flex-none text-right lg:block">
-                              <StatusBadge status={volume.status} />
+                              <VolumeStatusBadge status={volume.status} />
                               <p className={`mt-1 text-[10px] ${selected ? "text-primary" : "text-text-secondary"}`}>
                                 {selected ? "Editing now" : new Date(volume.createdAt).toLocaleDateString()}
                               </p>
@@ -610,130 +570,7 @@ const VolumesPage = () => {
 
       <AnimatePresence>
         {exportOpen && (
-          <Motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm md:items-center md:p-4"
-            onClick={() => setExportOpen(false)}
-          >
-            <Motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16 }}
-              className="flex h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-surface shadow-2xl md:h-auto md:max-h-[88dvh] md:rounded-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Download size={18} className="text-primary" />
-                    <h3 className="text-lg font-semibold text-white">Export volumes</h3>
-                  </div>
-                  <p className="mt-1 text-xs text-text-secondary">
-                    Choose entries, review the raw text, then copy or download it.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setExportOpen(false)}
-                  className="rounded-lg border border-white/10 p-2 text-text-secondary transition hover:bg-white/5 hover:text-white"
-                  aria-label="Close export dialog"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-5">
-                <button
-                  type="button"
-                  onClick={() => setExportSelectedIds(exportableVolumes.map((volume) => volume._id))}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white hover:bg-white/10"
-                >
-                  Select all
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setExportSelectedIds(
-                      exportableVolumes.filter((volume) => volume.status === "published").map((volume) => volume._id),
-                    )
-                  }
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white hover:bg-white/10"
-                >
-                  Published only
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExportSelectedIds([])}
-                  className="rounded-lg px-3 py-1.5 text-xs text-text-secondary hover:text-white"
-                >
-                  Clear
-                </button>
-                <span className="ml-auto text-xs tabular-nums text-text-secondary">
-                  {selectedExportVolumes.length} of {exportableVolumes.length} selected
-                </span>
-              </div>
-
-              <div className="grid min-h-0 flex-1 gap-3 overflow-hidden p-3 md:grid-cols-[0.85fr_1.15fr] sm:p-4">
-                <div className="min-h-0 space-y-1 overflow-y-auto rounded-xl border border-white/10 bg-black/15 p-2">
-                  {exportableVolumes.map((volume) => {
-                    const checked = exportSelectedIds.includes(volume._id);
-                    return (
-                      <label
-                        key={volume._id}
-                        className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition ${
-                          checked ? "border-primary/40 bg-primary/10" : "border-transparent hover:bg-white/5"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleExportVolume(volume._id)}
-                          className="h-4 w-4 accent-[var(--color-primary)]"
-                        />
-                        <span className="min-w-0 flex-1 truncate text-sm text-white">
-                          Vol {volume.volumeNumber}: {volume.title || "Untitled"}
-                        </span>
-                        <StatusBadge status={volume.status} />
-                      </label>
-                    );
-                  })}
-                </div>
-
-                <div className="hidden min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-black/25 md:flex">
-                  <div className="border-b border-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">
-                    Raw text preview
-                  </div>
-                  <textarea
-                    readOnly
-                    value={exportText}
-                    className="min-h-[360px] flex-1 resize-none bg-transparent p-3 font-mono text-xs leading-5 text-gray-200 outline-none"
-                    spellCheck={false}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 border-t border-white/10 bg-black/10 p-3 sm:justify-end sm:px-5">
-                <button
-                  type="button"
-                  onClick={copyExportToClipboard}
-                  disabled={!selectedExportVolumes.length}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
-                >
-                  <Copy size={15} /> Copy
-                </button>
-                <button
-                  type="button"
-                  onClick={() => downloadTxt(exportText, "volumes-export")}
-                  disabled={!selectedExportVolumes.length}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
-                >
-                  <Download size={15} /> Download .txt
-                </button>
-              </div>
-            </Motion.div>
-          </Motion.div>
+          <VolumeExportModal volumes={volumes} onClose={() => setExportOpen(false)} onNotice={setResultNotice} />
         )}
       </AnimatePresence>
     </div>

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { Scissors } from "lucide-react";
 import Widget from "../components/ui/Widget";
 import api from "../services/api";
+import { planDashSplits } from "../utils/blessingSplit";
 
 export default function BlessingsUsagePage() {
   const [volumes, setVolumes] = useState([]);
@@ -11,8 +13,9 @@ export default function BlessingsUsagePage() {
   const [search, setSearch] = useState("");
   // Editing state: volumeId -> { index -> { item, description } }
   const [edits, setEdits] = useState({});
-  // Full volume preview modal state
+  // Volume shown in the right-hand preview pane
   const [previewVol, setPreviewVol] = useState(null);
+  const [splitting, setSplitting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -34,6 +37,8 @@ export default function BlessingsUsagePage() {
     const nums = volumes.map((v) => v.volumeNumber).sort((a, b) => a - b);
     return nums;
   }, [volumes]);
+
+  const volumesAsc = useMemo(() => [...volumes].sort((a, b) => a.volumeNumber - b.volumeNumber), [volumes]);
 
   const usageIndex = useMemo(() => {
     // Map blessing item -> { volumes: Map<volumeNumber, entries[]> }
@@ -88,24 +93,6 @@ export default function BlessingsUsagePage() {
     if (!q) return blessingList;
     return blessingList.filter((b) => b.key.toLowerCase().includes(q));
   }, [blessingList, search]);
-
-  const VolumePreview = ({ vol }) => {
-    return (
-      <div className="p-3 text-xs max-w-md space-y-2" style={{ background: "var(--color-surface)" }}>
-        <div className="font-semibold text-text-main">
-          Volume {vol.volumeNumber} – {vol.title}
-        </div>
-        <div className="text-text-secondary">Blessing Intro: {vol.blessingIntro || "—"}</div>
-        <div className="max-h-48 overflow-auto border rounded p-2" style={{ borderColor: "var(--color-primary)" }}>
-          {(vol.bodyLines || []).map((l, i) => (
-            <div key={i} className="whitespace-pre-wrap text-text-main">
-              {l}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   if (loading) return <div>Loading…</div>;
   if (error) return <div className="text-red-500">{error}</div>;
@@ -175,9 +162,62 @@ export default function BlessingsUsagePage() {
     alert("Saved edits across all volumes for this blessing.");
   };
 
+  const dashSplitPlans = planDashSplits(volumes);
+  const dashSplitCount = dashSplitPlans.reduce((sum, plan) => sum + plan.changed, 0);
+
+  const splitAllDashTitles = async () => {
+    // Bulk split works from saved data, so pending field edits would be overwritten or re-apply stale names.
+    if (Object.keys(edits).length > 0) {
+      alert("Save or discard your unsaved entry edits before splitting.");
+      return;
+    }
+    const ok = window.confirm(
+      `Split ${dashSplitCount} blessing entr${dashSplitCount === 1 ? "y" : "ies"} across ${dashSplitPlans.length} volume${
+        dashSplitPlans.length === 1 ? "" : "s"
+      }?
+
+Text after the first "–" moves into the description. This saves immediately.`,
+    );
+    if (!ok) return;
+
+    setSplitting(true);
+    const failed = [];
+    for (const plan of dashSplitPlans) {
+      try {
+        const res = await api.put(`/admin/volumes/${plan.volume._id}`, { blessings: plan.blessings });
+        const updated = res.data?.data || { ...plan.volume, blessings: plan.blessings };
+        setVolumes((prev) => prev.map((v) => (v._id === plan.volume._id ? updated : v)));
+      } catch (e) {
+        failed.push(plan.volume.volumeNumber);
+        console.error("Failed to split blessings for volume", plan.volume.volumeNumber, e);
+      }
+    }
+    setSplitting(false);
+    // Blessing names changed, so the selected blessing's usage data is stale.
+    setSelectedBlessing(null);
+    setPreviewVol(null);
+    alert(
+      failed.length
+        ? `Split saved for ${dashSplitPlans.length - failed.length} volume(s). Failed: Vol ${failed.join(", ")}.`
+        : `Split ${dashSplitCount} entries across ${dashSplitPlans.length} volume(s).`,
+    );
+  };
+
   return (
     <div className="space-y-3 blessings-usage-page" style={{ height: "calc(100vh - 64px)", overflow: "hidden" }}>
-      <h1 className="text-2xl font-bold text-primary">Blessings Usage</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-primary">Blessings Usage</h1>
+        <button
+          type="button"
+          onClick={splitAllDashTitles}
+          disabled={splitting || dashSplitCount === 0}
+          className="dash-btn"
+          title='Move everything after "–" in a blessing name into its description, for every volume'
+        >
+          <Scissors size={13} aria-hidden="true" />
+          {splitting ? "Splitting…" : `Split "–" titles (${dashSplitCount})`}
+        </button>
+      </div>
       <div className="grid grid-cols-12 gap-3 h-full overflow-hidden min-h-0">
         {/* Left: Blessings selector (aligned with right; no vertical offset) */}
         <div className="col-span-12 lg:col-span-3" style={{ height: "calc(100vh - 114px)" }}>
@@ -229,7 +269,7 @@ export default function BlessingsUsagePage() {
         </div>
 
         {/* Right: Detail editor (volumes fixed, entries scroll) */}
-        <div className="col-span-12 lg:col-span-9 min-h-0 overflow-hidden">
+        <div className="col-span-12 lg:col-span-5 min-h-0 overflow-hidden">
           {!selectedBlessing ? (
             <div
               className="rounded-lg border p-6 text-sm text-text-secondary"
@@ -240,49 +280,8 @@ export default function BlessingsUsagePage() {
           ) : (
             <Widget title={`Blessing: ${selectedBlessing.key}`}>
               <div className="flex flex-col min-h-0" style={{ height: "calc(100vh - 54px)" }}>
-                <div className="shrink-0 space-y-3">
-                  <div className="text-xs text-text-secondary">
-                    Click a volume number to preview; hover to see details. Missing volumes are highlighted.
-                  </div>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    {allVolumeNumbers.map((vn) => {
-                      const used = selectedBlessing.usedVolumes.has(vn);
-                      const vol = volumes.find((v) => v.volumeNumber === vn);
-                      return (
-                        <div key={vn} className="relative">
-                          <div
-                            className={`px-2 py-1 text-xs rounded border ${
-                              used ? "bg-primary/20" : "bg-red-900/20 border-red-700/40"
-                            }`}
-                            style={{ borderColor: used ? "var(--color-primary)" : undefined }}
-                          >
-                            <div className="group inline-block">
-                              <button
-                                type="button"
-                                className="underline"
-                                title="Click to preview full volume"
-                                onClick={() => vol && setPreviewVol(vol)}
-                              >
-                                Vol {vn}
-                              </button>
-                              <div className="absolute z-10 hidden group-hover:block mt-1">
-                                <div
-                                  className="shadow-lg rounded border"
-                                  style={{ borderColor: "var(--color-primary)" }}
-                                >
-                                  {vol ? <VolumePreview vol={vol} /> : <div className="p-2 text-xs">No data</div>}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
                 {/* Per-volume entries for this blessing (editable) */}
-                <div className="mt-3 flex-1 overflow-y-auto min-h-0 pb-12" style={{ WebkitOverflowScrolling: "touch" }}>
+                <div className="flex-1 overflow-y-auto min-h-0 pb-12" style={{ WebkitOverflowScrolling: "touch" }}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-sm font-semibold">Entries</div>
                     <button
@@ -386,48 +385,69 @@ export default function BlessingsUsagePage() {
             </Widget>
           )}
         </div>
-      </div>
-      {/* Full volume preview modal */}
-      {previewVol && (
-        <div
-          className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setPreviewVol(null)}
-        >
-          <div
-            className="max-w-5xl w-full max-h-[85vh] overflow-auto rounded-lg border shadow-2xl"
-            style={{ background: "var(--color-surface)", borderColor: "var(--color-primary)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              className="flex items-center justify-between px-4 py-3 border-b"
-              style={{ borderColor: "var(--color-primary)" }}
-            >
-              <div className="text-lg font-semibold text-primary">
-                Volume {previewVol.volumeNumber} – {previewVol.title}
-              </div>
-              <button
-                className="px-3 py-1.5 rounded border text-sm hover:opacity-90"
-                style={{ borderColor: "var(--color-primary)" }}
-                onClick={() => setPreviewVol(null)}
-              >
-                Close
-              </button>
+
+        {/* Right: all volumes (titles) + preview of the selected one */}
+        <div className="col-span-12 lg:col-span-4 min-h-0" style={{ height: "calc(100vh - 114px)" }}>
+          <div className="dashboard-card flex h-full min-h-0 flex-col overflow-hidden rounded-[10px] border border-white/[0.08] bg-surface">
+            <div className="dashboard-card-heading flex items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
+              <h3 className="dashboard-card-title">Volumes</h3>
+              <span className="text-[11px] text-text-secondary tabular-nums">{volumesAsc.length}</span>
             </div>
-            <div className="p-4 space-y-3">
-              {previewVol.blessingIntro && (
-                <div className="text-sm text-text-secondary">{previewVol.blessingIntro}</div>
-              )}
-              <div className="border rounded p-3 space-y-1" style={{ borderColor: "var(--color-primary)" }}>
-                {(previewVol.bodyLines || []).map((l, i) => (
-                  <div key={i} className="font-mono text-sm" style={{ color: "#7CFC00" }}>
-                    &gt; {l}
+
+            <ul className="dash-rows max-h-[40%] shrink-0 overflow-y-auto px-2 py-1">
+              {volumesAsc.map((vol) => {
+                const active = previewVol?._id === vol._id;
+                const missing = selectedBlessing && !selectedBlessing.usedVolumes.has(vol.volumeNumber);
+                return (
+                  <li key={vol._id}>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewVol(vol)}
+                      aria-pressed={active}
+                      className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${
+                        active ? "bg-white/[0.06] text-text-main" : "text-text-secondary hover:bg-white/[0.03] hover:text-text-main"
+                      }`}
+                    >
+                      <span className="w-12 shrink-0 tabular-nums text-text-secondary">Vol {vol.volumeNumber}</span>
+                      <span className="flex-1 truncate">{vol.title || "Untitled"}</span>
+                      {missing && (
+                        <span
+                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400"
+                          title={`Missing "${selectedBlessing.key}"`}
+                        />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="min-h-0 flex-1 overflow-y-auto border-t border-white/[0.08] p-4">
+              {!previewVol ? (
+                <p className="dash-empty">Select a volume to preview it here.</p>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <p className="dashboard-label">Volume {previewVol.volumeNumber}</p>
+                    <h4 className="text-sm font-semibold text-text-main">{previewVol.title || "Untitled"}</h4>
                   </div>
-                ))}
-              </div>
+                  {previewVol.blessingIntro && (
+                    <p className="text-xs text-text-secondary">{previewVol.blessingIntro}</p>
+                  )}
+                  <div className="space-y-1">
+                    {(previewVol.bodyLines || []).map((l, i) => (
+                      <div key={i} className="whitespace-pre-wrap font-mono text-xs" style={{ color: "#7CFC00" }}>
+                        &gt; {l}
+                      </div>
+                    ))}
+                    {!previewVol.bodyLines?.length && <p className="text-xs text-text-secondary">No story lines.</p>}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -49,8 +49,8 @@ const Widget = ({ title, children, className = "", padding = "p-6", titleChildre
       style={containerStyle}
     >
       {title && (
-        <div className={`dashboard-card-heading px-5 py-3.5 flex-shrink-0 flex flex-wrap gap-2 justify-between items-center border-b ${headerBorderClass}`}>
-          <h3 className="text-sm font-semibold text-text-main tracking-tight">{title}</h3>
+        <div className={`dashboard-card-heading px-4 py-2.5 flex-shrink-0 flex flex-wrap gap-2 justify-between items-center border-b ${headerBorderClass}`}>
+          <h3 className="dashboard-card-title">{title}</h3>
           {titleChildren}
         </div>
       )}

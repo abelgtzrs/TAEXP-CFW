@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import Widget from "../ui/Widget";
-import { CheckSquare, Fan, Flame, XCircle } from "lucide-react";
+import { CheckSquare, Fan, Flame, Square, XCircle } from "lucide-react";
 
 // Streak visuals escalate in prominence as the streak grows: 1-2 is a quiet spark,
 // 30+ is a shimmering, glowing "epic" badge.
@@ -144,27 +144,29 @@ const HabitTrackerWidget = () => {
   };
 
   const shownHabits = habits.filter(Boolean).slice(0, 10);
+  const doneCount = shownHabits.filter(isCompletedToday).length;
 
   return (
-    <Widget title="Today's Directives" className="h-auto">
-      <div className="space-y-2">
+    <Widget
+      title="Today's Directives"
+      className="h-auto"
+      titleChildren={
+        shownHabits.length > 0 && (
+          <span className="text-[11px] text-text-secondary tabular-nums">
+            <span className="dash-value">{doneCount}</span> / {shownHabits.length} done
+          </span>
+        )
+      }
+    >
+      {shownHabits.length > 0 && (
+        <div className="dash-meter mb-3">
+          <span style={{ width: `${(doneCount / shownHabits.length) * 100}%` }} />
+        </div>
+      )}
+      <div className="dash-rows">
         {shownHabits.length > 0 ? (
-          shownHabits.map((habit, index) => {
+          shownHabits.map((habit) => {
             const completed = isCompletedToday(habit);
-            const bgColors = [
-              "bg-slate-800/30",
-              "bg-blue-900/20",
-              "bg-purple-900/20",
-              "bg-green-900/20",
-              "bg-amber-900/20",
-              "bg-red-900/20",
-              "bg-cyan-900/20",
-              "bg-pink-900/20",
-              "bg-indigo-900/20",
-              "bg-teal-900/20",
-            ];
-            const bgColor = bgColors[index % bgColors.length];
-
             const isCompleting = completingId === habit._id;
             return (
               <div
@@ -181,43 +183,40 @@ const HabitTrackerWidget = () => {
                     handleCompleteHabit(habit._id);
                   }
                 }}
-                className={`flex items-center justify-between text-sm py-2 px-3 rounded-lg border select-none transition-all duration-200 ${isCompleting ? "habit-completing" : ""} ${
-                  completed
-                    ? "bg-status-success/10 border-status-success/40 cursor-default"
-                    : `${bgColor} border-gray-700/50 cursor-pointer hover:border-status-success/70`
+                className={`flex items-center gap-3 text-sm py-2 px-1 select-none transition-colors duration-150 ${isCompleting ? "habit-completing" : ""} ${
+                  completed ? "cursor-default" : "cursor-pointer hover:bg-white/[0.03]"
                 }`}
                 aria-disabled={completed}
               >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span
-                    className={`truncate ${
-                      completed ? "text-status-success line-through decoration-status-success/60" : "text-text-secondary"
-                    }`}
-                  >
-                    {habit.name}
-                  </span>
-                  {habit.streak > 0 && (
-                    <StreakBadge key={`streak-${habit.streak}`} streak={habit.streak} longestStreak={habit.longestStreak} />
-                  )}
-                </div>
-                <div className={`flex items-center gap-1.5 ${completed ? "text-status-success" : "text-gray-500"}`}>
-                  {completed && (
-                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Done</span>
-                  )}
-                  <span className={isCompleting ? "habit-completing-check" : ""}>
-                    <CheckSquare size={18} />
-                  </span>
-                </div>
+                <span
+                  className={`shrink-0 ${isCompleting ? "habit-completing-check" : ""} ${
+                    completed ? "text-emerald-400" : "text-text-secondary"
+                  }`}
+                >
+                  {completed ? <CheckSquare size={16} /> : <Square size={16} />}
+                </span>
+                <span
+                  className={`flex-1 truncate ${
+                    completed ? "text-text-secondary line-through decoration-white/20" : "text-text-main"
+                  }`}
+                >
+                  {habit.name}
+                </span>
+                {habit.streak > 0 && (
+                  <StreakBadge key={`streak-${habit.streak}`} streak={habit.streak} longestStreak={habit.longestStreak} />
+                )}
               </div>
             );
           })
         ) : (
-          <p className="text-sm text-text-tertiary py-2">All habits completed for today!</p>
+          <p className="dash-empty">No habits set up yet.</p>
         )}
       </div>
-      <Link to="/habits" className="text-sm text-primary hover:underline mt-4 block text-right">
-        View All Habits &rarr;
-      </Link>
+      <div className="mt-3 flex justify-end border-t border-white/[0.06] pt-3">
+        <Link to="/habits" className="dash-btn">
+          All habits &rarr;
+        </Link>
+      </div>
       {createPortal(
         <div
           aria-live="polite"

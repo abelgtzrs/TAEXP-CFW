@@ -54,38 +54,38 @@ export default function FocusTimerWidget() {
 
   return (
     <Widget title="Focus Timer" className="h-[220px] overflow-hidden">
-      <div className="flex flex-col items-center justify-center gap-3">
-        <div className="text-3xl font-mono">{format(state.remaining)}</div>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-end justify-between">
+          <div className="dash-value text-4xl leading-none">{format(state.remaining)}</div>
+          <span className="dash-tag">{state.running ? "Running" : state.remaining < state.duration ? "Paused" : "Ready"}</span>
+        </div>
+        <div className="dash-meter">
+          <span style={{ width: `${(1 - state.remaining / state.duration) * 100}%` }} />
+        </div>
         <div className="flex items-center gap-2">
           {!state.running ? (
-            <button
-              onClick={start}
-              className="px-3 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white"
-            >
+            <button onClick={start} className="dash-btn dash-btn-primary">
               Start
             </button>
           ) : (
-            <button
-              onClick={pause}
-              className="px-3 py-1.5 text-xs rounded bg-yellow-600 hover:bg-yellow-500 text-white"
-            >
+            <button onClick={pause} className="dash-btn dash-btn-primary">
               Pause
             </button>
           )}
-          <button onClick={reset} className="px-3 py-1.5 text-xs rounded bg-slate-700 hover:bg-slate-600 text-white">
+          <button onClick={reset} className="dash-btn">
             Reset
           </button>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span>Minutes:</span>
-          <input
-            type="number"
-            min={1}
-            max={180}
-            className="w-16 bg-background border border-gray-700/60 rounded px-2 py-1 text-xs"
-            value={Math.round(state.duration / 60000)}
-            onChange={(e) => setMinutes(e.target.value)}
-          />
+          <label className="ml-auto flex items-center gap-2 text-[11px] text-text-secondary">
+            Min
+            <input
+              type="number"
+              min={1}
+              max={180}
+              className="dash-input w-16 tabular-nums"
+              value={Math.round(state.duration / 60000)}
+              onChange={(e) => setMinutes(e.target.value)}
+            />
+          </label>
         </div>
       </div>
     </Widget>

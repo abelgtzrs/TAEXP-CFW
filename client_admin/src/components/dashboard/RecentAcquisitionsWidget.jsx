@@ -216,7 +216,7 @@ const AcquisitionImageThumb = ({ item, itemKey, serverBaseUrl, widgetBoundaryRef
         aria-haspopup="dialog"
         aria-expanded={previewOpen}
         aria-label={`Preview ${item?.name || "collectible"} image`}
-        className="block rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/70"
+        className="block rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
         onClick={openPreview}
         onFocus={openPreview}
         onBlur={scheduleClosePreview}
@@ -226,7 +226,7 @@ const AcquisitionImageThumb = ({ item, itemKey, serverBaseUrl, widgetBoundaryRef
         <img
           src={thumbnailSrc}
           alt={item?.name || "Collectible"}
-          className="h-[100px] w-[100px] rounded-md bg-black/30 object-contain"
+          className="h-[72px] w-[72px] rounded border border-white/[0.06] bg-white/[0.02] object-contain"
           onLoad={(e) => {
             const loaded = e.currentTarget.currentSrc || thumbnailSrc;
             setLoadedSrc(loaded);
@@ -246,7 +246,7 @@ const AcquisitionImageThumb = ({ item, itemKey, serverBaseUrl, widgetBoundaryRef
           ref={popoverPanelRef}
           role="dialog"
           aria-label={`${item?.name || "Collectible"} preview`}
-          className="absolute z-30 w-[266px] rounded-xl border border-gray-700/80 bg-gray-950/95 p-2 shadow-2xl backdrop-blur-sm"
+          className="absolute z-30 w-[266px] rounded-lg border border-white/10 bg-surface p-2 shadow-2xl"
           style={{
             left: `${popoverLayout.left}px`,
             top: popoverLayout.top == null ? "calc(100% + 0.5rem)" : `${popoverLayout.top}px`,
@@ -302,11 +302,11 @@ const RecentAcquisitionsWidget = ({ acquisitions, loading }) => {
         <p className="text-sm text-text-tertiary">Loading...</p>
       ) : displayItems.length > 0 ? (
         <div className="space-y-3" ref={widgetBoundaryRef} data-recent-acquisitions-boundary="true">
-          <ul className="grid grid-cols-2 gap-3">
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-3">
             {pageItems.map((item, index) => (
               <li
                 key={`${item.name}-${item.type}-${index}`}
-                className="relative flex min-w-0 items-center gap-2.5 text-sm"
+                className="relative flex min-w-0 items-center gap-3 text-sm"
               >
                 <AcquisitionImageThumb
                   item={item}
@@ -315,10 +315,10 @@ const RecentAcquisitionsWidget = ({ acquisitions, loading }) => {
                   widgetBoundaryRef={widgetBoundaryRef}
                 />
                 <div className="min-w-0">
-                  <p className="truncate text-white font-medium">{item.name || "Unknown Collectible"}</p>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                    <p className="truncate text-xs text-gray-500">{item.type || "Collectible"}</p>
-                    <span className="inline-flex rounded-full border border-teal-400/30 bg-teal-500/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-teal-300">
+                  <p className="truncate text-[13px] text-text-main font-medium">{item.name || "Unknown Collectible"}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <p className="truncate text-[11px] text-text-secondary">{item.type || "Collectible"}</p>
+                    <span className="dash-tag">
                       {String(item.rarity || "common").replace(/_/g, " ")}
                     </span>
                   </div>
@@ -328,29 +328,28 @@ const RecentAcquisitionsWidget = ({ acquisitions, loading }) => {
           </ul>
 
           {totalPages > 1 && (
-            <div className="inline-flex w-full items-center justify-between rounded-lg border border-gray-700/60 bg-black/25 p-1 sm:w-auto sm:min-w-[150px]">
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={currentPage === 0}
-                className="rounded-lg px-3 py-2 text-xs text-text-secondary transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:px-2.5"
-              >
-                Prev
-              </button>
-              <span className="px-2 font-mono text-xs text-text-secondary">
-                {currentPage + 1} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={currentPage >= totalPages - 1}
-                className="rounded-lg px-3 py-2 text-xs text-text-secondary transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:px-2.5"
-              >
-                Next
-              </button>
+            <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
+              <span className="text-[11px] text-text-secondary tabular-nums">{displayItems.length} items</span>
+              <div className="dash-segment items-center">
+                <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0} aria-label="Previous page">
+                  &lsaquo;
+                </button>
+                <span className="px-2 text-[11px] text-text-secondary tabular-nums">
+                  {currentPage + 1} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  aria-label="Next page"
+                >
+                  &rsaquo;
+                </button>
+              </div>
             </div>
           )}
         </div>
       ) : (
-        <p className="text-sm text-text-tertiary">No items acquired recently.</p>
+        <p className="dash-empty">No items acquired recently.</p>
       )}
     </Widget>
   );
