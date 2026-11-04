@@ -6,6 +6,7 @@ import {
   deleteBlessingDef,
 } from "../services/blessingsService";
 import { fetchVolumes, updateVolume } from "./volumeFunctionality/volumeApi";
+import { upsertVolume } from "./volumeFunctionality/volumeList";
 
 const emptyForm = { key: "", name: "", context: "", defaultDescription: "", tags: "", active: true, index: 0 };
 
@@ -377,9 +378,8 @@ export default function BlessingsAdminPage() {
         newEntry,
         ...currentBlessings.slice(safeIndex),
       ];
-      await updateVolume(volume._id, { blessings: nextBlessings });
-      const latest = await fetchVolumes();
-      setVolumes(latest || []);
+      const saved = await updateVolume(volume._id, { blessings: nextBlessings });
+      setVolumes((current) => upsertVolume(current, saved));
     } finally {
       setUpdatingVolumeIds((prev) => {
         const next = new Set(prev);
@@ -400,8 +400,6 @@ export default function BlessingsAdminPage() {
           description: modalDescription,
         });
       }
-      const latest = await fetchVolumes();
-      setVolumes(latest || []);
     } catch (e) {
       setError(e?.message || "Failed to add blessing to some volumes");
     } finally {

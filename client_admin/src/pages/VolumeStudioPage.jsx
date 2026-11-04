@@ -29,7 +29,8 @@ import { emitToast } from "../utils/toastBus";
 import { highlightQuery, searchVolumes } from "../utils/volumeSearch";
 import { formatRelativeDay } from "../utils/workoutStats";
 import { toFormData, toPayload } from "./volumeFunctionality/formMappers";
-import { createVolume, deleteVolume, fetchVolumes, updateVolume } from "./volumeFunctionality/volumeApi";
+import { createVolume, deleteVolume, fetchVolume, fetchVolumes, updateVolume } from "./volumeFunctionality/volumeApi";
+import { upsertVolume } from "./volumeFunctionality/volumeList";
 
 const EMPTY_FORM = {
   rawPastedText: "",
@@ -107,6 +108,7 @@ const VolumeStudioPage = () => {
   const volumeListRef = useRef(null);
   const searchRef = useRef(null);
   const keyHandler = useRef(null);
+  const openingId = useRef(null); // the volume whose full record is loading; later clicks win
 
   const dirty = JSON.stringify(form) !== baseline;
 
@@ -115,13 +117,15 @@ const VolumeStudioPage = () => {
       .then((list) => {
         setVolumes(list);
         const last = list.find((volume) => volume._id === readPrefs().lastId);
-        if (!last) return;
-        const lastForm = toFormData(last);
-        setEditingId(last._id);
-        setForm(lastForm);
-        setBaseline(JSON.stringify(lastForm));
-        setStoryTab("story");
-        setPane("editor");
+        if (!last) return undefined;
+        return fetchVolume(last._id).then((full) => {
+          const lastForm = toFormData(full);
+          setEditingId(full._id);
+          setForm(lastForm);
+          setBaseline(JSON.stringify(lastForm));
+          setStoryTab("story");
+          setPane("editor");
+        });
       })
       .catch(() => setError("Volumes didn't load. Refresh the page to try again."))
       .finally(() => setLoading(false));
@@ -262,11 +266,20 @@ const VolumeStudioPage = () => {
 
   const confirmDiscard = () => !dirty || window.confirm("You have unsaved changes. Discard them?");
 
-  const selectVolume = (volume) => {
+  // The list has no raw paste, so load the full record before editing.
+  const selectVolume = async (volume) => {
     if (volume._id !== editingId) {
       if (!confirmDiscard()) return;
-      loadForm(volume._id, toFormData(volume));
-      setStoryTab("story");
+      openingId.current = volume._id;
+      try {
+        const full = await fetchVolume(volume._id);
+        if (openingId.current !== volume._id) return;
+        loadForm(full._id, toFormData(full));
+        setStoryTab("story");
+      } catch {
+        setError("That volume didn't open. Try again.");
+        return;
+      }
     }
     setPane("editor");
   };
@@ -284,16 +297,9 @@ const VolumeStudioPage = () => {
     setError("");
     try {
       const payload = toPayload(form);
-      if (editingId) await updateVolume(editingId, payload);
-      else await createVolume(payload);
-      const latest = await fetchVolumes();
-      setVolumes(latest);
-      // The create endpoint returns nothing we use, so find the new volume by its number and title.
-      const saved = editingId
-        ? latest.find((volume) => volume._id === editingId)
-        : latest.find((volume) => volume.volumeNumber === payload.volumeNumber && volume.title === payload.title);
-      if (saved) loadForm(saved._id, toFormData(saved));
-      else loadForm(null, EMPTY_FORM);
+      const saved = editingId ? await updateVolume(editingId, payload) : await createVolume(payload);
+      setVolumes((current) => upsertVolume(current, saved));
+      loadForm(saved._id, toFormData(saved));
       setSavedAt(new Date());
       emitToast({ title: editingId ? "Volume saved" : "Volume created", message: payload.title || "", type: "success" });
     } catch (requestError) {

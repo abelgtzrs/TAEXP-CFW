@@ -24,9 +24,11 @@ import { toFormData, toPayload } from "./volumeFunctionality/formMappers";
 import {
   createVolume,
   deleteVolume as removeVolume,
+  fetchVolume,
   fetchVolumes as fetchAllVolumes,
   updateVolume,
 } from "./volumeFunctionality/volumeApi";
+import { upsertVolume } from "./volumeFunctionality/volumeList";
 
 const INITIAL_FORM_STATE = {
   rawPastedText: "",
@@ -140,11 +142,17 @@ const VolumesMobilePage = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleEditClick = (volume) => {
-    setEditingId(volume._id);
-    setFormData(toFormData(volume));
-    setViewMode("editor");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  // The list has no raw paste, so load the full record before editing.
+  const handleEditClick = async (volume) => {
+    try {
+      const full = await fetchVolume(volume._id);
+      setEditingId(full._id);
+      setFormData(toFormData(full));
+      setViewMode("editor");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setError("We couldn't open that volume.");
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -156,16 +164,15 @@ const VolumesMobilePage = () => {
       const payload = toPayload(formData);
 
       if (editingId) {
-        await updateVolume(editingId, payload);
-        const latestVolumes = await fetchAllVolumes();
-        setVolumes(latestVolumes);
-        const updatedVolume = latestVolumes.find((volume) => volume._id === editingId);
-        if (updatedVolume) setFormData(toFormData(updatedVolume));
+        const saved = await updateVolume(editingId, payload);
+        setVolumes((current) => upsertVolume(current, saved));
+        setEditingId(saved._id);
+        setFormData(toFormData(saved));
         setResultNotice("Volume updated");
       } else {
-        await createVolume(payload);
+        const saved = await createVolume(payload);
         setFormData(INITIAL_FORM_STATE);
-        await fetchVolumes();
+        setVolumes((current) => upsertVolume(current, saved));
         setViewMode("list");
         setResultNotice("Volume created");
       }
@@ -181,9 +188,9 @@ const VolumesMobilePage = () => {
 
     try {
       await removeVolume(editingId);
+      setVolumes((current) => current.filter((volume) => volume._id !== editingId));
       setEditingId(null);
       setFormData(INITIAL_FORM_STATE);
-      await fetchVolumes();
       setViewMode("list");
       setResultNotice("Volume deleted");
     } catch {

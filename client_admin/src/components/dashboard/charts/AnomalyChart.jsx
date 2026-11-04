@@ -17,7 +17,7 @@ export default function AnomalyChart() {
     const fetchVolumes = async () => {
       try {
         setLoading(true);
-        const resp = await api.get("/admin/volumes");
+        const resp = await api.get("/admin/volumes/summary");
         if (!cancelled) setVolumes(resp?.data?.data || []);
       } catch (e) {
         if (!cancelled) setError("Failed to load volumes");
@@ -35,7 +35,7 @@ export default function AnomalyChart() {
     const arr = (volumes || [])
       .map((v) => ({
         name: `V${v.volumeNumber ?? "?"}`,
-        lines: Array.isArray(v.bodyLines) ? v.bodyLines.length : 0,
+        lines: v.lineCount || 0,
         num: Number(v.volumeNumber) || 0,
       }))
       .sort((a, b) => a.num - b.num);

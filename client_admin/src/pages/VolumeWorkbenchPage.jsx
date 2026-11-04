@@ -8,6 +8,7 @@ import StyledButton from "../components/ui/StyledButton";
 import Widget from "../components/ui/Widget";
 import { Eye, GripVertical, Save, Trash2, Edit, AlertCircle, X, ChevronsRight, Download, Search } from "lucide-react";
 import { searchVolumes, highlightQuery } from "../utils/volumeSearch";
+import { upsertVolume } from "./volumeFunctionality/volumeList";
 
 // --- Preview Modal Component ---
 const PreviewModal = ({ volume, isOpen, onClose }) => {
@@ -212,14 +213,15 @@ const VolumeWorkbenchPage = () => {
           payload.rawPastedText = rawPastedText;
           payload.reparse = true;
         }
-        await api.put(`/admin/volumes/${editableVolume._id}`, payload);
+        const res = await api.put(`/admin/volumes/${editableVolume._id}`, payload);
+        setVolumes((current) => upsertVolume(current, res.data.data));
         setSuccess(`Volume ${finalVolumeData.volumeNumber} updated successfully!`);
       } else {
         // Create new
-        await api.post("/admin/volumes", finalVolumeData);
+        const res = await api.post("/admin/volumes", finalVolumeData);
+        setVolumes((current) => upsertVolume(current, res.data.data));
         setSuccess(`Volume ${finalVolumeData.volumeNumber} created successfully!`);
       }
-      fetchVolumes();
       clearSuccessMessage();
     } catch (err) {
       const serverMsg = err.response?.data?.error || err.response?.data?.message;
@@ -230,8 +232,16 @@ const VolumeWorkbenchPage = () => {
     }
   };
 
-  const handleEditVolume = (vol) => {
-    if (!vol) return;
+  // The list has no raw paste, so load the full record before editing.
+  const handleEditVolume = async (listVol) => {
+    if (!listVol) return;
+    let vol;
+    try {
+      vol = (await api.get(`/admin/volumes/${listVol._id}`)).data.data;
+    } catch {
+      setError("Couldn't open that volume. Try again.");
+      return;
+    }
     setEditableVolume(vol);
     // Reconstruct bodyText with > prefix; blank lines as ~ placeholder
     const bodyString = (vol.bodyLines || []).map((line) => (line.trim() ? `> ${line}` : "~")).join("\n");
@@ -249,7 +259,7 @@ const VolumeWorkbenchPage = () => {
       if (editableVolume?._id === vol._id) {
         setEditableVolume(null);
       }
-      fetchVolumes();
+      setVolumes((current) => current.filter((v) => v._id !== vol._id));
     } catch (e) {
       console.error("Delete failed", e);
       setError("Delete failed");

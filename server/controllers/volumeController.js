@@ -157,7 +157,22 @@ exports.createVolumeFromRaw = async (req, res) => {
 // @route   GET /api/admin/volumes
 exports.getAllVolumesForAdmin = async (req, res) => {
   try {
-    const volumes = await Volume.find().populate("createdBy", "email").sort({ volumeNumber: -1 });
+    // The original paste is ~40% of the data and only editors need it; they load it via GET /:id.
+    const volumes = await Volume.find().select("-rawPastedText").sort({ volumeNumber: -1 });
+    res.status(200).json({ success: true, count: volumes.length, data: volumes });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// @desc    Per-volume line counts, counted in the database so full volumes never leave Atlas
+// @route   GET /api/admin/volumes/summary
+exports.getVolumeSummaryForAdmin = async (req, res) => {
+  try {
+    const volumes = await Volume.aggregate([
+      { $project: { volumeNumber: 1, lineCount: { $size: { $ifNull: ["$bodyLines", []] } } } },
+      { $sort: { volumeNumber: 1 } },
+    ]);
     res.status(200).json({ success: true, count: volumes.length, data: volumes });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error" });

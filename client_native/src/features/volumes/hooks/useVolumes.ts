@@ -12,6 +12,15 @@ export function useVolumes() {
   });
 }
 
+// The list leaves out rawPastedText; editors load the full record with this.
+export function useVolume(id: string | undefined) {
+  return useQuery({
+    queryKey: [...VOLUMES_KEY, id],
+    queryFn: () => volumeApi.fetchVolume(id as string),
+    enabled: Boolean(id),
+  });
+}
+
 export function useCreateVolume() {
   const qc = useQueryClient();
   return useMutation({

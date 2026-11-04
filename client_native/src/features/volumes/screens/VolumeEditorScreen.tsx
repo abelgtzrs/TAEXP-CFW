@@ -19,7 +19,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { useAppTheme } from "@/theme/ThemeProvider";
 import type { AppTheme } from "@/theme/tokens";
-import { useVolumes, useCreateVolume, useUpdateVolume, useDeleteVolume } from "../hooks/useVolumes";
+import { useVolume, useCreateVolume, useUpdateVolume, useDeleteVolume } from "../hooks/useVolumes";
 import { parseRawGreentext } from "@/utils/greentextParser";
 import {
   INITIAL_VOLUME_FORM,
@@ -46,7 +46,6 @@ export function VolumeEditorScreen() {
   const route = useRoute<Route>();
   const editId = route.params?.id;
 
-  const { data: volumes = [] } = useVolumes();
   const createMutation = useCreateVolume();
   const updateMutation = useUpdateVolume();
   const deleteMutation = useDeleteVolume();
@@ -55,13 +54,11 @@ export function VolumeEditorScreen() {
   const [activeTab, setActiveTab] = useState<Tab>("raw");
   const [toast, setToast] = useState("");
 
-  // Populate form when editing
+  // Populate form when editing, from the full record (the list has no raw paste)
+  const { data: editVolume } = useVolume(editId);
   useEffect(() => {
-    if (editId && volumes.length > 0) {
-      const vol = volumes.find((v) => v._id === editId);
-      if (vol) setForm(toFormData(vol));
-    }
-  }, [editId, volumes]);
+    if (editVolume) setForm(toFormData(editVolume));
+  }, [editVolume]);
 
   // Auto-clear toast
   useEffect(() => {
