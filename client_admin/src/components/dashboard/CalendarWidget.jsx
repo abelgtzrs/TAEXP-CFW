@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import api from "../../services/api";
 import Widget from "../ui/Widget";
-import { ChevronLeft, ChevronRight, CircleDollarSign } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Pencil, X } from "lucide-react";
 
 const CalendarWidget = ({ compact = false }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -44,19 +44,14 @@ const CalendarWidget = ({ compact = false }) => {
     return "medium";
   };
 
-  const getBillColor = (amount) => {
-    const tier = getBillTier(amount);
-    if (tier === "low") return "bg-green-500";
-    if (tier === "high") return "bg-red-500";
-    return "bg-yellow-500";
+  // Tier colour as a dot: solid when unpaid, outlined once paid.
+  const TIER_DOT = {
+    low: "bg-emerald-400 border-emerald-400",
+    medium: "bg-amber-300 border-amber-300",
+    high: "bg-rose-400 border-rose-400",
   };
-
-  const getBillIconColor = (amount) => {
-    const tier = getBillTier(amount);
-    if (tier === "low") return "text-emerald-400";
-    if (tier === "high") return "text-red-400";
-    return "text-yellow-400";
-  };
+  const billDotClass = (bill, paid) =>
+    `inline-block h-1.5 w-1.5 shrink-0 rounded-full border ${TIER_DOT[getBillTier(bill.amount)]} ${paid ? "!bg-transparent opacity-60" : ""}`;
 
   const formatCurrency = (value) => {
     const parsed = Number(value || 0);
@@ -186,7 +181,6 @@ const CalendarWidget = ({ compact = false }) => {
 
   const totalBillCount = bills.length;
   const paidBillCount = bills.filter((bill) => isBillPaidForCurrentMonth(bill)).length;
-  const remainingBillCount = Math.max(totalBillCount - paidBillCount, 0);
 
   const monthlyTotal = bills.reduce((acc, bill) => acc + Number(bill.amount || 0), 0);
   const monthlyPaid = bills
@@ -195,36 +189,58 @@ const CalendarWidget = ({ compact = false }) => {
   const monthlyRemaining = Math.max(monthlyTotal - monthlyPaid, 0);
   const paidProgress = monthlyTotal ? (monthlyPaid / monthlyTotal) * 100 : 0;
 
-  const renderHeader = () => {
-    return (
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={handlePrevMonth}
-          className="dash-btn dash-btn-icon"
-        >
-          <ChevronLeft size={16} />
+
+  const closeEditor = () => {
+    setEditingBillId(null);
+    setClickPopoverError("");
+  };
+
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  const renderHeader = () => (
+    <div className="flex items-center justify-between gap-2">
+      <h2 className="text-lg font-semibold tracking-tight text-text-main">
+        {currentDate.toLocaleString("default", { month: "long" })}{" "}
+        <span className="font-normal text-text-secondary">{currentDate.getFullYear()}</span>
+      </h2>
+      <div className="flex gap-1">
+        <button type="button" onClick={handlePrevMonth} className="dash-btn dash-btn-icon" aria-label="Previous month">
+          <ChevronLeft size={15} />
         </button>
-        <h2 className="flex-1 text-center text-sm font-semibold text-text-main">
-          {currentDate.toLocaleString("default", { month: "long", year: "numeric" })}
-        </h2>
-        <button
-          type="button"
-          onClick={handleNextMonth}
-          className="dash-btn dash-btn-icon"
-        >
-          <ChevronRight size={16} />
+        <button type="button" onClick={handleNextMonth} className="dash-btn dash-btn-icon" aria-label="Next month">
+          <ChevronRight size={15} />
         </button>
       </div>
-    );
-  };
+    </div>
+  );
+
+  const renderSummary = () => (
+    <div className="mt-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs text-text-secondary">Left to pay</span>
+        <span className="dash-value text-xl">{formatCurrency(monthlyRemaining)}</span>
+      </div>
+      <div className="dash-meter mt-2">
+        <span style={{ width: `${paidProgress}%`, background: "#34d399" }} />
+      </div>
+      <div className="mt-1.5 flex justify-between gap-2 text-[11px] tabular-nums text-text-secondary">
+        <span>{formatCurrency(monthlyPaid)} paid</span>
+        <span>
+          {paidBillCount} of {totalBillCount} bills
+        </span>
+      </div>
+    </div>
+  );
 
   const renderDays = () => {
     const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     return (
-      <div className="mb-1 grid grid-cols-7 gap-1 text-center dashboard-label">
+      <div className="mt-4 mb-1 grid grid-cols-7 text-center text-[10px] font-medium text-text-secondary">
         {weekdays.map((day) => (
-          <div key={day}>{day}</div>
+          <abbr key={day} title={day} className="no-underline">
+            {day[0]}
+          </abbr>
         ))}
       </div>
     );
@@ -233,83 +249,117 @@ const CalendarWidget = ({ compact = false }) => {
   const renderCells = () => {
     const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-    const startDate = new Date(monthStart);
+    const day = new Date(monthStart);
+    day.setDate(day.getDate() - monthStart.getDay());
     const endDate = new Date(monthEnd);
-    startDate.setDate(startDate.getDate() - monthStart.getDay());
     endDate.setDate(endDate.getDate() + (6 - monthEnd.getDay()));
-
-    const rows = [];
-    const day = new Date(startDate);
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
+    const cells = [];
     while (day <= endDate) {
-      const rowIndex = rows.length;
-      const cells = [];
+      const cloneDay = new Date(day);
+      const isCurrentMonth = cloneDay.getMonth() === currentDate.getMonth();
+      const isToday = sameDay(cloneDay, today);
+      const isSelected = selectedDate && sameDay(cloneDay, selectedDate);
+      const billsForDay = isCurrentMonth ? bills.filter((b) => Number(b.dueDay) === cloneDay.getDate()) : [];
+      const hasUnpaid = billsForDay.some((bill) => !isBillPaidForCurrentMonth(bill));
+      const dateLabel = cloneDay.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 
-      for (let i = 0; i < 7; i++) {
-        const cloneDay = new Date(day);
-        const dayKey = `${cloneDay.getFullYear()}-${String(cloneDay.getMonth() + 1).padStart(2, "0")}-${String(cloneDay.getDate()).padStart(2, "0")}`;
-        const isCurrentMonth = cloneDay.getMonth() === currentDate.getMonth();
-        const isToday = cloneDay.getTime() === today.getTime();
-        const isSelected =
-          selectedDate &&
-          cloneDay.getTime() ===
-            new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
-
-        const billsForDay = bills.filter((b) => Number(b.dueDay) === cloneDay.getDate());
-        const hasBillsInCurrentMonth = isCurrentMonth && billsForDay.length > 0;
-        const visibleBillIcons = billsForDay.slice(0, 3);
-
-        cells.push(
-          <button
-            type="button"
-            key={dayKey}
-            onClick={() => handleDayClick(cloneDay)}
-            className={`min-h-[3.5rem] rounded border px-1.5 py-1 text-left transition-colors
-              ${!isCurrentMonth ? "border-transparent text-text-tertiary/50" : "border-transparent bg-black/10 text-text-main"}
-              ${isCurrentMonth ? "hover:border-primary/40" : ""}
-              ${isToday ? "border-primary/50" : ""}
-              ${isSelected ? "ring-1 ring-primary/60 border-primary/50" : ""}`}
+      cells.push(
+        <button
+          type="button"
+          key={cloneDay.toISOString()}
+          onClick={() => handleDayClick(cloneDay)}
+          aria-pressed={!!isSelected}
+          aria-label={billsForDay.length ? `${dateLabel}, ${billsForDay.length} due` : dateLabel}
+          className={`flex ${compact ? "h-9" : "h-11"} flex-col items-center justify-center gap-1 rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary
+            ${isSelected ? "bg-white/[0.06] ring-1 ring-inset ring-primary/50" : "hover:bg-white/[0.04]"}`}
+        >
+          <span
+            className={`grid h-6 w-6 place-items-center rounded-full text-xs tabular-nums
+              ${isToday ? "bg-primary font-semibold text-white" : ""}
+              ${!isToday && !isCurrentMonth ? "text-text-secondary/30" : ""}
+              ${!isToday && isCurrentMonth ? (hasUnpaid ? "font-medium text-text-main" : "text-text-secondary") : ""}`}
           >
-            <div
-              className={`mb-0.5 text-xs font-semibold ${isToday ? "bg-primary/15 text-white rounded px-1" : "text-text-secondary"}`}
-            >
-              {cloneDay.getDate()}
-            </div>
-
-            {hasBillsInCurrentMonth ? (
-              <div className="flex items-center gap-0.5">
-                {visibleBillIcons.map((bill) => {
-                  const isPaid = isBillPaidForCurrentMonth(bill);
-                  return (
-                    <CircleDollarSign
-                      key={`bill-icon-${dayKey}-${bill._id}`}
-                      size={14}
-                      strokeWidth={2.2}
-                      className={`${getBillIconColor(bill.amount)} ${isPaid ? "opacity-30" : "opacity-90"}`}
-                    />
-                  );
-                })}
-                {billsForDay.length > 3 && (
-                  <span className="pl-0.5 text-[10px] text-text-tertiary">+{billsForDay.length - 3}</span>
-                )}
-              </div>
-            ) : null}
-          </button>,
-        );
-
-        day.setDate(day.getDate() + 1);
-      }
-
-      rows.push(
-        <div className="grid grid-cols-7 gap-1" key={`row-${rowIndex}`}>
-          {cells}
-        </div>,
+            {cloneDay.getDate()}
+          </span>
+          <span className="flex h-1.5 gap-0.5" aria-hidden="true">
+            {billsForDay.slice(0, 3).map((bill) => (
+              <span key={bill._id} className={billDotClass(bill, isBillPaidForCurrentMonth(bill))} />
+            ))}
+          </span>
+        </button>,
       );
+      day.setDate(day.getDate() + 1);
     }
 
-    return <div className="space-y-1">{rows}</div>;
+    return <div className="grid grid-cols-7 gap-0.5">{cells}</div>;
+  };
+
+  const renderEditForm = (bill) => {
+    const field = (key) => ({
+      value: editDraft[key],
+      onChange: (e) => setEditDraft((prev) => ({ ...prev, [key]: e.target.value })),
+      className: "dash-input mt-1 w-full",
+      style: { fontSize: 16 }, // keeps iOS from zooming on focus
+    });
+    const toggle = (key) => ({
+      type: "checkbox",
+      checked: editDraft[key],
+      onChange: (e) => setEditDraft((prev) => ({ ...prev, [key]: e.target.checked })),
+      className: "h-3.5 w-3.5 accent-emerald-400",
+    });
+
+    return (
+      <div className="mt-2.5 grid grid-cols-2 gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 text-[11px] text-text-secondary">
+        <label className="col-span-2">
+          Name
+          <input type="text" {...field("name")} />
+        </label>
+        <label>
+          Amount
+          <input type="number" min="0" step="0.01" {...field("amount")} />
+        </label>
+        <label>
+          Due day
+          <input type="number" min="1" max="31" {...field("dueDay")} />
+        </label>
+        <label className="col-span-2">
+          Category
+          <select {...field("category")}>
+            <option value="bill">Bill</option>
+            <option value="debt">Debt</option>
+            <option value="subscription">Subscription</option>
+            <option value="general">General</option>
+          </select>
+        </label>
+        <label className="col-span-2">
+          Notes
+          <textarea rows={2} {...field("notes")} className="dash-input mt-1 w-full resize-none" />
+        </label>
+        <label className="flex items-center gap-2">
+          <input {...toggle("autoPay")} />
+          Auto-pay
+        </label>
+        <label className="flex items-center gap-2">
+          <input {...toggle("isActive")} />
+          Active
+        </label>
+        <div className="col-span-2 mt-1 flex justify-end gap-2">
+          <button type="button" onClick={closeEditor} className="dash-btn">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={savingBillId === bill._id}
+            onClick={() => handleSaveEdit(bill._id)}
+            className="dash-btn dash-btn-primary"
+          >
+            {savingBillId === bill._id ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const renderSelectedDayInfo = () => {
@@ -317,7 +367,6 @@ const CalendarWidget = ({ compact = false }) => {
 
     const billsForSelectedDay = bills.filter((b) => Number(b.dueDay) === selectedDate.getDate());
     const unpaidForSelectedDay = billsForSelectedDay.filter((bill) => !isBillPaidForCurrentMonth(bill));
-    const selectedDayTotal = billsForSelectedDay.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
     const selectedDayUnpaidTotal = unpaidForSelectedDay.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
     const sortedBills = [...billsForSelectedDay].sort((a, b) => {
       const aPaid = isBillPaidForCurrentMonth(a);
@@ -327,254 +376,92 @@ const CalendarWidget = ({ compact = false }) => {
     });
 
     return (
-      <div className={`${compact ? "mt-2 pt-2" : "mt-3 pt-3"} border-t border-gray-700/50`}>
-        <div className="mb-2 rounded-lg border border-gray-700/40 bg-black/5 p-2">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-xs font-semibold text-white">
-              {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            </h3>
-            {billsForSelectedDay.length > 0 ? (
-              <span className="inline-flex items-center rounded-full border border-rose-400/30 bg-rose-500/10 px-2 py-0.5 text-xs font-semibold text-rose-200">
-                {unpaidForSelectedDay.length} unpaid
-              </span>
-            ) : (
-              <span className="inline-flex items-center rounded-full border border-gray-600/40 bg-black/20 px-2 py-0.5 text-xs font-semibold text-text-secondary">
-                No bills
-              </span>
-            )}
-          </div>
-
+      <div className={`${compact ? "mt-3 pt-3" : "mt-4 pt-4"} border-t border-white/[0.06]`}>
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="text-sm font-medium text-text-main">
+            {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+          </h3>
           {billsForSelectedDay.length > 0 && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <div className="rounded border border-gray-700/40 bg-black/10 px-2 py-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-text-secondary">Due</p>
-                <p className="mt-0.5 font-mono text-sm font-semibold text-white">{formatCurrency(selectedDayTotal)}</p>
-              </div>
-              <div className="rounded border border-rose-400/25 bg-rose-900/10 px-2 py-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-rose-200/70">Unpaid</p>
-                <p className="mt-0.5 font-mono text-sm font-semibold text-rose-100">
-                  {formatCurrency(selectedDayUnpaidTotal)}
-                </p>
-              </div>
-            </div>
+            <span className="text-xs tabular-nums text-text-secondary">
+              {unpaidForSelectedDay.length ? `${formatCurrency(selectedDayUnpaidTotal)} unpaid` : "All paid"}
+            </span>
           )}
         </div>
 
-        {clickPopoverError && <p className="mb-2 text-xs text-red-300">{clickPopoverError}</p>}
+        {clickPopoverError && <p className="mt-2 text-xs text-rose-300">{clickPopoverError}</p>}
 
         {sortedBills.length > 0 ? (
-          <ul className="space-y-1.5">
+          <ul className="dash-rows mt-2">
             {sortedBills.map((bill) => {
               const isPaid = isBillPaidForCurrentMonth(bill);
               const pending = !!pendingToggles[bill._id];
               const isEditing = editingBillId === bill._id;
 
               return (
-                <li
-                  key={bill._id}
-                  className={`rounded border px-3 py-2.5 text-xs ${
-                    isPaid ? "border-emerald-700/40 bg-emerald-900/10" : "border-rose-400/35 bg-rose-900/12"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-1.5">
+                <li key={bill._id} className="py-2.5">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => handleTogglePaid(bill, !isPaid)}
+                      aria-pressed={isPaid}
+                      aria-label={isPaid ? `Mark ${bill.name} as unpaid` : `Mark ${bill.name} as paid`}
+                      className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors disabled:opacity-50 ${
+                        isPaid
+                          ? "border-emerald-400 bg-emerald-400 text-black"
+                          : "border-white/25 text-transparent hover:border-emerald-400/70 hover:text-emerald-400/70"
+                      }`}
+                    >
+                      <Check size={12} strokeWidth={3} />
+                    </button>
+
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${getBillColor(bill.amount)}`}></span>
-                        <p
-                          className={`truncate text-sm font-semibold ${isPaid ? "text-emerald-100/70 line-through" : "text-white"}`}
-                        >
-                          {bill.name}
-                        </p>
-                      </div>
-                      <p className="mt-0.5 text-[10px] text-text-tertiary">
-                        Day {bill.dueDay} · {bill.category || "general"}
+                      <p
+                        className={`truncate text-[13px] ${
+                          isPaid ? "text-text-secondary line-through decoration-white/20" : "font-medium text-text-main"
+                        }`}
+                      >
+                        {bill.name}
+                      </p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-text-secondary">
+                        <span className={billDotClass(bill, isPaid)} />
+                        <span className="capitalize">{bill.category || "general"}</span>
+                        {bill.autoPay && <span className="dash-tag">Auto-pay</span>}
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <span
-                        className={`rounded px-2 py-0.5 font-mono text-xs font-semibold ${
-                          isPaid ? "bg-emerald-500/15 text-emerald-100" : "bg-rose-500/25 text-rose-100"
-                        }`}
-                      >
-                        {formatCurrency(bill.amount)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isEditing) {
-                            setEditingBillId(null);
-                            setClickPopoverError("");
-                          } else {
-                            startEditBill(bill);
-                          }
-                        }}
-                        className="min-h-[32px] min-w-[32px] rounded border border-primary/40 px-2 py-1 text-xs text-primary hover:bg-primary/5"
-                      >
-                        {isEditing ? "✕" : "✎"}
-                      </button>
-                    </div>
+                    <span className={`dash-value text-[13px] ${isPaid ? "!font-normal !text-text-secondary" : ""}`}>
+                      {formatCurrency(bill.amount)}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => (isEditing ? closeEditor() : startEditBill(bill))}
+                      className="dash-btn dash-btn-icon"
+                      aria-label={isEditing ? "Close editor" : `Edit ${bill.name}`}
+                    >
+                      {isEditing ? <X size={13} /> : <Pencil size={13} />}
+                    </button>
                   </div>
 
-                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-text-tertiary">
-                    <input
-                      type="checkbox"
-                      checked={isPaid}
-                      disabled={pending}
-                      onChange={async (e) => {
-                        await handleTogglePaid(bill, e.target.checked);
-                      }}
-                      className={`h-4 w-4 ${isPaid ? "accent-green-500" : "accent-rose-500"}`}
-                      style={{ minWidth: 16, minHeight: 16 }}
-                    />
-                    <span className={isPaid ? "text-emerald-300" : "text-rose-300"}>
-                      {isPaid ? "Paid" : "Mark as paid"}
-                    </span>
-                  </label>
-
-                  {isEditing && (
-                    <div className="mt-1.5 grid grid-cols-2 gap-1 border-t border-gray-700/40 pt-1.5">
-                      <label className="col-span-2 text-xs text-text-secondary">
-                        Name
-                        <input
-                          type="text"
-                          value={editDraft.name}
-                          onChange={(e) => setEditDraft((prev) => ({ ...prev, name: e.target.value }))}
-                          className="mt-1 w-full rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
-                          style={{ fontSize: 16 }}
-                        />
-                      </label>
-
-                      <label className="text-xs text-text-secondary">
-                        Amount
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={editDraft.amount}
-                          onChange={(e) => setEditDraft((prev) => ({ ...prev, amount: e.target.value }))}
-                          className="mt-1 w-full rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
-                          style={{ fontSize: 16 }}
-                        />
-                      </label>
-
-                      <label className="text-xs text-text-secondary">
-                        Due Day
-                        <input
-                          type="number"
-                          min="1"
-                          max="31"
-                          value={editDraft.dueDay}
-                          onChange={(e) => setEditDraft((prev) => ({ ...prev, dueDay: e.target.value }))}
-                          className="mt-1 w-full rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
-                          style={{ fontSize: 16 }}
-                        />
-                      </label>
-
-                      <label className="col-span-2 text-xs text-text-secondary">
-                        Category
-                        <select
-                          value={editDraft.category}
-                          onChange={(e) => setEditDraft((prev) => ({ ...prev, category: e.target.value }))}
-                          className="mt-1 w-full rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
-                          style={{ fontSize: 16 }}
-                        >
-                          <option value="bill">Bill</option>
-                          <option value="debt">Debt</option>
-                          <option value="subscription">Subscription</option>
-                          <option value="general">General</option>
-                        </select>
-                      </label>
-
-                      <label className="col-span-2 text-xs text-text-secondary">
-                        Notes
-                        <textarea
-                          rows={2}
-                          value={editDraft.notes}
-                          onChange={(e) => setEditDraft((prev) => ({ ...prev, notes: e.target.value }))}
-                          className="mt-1 w-full resize-none rounded border border-gray-600/50 bg-black/20 px-2 py-1.5 text-white outline-none focus:border-primary"
-                          style={{ fontSize: 16 }}
-                        />
-                      </label>
-
-                      <label className="flex items-center gap-2 text-xs text-text-secondary">
-                        <input
-                          type="checkbox"
-                          checked={editDraft.autoPay}
-                          onChange={(e) => setEditDraft((prev) => ({ ...prev, autoPay: e.target.checked }))}
-                          className="h-4 w-4 accent-green-500"
-                        />
-                        Auto-pay
-                      </label>
-
-                      <label className="flex items-center gap-2 text-xs text-text-secondary">
-                        <input
-                          type="checkbox"
-                          checked={editDraft.isActive}
-                          onChange={(e) => setEditDraft((prev) => ({ ...prev, isActive: e.target.checked }))}
-                          className="h-4 w-4 accent-green-500"
-                        />
-                        Active
-                      </label>
-
-                      <div className="col-span-2 mt-2 flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingBillId(null);
-                            setClickPopoverError("");
-                          }}
-                          className="min-h-[36px] rounded border border-gray-600/50 px-3 py-1.5 text-xs text-text-secondary hover:bg-black/30"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          disabled={savingBillId === bill._id}
-                          onClick={async () => {
-                            await handleSaveEdit(bill._id);
-                          }}
-                          className="min-h-[36px] rounded border border-primary/40 bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/25 disabled:opacity-50"
-                        >
-                          {savingBillId === bill._id ? "Saving…" : "Save"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  {isEditing && renderEditForm(bill)}
                 </li>
               );
             })}
           </ul>
         ) : (
-          <p className="text-[9px] text-text-tertiary">No bills due.</p>
+          <p className="dash-empty mt-2">Nothing due this day.</p>
         )}
       </div>
     );
   };
 
   return (
-    <Widget title="Monthly Bills Calendar" className="flex h-auto flex-col" padding={compact ? "p-3" : "p-6"}>
-      <div className="relative flex-grow">
-        {renderHeader()}
-        {renderDays()}
-        {renderCells()}
-      </div>
-
-      <div className={`mt-2 rounded px-2 py-2 ${monthlyRemaining > 0 ? "bg-rose-900/8" : "bg-emerald-900/8"}`}>
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="text-xs uppercase tracking-widest text-text-secondary">Remaining this month</p>
-          <p className="text-xl font-mono font-semibold text-white">{formatCurrency(monthlyRemaining)}</p>
-        </div>
-        <div className="mt-1.5 flex gap-3 text-xs text-text-tertiary">
-          <span>{paidBillCount} paid</span>
-          <span>·</span>
-          <span>{remainingBillCount} unpaid</span>
-        </div>
-        <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-gray-700/30">
-          <div className="h-full bg-emerald-400 transition-all duration-300" style={{ width: `${paidProgress}%` }} />
-        </div>
-      </div>
-
+    <Widget title="Monthly Bills Calendar" className="flex h-auto flex-col" padding={compact ? "p-3" : "p-4"}>
+      {renderHeader()}
+      {renderSummary()}
+      {renderDays()}
+      {renderCells()}
       {renderSelectedDayInfo()}
     </Widget>
   );

@@ -1,60 +1,35 @@
 import { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 
+// Applies the active persona's theme. With no persona, AdminLayout applies the saved
+// Standard Issue theme, and index.html restores the last theme before first paint, so
+// this hook writes nothing (a fallback palette here would flash over the saved theme).
 export const useTheme = () => {
   const { user } = useAuth();
   // The activePersona object is now fully populated with theme data.
   const activePersona = user?.activeAbelPersona;
 
   useEffect(() => {
+    if (!activePersona) return;
     const root = window.document.documentElement;
+    const { colors, text, font } = activePersona;
 
-    const defaultTheme = {
-      colors: {
-        bg: "#0D1117",
-        surface: "#161B22",
-        primary: "#1a6359ff",
-        secondary: "#0099c399",
-        tertiary: "#A5F3FC",
-      },
-      text: {
-        main: "#E5E7EB",
-        secondary: "#9CA3AF",
-        tertiary: "#4B5563",
-      },
-      font: "Inter, sans-serif",
-    };
-
-    // Use the active persona's theme, or fall back to the default.
-    // The persona object from the database has colors and text as direct properties
-    const theme = activePersona
-      ? {
-          colors: activePersona.colors,
-          text: activePersona.text,
-          font: activePersona.font,
-        }
-      : defaultTheme;
-
-    if (theme.colors) {
-      root.style.setProperty("--color-bg", theme.colors.bg);
-      root.style.setProperty("--color-surface", theme.colors.surface);
-      root.style.setProperty("--color-primary", theme.colors.primary);
-      root.style.setProperty("--color-secondary", theme.colors.secondary);
-      root.style.setProperty("--color-tertiary", theme.colors.tertiary);
+    if (colors) {
+      root.style.setProperty("--color-bg", colors.bg);
+      root.style.setProperty("--color-surface", colors.surface);
+      root.style.setProperty("--color-primary", colors.primary);
+      root.style.setProperty("--color-secondary", colors.secondary);
+      root.style.setProperty("--color-tertiary", colors.tertiary);
     }
 
-    if (theme.text) {
-      root.style.setProperty("--color-text-main", theme.text.main);
-      root.style.setProperty("--color-text-secondary", theme.text.secondary);
-      root.style.setProperty("--color-text-tertiary", theme.text.tertiary);
+    if (text) {
+      root.style.setProperty("--color-text-main", text.main);
+      root.style.setProperty("--color-text-secondary", text.secondary);
+      root.style.setProperty("--color-text-tertiary", text.tertiary);
     }
 
-    if (theme.font) {
-      root.style.setProperty("--font-main", theme.font);
+    if (font) {
+      root.style.setProperty("--font-main", font);
     }
-
-    // Debug logging
-    console.log("Theme applied:", theme);
-    console.log("Active persona:", activePersona);
   }, [activePersona]); // This effect re-runs whenever the activePersona object changes.
 };

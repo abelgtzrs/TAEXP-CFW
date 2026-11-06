@@ -13,7 +13,6 @@ import PageHeader from "../components/ui/PageHeader";
 import StatBoxRow from "../components/dashboard/StatBoxRow";
 import StatBox from "../components/dashboard/StatBox";
 import LoreChartWidget from "../components/dashboard/LoreChartWidget";
-import SingleLoreChartWidget from "../components/dashboard/SingleLoreChartWidget";
 import SecuritySettingsWidget from "../components/dashboard/SecuritySettingsWidget";
 import CurrencySourceWidget from "../components/dashboard/CurrencySourceWidget";
 import GoalsWidget from "../components/dashboard/GoalsWidget";

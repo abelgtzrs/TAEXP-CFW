@@ -10,6 +10,8 @@ const AUTO_COLUMN_BREAKPOINTS_KEY = "dashboardAutoColumnBreakpointsV1";
 const PINNED_WIDGETS_KEY = "dashboardPinnedWidgetsV1";
 export const MAX_PINNED_WIDGETS = 4;
 const COLUMN_IDS = ["col1", "col2", "col3", "col4"];
+// The four chart widgets were merged into one "charts" carousel; saved layouts still name them.
+const LEGACY_CHART_IDS = new Set(["chart-coherence", "chart-anomaly", "chart-drift", "chart-status"]);
 
 const DEFAULT_AUTO_COLUMN_BREAKPOINTS = Object.freeze({
   twoColsMin: 768,
@@ -41,10 +43,7 @@ const defaultLayout = {
     { id: "book", key: "book", size: "md" },
   ],
   col2: [
-    { id: "chart-coherence", key: "chart-coherence", size: "lg" },
-    { id: "chart-anomaly", key: "chart-anomaly", size: "lg" },
-    { id: "chart-drift", key: "chart-drift", size: "lg" },
-    { id: "chart-status", key: "chart-status", size: "lg" },
+    { id: "charts", key: "charts", size: "lg" },
     { id: "workout", key: "workout", size: "md" },
     { id: "security", key: "security", size: "md" },
   ],
@@ -123,6 +122,16 @@ export function LayoutProvider({ children }) {
 
   const ensureNewItems = (layout, maxCols = 4) => {
     const normalized = cloneColumns(layout || {});
+    // The merged chart widget takes the slot (and height) of the first legacy chart found.
+    let chartsPlaced = COLUMN_IDS.some((c) => normalized[c].some((i) => i.id === "charts"));
+    for (const c of COLUMN_IDS) {
+      normalized[c] = normalized[c].flatMap((item) => {
+        if (!LEGACY_CHART_IDS.has(item.id)) return [item];
+        if (chartsPlaced) return [];
+        chartsPlaced = true;
+        return [{ ...item, id: "charts", key: "charts" }];
+      });
+    }
     const activeCols = COLUMN_IDS.slice(0, Math.max(1, Math.min(4, maxCols)));
 
     // Ensure additional widgets exist if user had an older saved layout
@@ -258,7 +267,9 @@ export function LayoutProvider({ children }) {
   const [pinnedWidgets, setPinnedWidgets] = React.useState(() => {
     try {
       const parsed = JSON.parse(localStorage.getItem(PINNED_WIDGETS_KEY) || "[]");
-      return Array.isArray(parsed) ? parsed.slice(0, MAX_PINNED_WIDGETS) : [];
+      if (!Array.isArray(parsed)) return [];
+      const migrated = parsed.map((id) => (LEGACY_CHART_IDS.has(id) ? "charts" : id));
+      return [...new Set(migrated)].slice(0, MAX_PINNED_WIDGETS);
     } catch {
       return [];
     }

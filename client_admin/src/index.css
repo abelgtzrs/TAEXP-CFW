@@ -3,6 +3,34 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme colors fade when changed. Registering the variables as <color> makes them animatable;
+   every element using var(--color-*) inherits the in-between values. Initial values are the
+   Standard Issue defaults (constants/standardTheme.js). The first paint never animates. */
+@property --color-bg { syntax: "<color>"; inherits: true; initial-value: #0b0e14; }
+@property --color-background { syntax: "<color>"; inherits: true; initial-value: #0b0e14; }
+@property --color-surface { syntax: "<color>"; inherits: true; initial-value: #151a23; }
+@property --color-primary { syntax: "<color>"; inherits: true; initial-value: #5eead4; }
+@property --color-secondary { syntax: "<color>"; inherits: true; initial-value: #60a5fa; }
+@property --color-tertiary { syntax: "<color>"; inherits: true; initial-value: #a5f3fc; }
+@property --color-text-main { syntax: "<color>"; inherits: true; initial-value: #e5e7eb; }
+@property --color-text-secondary { syntax: "<color>"; inherits: true; initial-value: #9ca3af; }
+@property --color-text-tertiary { syntax: "<color>"; inherits: true; initial-value: #4b5563; }
+:root {
+  transition:
+    --color-bg 450ms ease,
+    --color-background 450ms ease,
+    --color-surface 450ms ease,
+    --color-primary 450ms ease,
+    --color-secondary 450ms ease,
+    --color-tertiary 450ms ease,
+    --color-text-main 450ms ease,
+    --color-text-secondary 450ms ease,
+    --color-text-tertiary 450ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { transition: none; }
+}
+
 /* Glassmorphism variables (editable via Profile > Edit) */
 :root {
   --glass-blur: 8px; /* default blur for translucent elements */
@@ -417,13 +445,88 @@
   border: 1px solid transparent;
   transition: color 160ms, background-color 160ms, border-color 160ms;
 }
-.app-nav-link[aria-current="page"] {
-  color: var(--color-text-main);
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-  border-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
-  box-shadow: inset 2px 0 var(--color-primary);
+.app-nav-link:hover:not([aria-current="page"]) { background: rgba(255, 255, 255, 0.04); }
+.app-nav-link[aria-current="page"] { color: var(--color-text-main); }
+.app-nav-link[aria-current="page"] svg {
+  color: var(--color-primary);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 70%, transparent));
 }
-.app-nav-link[aria-current="page"] svg { color: var(--color-primary); }
+/* Sidebar: the active pill (moved between items by framer-motion layoutId) */
+.app-nav-pill {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--color-primary) 18%, transparent),
+    color-mix(in srgb, var(--color-primary) 4%, transparent));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, transparent);
+  box-shadow:
+    0 0 20px -8px color-mix(in srgb, var(--color-primary) 70%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.app-nav-pill::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 24%;
+  bottom: 24%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  box-shadow: 0 0 10px var(--color-primary);
+}
+.app-nav-icon { transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+.app-nav-link:hover .app-nav-icon { transform: translateX(2px); }
+.app-nav-link:active .app-nav-icon { transform: scale(0.88); }
+
+/* Sidebar: soft light that follows the cursor (position set from AdminLayout's onPointerMove) */
+@property --spot { syntax: "<number>"; inherits: false; initial-value: 0; }
+.experience-sidebar {
+  background-image: radial-gradient(
+    260px circle at var(--spot-x, 50%) var(--spot-y, 30%),
+    color-mix(in srgb, var(--color-primary) calc(var(--spot) * 10%), transparent),
+    transparent 70%
+  );
+}
+.experience-sidebar:hover { --spot: 1; }
+
+/* Sidebar: brand mark ring spins on hover */
+@property --brand-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes sidebar-brand-spin { to { --brand-angle: 360deg; } }
+.sidebar-brand-mark { position: relative; isolation: isolate; display: inline-flex; border-radius: 8px; }
+.sidebar-brand-mark::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border-radius: 8px;
+  background: conic-gradient(from var(--brand-angle), transparent 0deg, var(--color-primary) 90deg, transparent 180deg);
+  opacity: 0;
+  transition: opacity 300ms;
+}
+.sidebar-brand:hover .sidebar-brand-mark::before { opacity: 1; animation: sidebar-brand-spin 2.4s linear infinite; }
+
+/* Sidebar: one-time staggered entrance of the nav sections on load */
+@keyframes sidebar-section-in {
+  from { opacity: 0; transform: translateX(-10px); filter: blur(3px); }
+}
+.experience-sidebar nav > div { animation: sidebar-section-in 520ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.experience-sidebar nav > div:nth-child(2) { animation-delay: 50ms; }
+.experience-sidebar nav > div:nth-child(3) { animation-delay: 100ms; }
+.experience-sidebar nav > div:nth-child(4) { animation-delay: 150ms; }
+.experience-sidebar nav > div:nth-child(5) { animation-delay: 200ms; }
+.experience-sidebar nav > div:nth-child(6) { animation-delay: 250ms; }
+.experience-sidebar nav > div:nth-child(n + 7) { animation-delay: 300ms; }
+
+.sidebar-footer button svg, .sidebar-footer a svg { transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+.sidebar-footer button:hover svg, .sidebar-footer a:hover svg { transform: translateX(2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .experience-sidebar nav > div,
+  .sidebar-brand:hover .sidebar-brand-mark::before { animation: none; }
+  .app-nav-icon, .sidebar-footer svg { transition: none; }
+  .app-nav-link:hover .app-nav-icon, .sidebar-footer :hover > svg { transform: none; }
+}
 .experience-shell :is(a, button, input, select, textarea):focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 3px;
@@ -674,6 +777,72 @@
   color: var(--color-text-secondary);
   font-size: 12px;
   text-align: center;
+}
+/* Reading Log (BooksPage) controls: 44px touch targets and 16px text on phones (stops iOS focus zoom) */
+.bk-field {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-background, #000) 70%, transparent);
+  color: var(--color-text-main);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 140ms, box-shadow 140ms;
+}
+.bk-field::placeholder { color: var(--color-text-secondary); opacity: 0.5; }
+.bk-field:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+.bk-step, .bk-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-main);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  touch-action: manipulation;
+  transition: background-color 140ms, border-color 140ms;
+}
+.bk-step { width: 44px; flex-shrink: 0; }
+.bk-step:hover, .bk-chip:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.18); }
+.bk-step:active, .bk-chip:active { background: rgba(255, 255, 255, 0.1); }
+.bk-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  touch-action: manipulation;
+  transition: filter 140ms, opacity 140ms;
+}
+.bk-cta:hover:not(:disabled) { filter: brightness(1.1); }
+.bk-cta:disabled { opacity: 0.4; cursor: not-allowed; }
+.bk-range { width: 100%; height: 28px; accent-color: var(--color-primary); cursor: pointer; }
+.bk-step:focus-visible, .bk-chip:focus-visible, .bk-cta:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 70%, transparent);
+  outline-offset: 2px;
+}
+@media (min-width: 640px) {
+  .bk-field { min-height: 38px; padding: 8px 11px; font-size: 13px; }
+  .bk-step, .bk-chip { min-height: 38px; }
+  .bk-step { width: 38px; }
+  .bk-cta { min-height: 40px; font-size: 13px; }
+}
+@media (max-width: 639px) {
+  .bk-toolbar .dash-segment > button { min-height: 36px; font-size: 12px; }
 }
 .admin-overview-enter { animation: widget-enter 220ms ease-out backwards; }
 @media (hover: hover) {

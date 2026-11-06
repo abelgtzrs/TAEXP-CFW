@@ -9,7 +9,7 @@ import GoalsWidget from "../../dashboard/GoalsWidget";
 import RecentAcquisitionsWidget from "../../dashboard/RecentAcquisitionsWidget";
 import TopProductsWidget from "../../dashboard/TopProductsWidget";
 import CurrencySourceWidget from "../../dashboard/CurrencySourceWidget";
-import SingleLoreChartWidget from "../../dashboard/SingleLoreChartWidget";
+import LoreChartWidget from "../../dashboard/LoreChartWidget";
 import QuickNotesWidget from "../../dashboard/QuickNotesWidget";
 import QuickLinksWidget from "../../dashboard/QuickLinksWidget";
 import FocusTimerWidget from "../../dashboard/FocusTimerWidget";
@@ -27,10 +27,7 @@ export const registry = {
   recent: (props) => <RecentAcquisitionsWidget {...props} />, // may receive stats
   top: (props) => <TopProductsWidget {...props} />, // may receive stats
   currency: () => <CurrencySourceWidget />,
-  "chart-coherence": () => <SingleLoreChartWidget type="coherence" />,
-  "chart-anomaly": () => <SingleLoreChartWidget type="anomaly" />,
-  "chart-drift": () => <SingleLoreChartWidget type="drift" />,
-  "chart-status": () => <SingleLoreChartWidget type="status" />,
+  charts: () => <LoreChartWidget />,
   "quick-notes": () => <QuickNotesWidget />,
   "quick-links": () => <QuickLinksWidget />,
   "focus-timer": () => <FocusTimerWidget />,

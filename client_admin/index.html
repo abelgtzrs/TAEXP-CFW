@@ -2,6 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Re-apply the last theme before first paint so the page never flashes the default colors.
+      // Saved by src/utils/themeSnapshot.js (same storage key).
+      (function () {
+        try {
+          var snapshot = JSON.parse(localStorage.getItem("tae.themeSnapshot.v1") || "null");
+          if (!snapshot || !snapshot.vars) return;
+          var root = document.documentElement;
+          for (var name in snapshot.vars) root.style.setProperty(name, snapshot.vars[name]);
+          if (snapshot.glass) root.setAttribute("data-glass", snapshot.glass);
+        } catch (e) {}
+      })();
+    </script>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

@@ -1,16 +1,14 @@
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import Widget from "../../ui/Widget";
-import { getTheme } from "./theme";
 import React from "react";
+import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { getTheme, axisProps, gridProps, tooltipProps } from "./theme";
 import api from "../../../services/api";
+import ChartHeadline from "./ChartHeadline";
 
 export default function AnomalyChart() {
   const { primary, textSecondary } = getTheme();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState("");
   const [volumes, setVolumes] = React.useState([]);
-  const containerRef = React.useRef(null);
-  const [scale, setScale] = React.useState(1);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -20,7 +18,7 @@ export default function AnomalyChart() {
         const resp = await api.get("/admin/volumes/summary");
         if (!cancelled) setVolumes(resp?.data?.data || []);
       } catch (e) {
-        if (!cancelled) setError("Failed to load volumes");
+        if (!cancelled) setError("Couldn't load volumes. Refresh to try again.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -43,57 +41,31 @@ export default function AnomalyChart() {
     return arr.slice(-16);
   }, [volumes]);
 
-  // Auto-fit scale: aim for a base content height; scale down if the container is shorter
-  React.useEffect(() => {
-    if (!containerRef.current) return;
-    const baseHeight = 220; // px content target before scaling
-    const el = containerRef.current;
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const ch = entry.contentRect?.height || el.clientHeight || 0;
-        if (!ch) continue;
-        const next = Math.min(1, Math.max(0.5, ch / baseHeight));
-        setScale(next);
-      }
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const last = data[data.length - 1];
+  const average = data.length ? Math.round(data.reduce((sum, d) => sum + d.lines, 0) / data.length) : 0;
+
   return (
-    <Widget title="Volume Line Counts" className="h-full min-h-0">
-      <div className="flex-1 w-full h-full min-h-0 py-2">
-        <div ref={containerRef} className="relative h-full w-full">
-          <div
-            className="origin-top-left h-full w-full"
-            style={{
-              transform: `scale(${scale})`,
-              transformOrigin: "top left",
-              width: scale ? `calc(100% / ${scale})` : "100%",
-            }}
-          >
-            <ResponsiveContainer width="100%" height="100%" minHeight={80}>
-              <BarChart data={data} margin={{ top: 6, right: 12, left: -10, bottom: 6 }} barCategoryGap={1}>
-                <XAxis dataKey="name" stroke="rgba(255,255,255,0.12)" tick={{ fill: textSecondary, fontSize: 9 }} />
-                <YAxis stroke="rgba(255,255,255,0.12)" tick={{ fill: textSecondary, fontSize: 9 }} />
-                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.95)", borderColor: "rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 12, color: "#e5e7eb" }}
-                  formatter={(value, name) => [value, "Lines"]}
-                />
-                <Bar dataKey="lines" fill={primary} style={{ cursor: "default" }} className="no-hover" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          {loading && (
-            <div className="absolute left-2 bottom-1 text-[10px] text-text-secondary pointer-events-none">
-              Loading volumes…
-            </div>
-          )}
-          {error && (
-            <div className="absolute left-2 bottom-1 text-[10px] text-red-400 pointer-events-none">{error}</div>
-          )}
-        </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <ChartHeadline
+        value={last ? last.lines.toLocaleString() : loading ? "…" : "—"}
+        caption={last ? `lines in ${last.name}, average ${average.toLocaleString()}` : null}
+      />
+      <div className="relative min-h-0 flex-1">
+        <ResponsiveContainer width="100%" height="100%" minHeight={100}>
+          <BarChart data={data} margin={{ top: 4, right: 4, left: -18, bottom: 0 }} barCategoryGap="18%">
+            <CartesianGrid {...gridProps} />
+            <XAxis dataKey="name" {...axisProps(textSecondary)} interval="preserveStartEnd" minTickGap={8} />
+            <YAxis {...axisProps(textSecondary)} tickCount={4} />
+            <Tooltip {...tooltipProps} formatter={(v) => [Number(v).toLocaleString(), "Lines"]} />
+            <Bar dataKey="lines" radius={[3, 3, 0, 0]}>
+              {data.map((d, i) => (
+                <Cell key={d.name} fill={primary} fillOpacity={i === data.length - 1 ? 1 : 0.4} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        {error && <p className="absolute inset-x-0 bottom-1 text-center text-[11px] text-rose-300">{error}</p>}
       </div>
-    </Widget>
+    </div>
   );
 }

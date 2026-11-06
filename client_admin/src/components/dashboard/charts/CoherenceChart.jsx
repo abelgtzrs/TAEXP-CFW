@@ -1,41 +1,50 @@
 import React from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import Widget from "../../ui/Widget";
-import { getTheme } from "./theme";
+import { getTheme, axisProps, gridProps, tooltipProps } from "./theme";
 import { useChartData } from "./ChartDataContext";
+import ChartHeadline from "./ChartHeadline";
 
 export default function CoherenceChart() {
-  const { primary, secondary, textSecondary } = getTheme();
+  const { primary, textSecondary } = getTheme();
   const { coherenceSeries } = useChartData();
   const data = React.useMemo(
-    () => coherenceSeries.map((d) => ({ name: d.name, coherence: d.value })),
-    [coherenceSeries]
+    () => coherenceSeries.map((d) => ({ name: d.name, coherence: Number(d.value) || 0 })),
+    [coherenceSeries],
   );
+  const first = data[0];
+  const last = data[data.length - 1];
+
   return (
-    <Widget title="Narrative Coherence Index" className="h-full min-h-0">
-      <div className="flex-1 w-full h-full min-h-0 py-2">
-        <ResponsiveContainer width="100%" height="100%" minHeight={120}>
-          <AreaChart data={data} margin={{ top: 10, right: 20, left: -15, bottom: 10 }}>
+    <div className="flex h-full min-h-0 flex-col">
+      <ChartHeadline
+        value={last ? last.coherence.toFixed(1) : "—"}
+        delta={first && last ? (last.coherence - first.coherence).toFixed(1) : null}
+        caption={first ? `since ${first.name}` : null}
+      />
+      <div className="min-h-0 flex-1">
+        <ResponsiveContainer width="100%" height="100%" minHeight={100}>
+          <AreaChart data={data} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
             <defs>
-              <linearGradient id="colorCoherence" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="50%" stopColor={primary} stopOpacity={0.4} />
-                <stop offset="95%" stopColor={secondary} stopOpacity={0} />
+              <linearGradient id="coherenceFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={primary} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={primary} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <XAxis dataKey="name" stroke="rgba(255,255,255,0.12)" tick={{ fill: textSecondary, fontSize: 10 }} />
-            <YAxis
-              stroke="rgba(255,255,255,0.12)"
-              domain={["dataMin - 2", "dataMax + 2"]}
-              tick={{ fill: textSecondary, fontSize: 10 }}
+            <CartesianGrid {...gridProps} />
+            <XAxis dataKey="name" {...axisProps(textSecondary)} minTickGap={24} />
+            <YAxis {...axisProps(textSecondary)} domain={["dataMin - 2", "dataMax + 2"]} tickFormatter={(v) => Math.round(v)} />
+            <Tooltip {...tooltipProps} formatter={(v) => [Number(v).toFixed(1), "Coherence"]} />
+            <Area
+              type="monotone"
+              dataKey="coherence"
+              stroke={primary}
+              strokeWidth={1.75}
+              fill="url(#coherenceFill)"
+              activeDot={{ r: 3.5, strokeWidth: 0, fill: primary }}
             />
-            <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-            <Tooltip
-              contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.95)", borderColor: "rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 12, color: "#e5e7eb" }}
-            />
-            <Area type="monotone" dataKey="coherence" stroke={primary} strokeWidth={2} fill="url(#colorCoherence)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
-    </Widget>
+    </div>
   );
 }

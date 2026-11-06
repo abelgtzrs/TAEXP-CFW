@@ -22,6 +22,9 @@ import "@fontsource/source-code-pro";
 import "@fontsource/roboto-mono";
 
 import "./index.css";
+import { startThemeSnapshot } from "./utils/themeSnapshot";
+
+startThemeSnapshot();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

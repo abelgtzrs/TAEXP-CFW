@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet, Link, NavLink } from "react-router-dom";
+// eslint-disable-next-line no-unused-vars -- used as <motion.span>, which this lint config doesn't count
+import { motion, MotionConfig } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import Header from "./Header";
 import BottomNav from "./BottomNav";
@@ -23,7 +25,6 @@ import {
   Clapperboard,
   Boxes,
   ChevronLeft,
-  ChevronRight,
   Settings2,
   DollarSign,
   Music,
@@ -44,22 +45,31 @@ const NavItem = ({ to, icon: Icon, children, isCollapsed }) => {
       <NavLink
         to={to}
         title={typeof children === "string" ? children : undefined}
-        className={({ isActive }) =>
-          `app-nav-link group flex items-center rounded-lg transition-all duration-300 text-text-secondary hover:bg-gray-700/50 hover:text-white px-[9px] py-[7px] ${
-            isActive ? "bg-primary/20 text-white shadow-lg" : ""
-          }`
-        }
+        className="app-nav-link group relative flex items-center rounded-lg px-[9px] py-[7px] text-text-secondary hover:text-text-main"
       >
-        <span className="flex-none w-[22px] flex items-center justify-center">
-          <Icon size={16} />
-        </span>
-        <span
-          className={`ml-1.5 overflow-hidden whitespace-nowrap transition-all duration-300 ${
-            isCollapsed ? "max-w-0 opacity-0" : "max-w-[200px] opacity-100 text-xs"
-          }`}
-        >
-          {children}
-        </span>
+        {({ isActive }) => (
+          <>
+            {/* One shared pill that springs to whichever item is active */}
+            {isActive && (
+              <motion.span
+                layoutId="sidebar-active-pill"
+                className="app-nav-pill"
+                transition={{ type: "spring", stiffness: 520, damping: 40, mass: 0.8 }}
+                aria-hidden="true"
+              />
+            )}
+            <span className="app-nav-icon relative flex-none w-[22px] flex items-center justify-center">
+              <Icon size={16} />
+            </span>
+            <span
+              className={`relative ml-1.5 overflow-hidden whitespace-nowrap text-xs transition-[max-width,opacity,transform] duration-300 ${
+                isCollapsed ? "max-w-0 -translate-x-1 opacity-0" : "max-w-[200px] translate-x-0 opacity-100"
+              }`}
+            >
+              {children}
+            </span>
+          </>
+        )}
       </NavLink>
     </li>
   );
@@ -401,6 +411,12 @@ const AdminLayout = () => {
         {/* Sidebar full height */}
         {/* Sidebar full height */}
         <aside
+          onPointerMove={(e) => {
+            // Feeds the cursor-following light in index.css without re-rendering.
+            const rect = e.currentTarget.getBoundingClientRect();
+            e.currentTarget.style.setProperty("--spot-x", `${e.clientX - rect.left}px`);
+            e.currentTarget.style.setProperty("--spot-y", `${e.clientY - rect.top}px`);
+          }}
           className={`experience-sidebar fixed top-0 left-0 z-50 flex flex-col bg-surface/95 backdrop-blur-md border-r border-gray-700/80 shadow-2xl transition-all duration-500 ease-in-out
             ${isSidebarCollapsed ? "w-12 -translate-x-full lg:translate-x-0" : "w-64 lg:w-56 translate-x-0"}
           `}
@@ -414,11 +430,10 @@ const AdminLayout = () => {
             className="hidden lg:block absolute right-0 translate-x-full bg-surface/80 backdrop-blur-md border border-gray-700/40 rounded-r-md p-1 hover:bg-gray-700/60 transition-all duration-300 shadow-md"
             style={{ bottom: 15 }}
           >
-            {isSidebarCollapsed ? (
-              <ChevronRight size={18} className="text-white" />
-            ) : (
-              <ChevronLeft size={18} className="text-white" />
-            )}
+            <ChevronLeft
+              size={18}
+              className={`text-white transition-transform duration-500 ${isSidebarCollapsed ? "rotate-180" : ""}`}
+            />
           </button>
 
           {/* Mobile Close Button */}
@@ -431,15 +446,17 @@ const AdminLayout = () => {
           </button>
 
           {/* Brand */}
-          <div className="px-2 py-5 flex-shrink-0 border-b border-white/[0.06] mb-4">
+          <div className="sidebar-brand px-2 py-5 flex-shrink-0 border-b border-white/[0.06] mb-4">
             <div className="flex items-center gap-2">
-              <div className="flex-none w-[26px] h-[26px] rounded-md overflow-hidden bg-primary/40 flex items-center justify-center">
+              <span className="sidebar-brand-mark flex-none">
+              <div className="w-[26px] h-[26px] rounded-md overflow-hidden bg-primary/40 flex items-center justify-center">
                 {logoImg ? (
                   <img src={logoImg} alt="TAE" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-primary font-bold text-[9px] leading-none">TAE</span>
                 )}
               </div>
+              </span>
               <span
                 className={`text-white font-bold text-[10px] tracking-wide transition-all duration-300 overflow-hidden whitespace-nowrap ${
                   isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[144px] opacity-100"
@@ -452,6 +469,7 @@ const AdminLayout = () => {
           </div>
 
           {/* Navigation */}
+          <MotionConfig reducedMotion="user">
           <nav aria-label="Main navigation" className="min-h-0 flex-grow space-y-5 overflow-y-auto px-1 pb-2">
             {/* Overview */}
             <div>
@@ -686,9 +704,10 @@ const AdminLayout = () => {
               </div>
             )}
           </nav>
+          </MotionConfig>
 
           {/* Footer buttons */}
-          <div className="mt-auto flex-shrink-0 border-t border-gray-700/50 pt-2 px-1 pb-3 space-y-2">
+          <div className="sidebar-footer mt-auto flex-shrink-0 border-t border-gray-700/50 pt-2 px-1 pb-3 space-y-2">
             <LayoutToggleButton isSidebarCollapsed={isSidebarCollapsed} />
             <button
               onClick={() => setShowCustomizer(true)}
